@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 Prediction — {{ meta.circuit }} {{ meta.race_date }}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --card: #1e2130;
+    --border: rgba(255,255,255,0.08); --text: #e8eaf0;
+    --muted: #8b8fa8; --accent: #00D2BE;
+  }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+  h1 { font-size: 26px; font-weight: 600; margin-bottom: 4px; }
+  h2 { font-size: 16px; font-weight: 500; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; margin: 2rem 0 .75rem; }
+  .hero { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: flex-start; }
+  .badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 500; background: rgba(255,255,255,0.1); color: var(--text); }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .stat-card .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .stat-card .value { font-size: 22px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  thead th { padding: 10px 12px; text-align: left; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--card); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:hover { background: var(--card); }
+  tbody td { padding: 10px 12px; }
+  .pos { width: 28px; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .pos-1 { background: #b8860b; color: #fff; }
+  .pos-2 { background: #606060; color: #fff; }
+  .pos-3 { background: #8b4513; color: #fff; }
+  .pos-n { background: rgba(255,255,255,0.1); color: var(--muted); }
+  .team-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .prob-bar { background: rgba(255,255,255,0.08); border-radius: 2px; height: 4px; margin-top: 3px; }
+  .prob-fill { height: 100%; border-radius: 2px; }
+  .chart-wrap { position: relative; width: 100%; height: 260px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem; }
+  .podium { display: flex; gap: 12px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .podium-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; flex: 1; min-width: 160px; }
+  .podium-card .place { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .podium-card .driver-name { font-size: 16px; font-weight: 600; }
+  .footer { margin-top: 3rem; font-size: 12px; color: var(--muted); text-align: center; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+  .conf { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .conf-high { background: rgba(29,158,117,0.2); color: #5DCAA5; }
+  .conf-medium { background: rgba(239,159,39,0.2); color: #EF9F27; }
+  .conf-low { background: rgba(226,75,74,0.2); color: #F09595; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="hero">
+    <div>
+      <h1>🏁 {{ meta.circuit }}</h1>
+      <p style="color:var(--muted)">{{ meta.city }} · {{ meta.race_date }} · Round prediction report</p>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        {% if meta.sprint_weekend %}<span class="badge">⚡ Sprint Weekend</span>{% endif %}
+        <span class="badge">🌧 Rain: {{ (meta.rain_probability * 100)|round(0)|int }}%</span>
+        <span class="badge">🚗 Safety Car: {{ (meta.safety_car_probability * 100)|round(0)|int }}%</span>
+        <span class="badge">Model confidence: {{ (meta.overall_model_confidence * 100)|round(0)|int }}%</span>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:12px;color:var(--muted)">Simulations</div>
+      <div style="font-size:28px;font-weight:700;color:var(--accent)">{{ "{:,}".format(meta.n_simulations) }}</div>
+    </div>
+  </div>
+
+  <h2>Predicted Podium</h2>
+  <div class="podium">
+    {% for name in podium %}
+    <div class="podium-card">
+      <div class="place">{% if loop.index == 1 %}🥇 1st{% elif loop.index == 2 %}🥈 2nd{% else %}🥉 3rd{% endif %}</div>
+      <div class="driver-name">{{ name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2>Win Probability — Top 8</h2>
+  <div class="chart-wrap">
+    <canvas id="winChart" aria-label="Bar chart of win probabilities for top 8 drivers"></canvas>
+  </div>
+
+  <h2>Full Driver Predictions</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Pos</th>
+        <th>Driver</th>
+        <th>Win %</th>
+        <th>Top 3 %</th>
+        <th>Top 10 %</th>
+        <th>DNF %</th>
+        <th>Confidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in predictions %}
+      <tr>
+        <td>
+          <span class="pos pos-{% if p.predicted_position <= 3 %}{{ p.predicted_position }}{% else %}n{% endif %}">
+            {{ p.predicted_position }}
+          </span>
+        </td>
+        <td>
+          <span class="team-dot" style="background:{{ p.team_colour }}"></span>
+          <strong>{{ p.driver }}</strong>
+          <div style="font-size:11px;color:var(--muted)">{{ p.team|replace('_',' ')|title }}</div>
+        </td>
+        <td>
+          <div>{{ p.win_pct }}%</div>
+          <div class="prob-bar"><div class="prob-fill" style="width:{{ [p.win_pct * 2, 100]|min }}%;background:{{ p.team_colour }}"></div></div>
+        </td>
+        <td>
+          <div>{{ p.top3_pct }}%</div>
+          <div class="prob-bar"><div class="prob-fill" style="width:{{ p.top3_pct }}%;background:#378ADD"></div></div>
+        </td>
+        <td>
+          <div>{{ p.top10_pct }}%</div>
+          <div class="prob-bar"><div class="prob-fill" style="width:{{ p.top10_pct }}%;background:#1D9E75"></div></div>
+        </td>
+        <td style="color:{% if p.dnf_pct > 14 %}#F09595{% elif p.dnf_pct > 9 %}#EF9F27{% else %}var(--muted){% endif %}">
+          {{ p.dnf_pct }}%
+        </td>
+        <td>
+          <span class="conf conf-{{ p.confidence|lower }}">{{ p.confidence }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if surprises %}
+  <h2>Likely Surprise Performers</h2>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1.5rem">
+    {% for name in surprises %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-weight:500">
+      ⬆ {{ name }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    Generated by F1 Prediction System · Pre-race data only · No post-race leakage<br>
+    Predictions are probabilistic estimates, not certainties.
+  </div>
+</div>
+
+<script>
+const data = {{ chart_data }};
+new Chart(document.getElementById('winChart'), {
+  type: 'bar',
+  data: {
+    labels: data.labels,
+    datasets: [{
+      label: 'Win probability (%)',
+      data: data.win_probs,
+      backgroundColor: data.colours.map(c => c + 'BB'),
+      borderColor: data.colours,
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#8b8fa8' }, grid: { display: false } },
+      y: { ticks: { color: '#8b8fa8', callback: v => v + '%' },
+           grid: { color: 'rgba(255,255,255,0.05)' }, max: 60 }
+    }
+  }
+});
+</script>
+</body>
+</html>
