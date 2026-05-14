@@ -1,0 +1,60 @@
+name: CI — Tests & Model Sanity Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-cov
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+      - name: Model sanity check — Canadian GP
+        run: |
+          python -c "
+          from engine.predictor import predict, PredictionRequest
+          result = predict(PredictionRequest(circuit_id='canada', n_simulations=200))
+          preds = result['predictions']
+          assert len(preds) > 0, 'No predictions generated'
+          assert all(0 <= p['win_pct'] <= 100 for p in preds), 'Win pct out of bounds'
+          assert abs(sum(p['win_pct'] for p in preds) - 100) < 2.0, 'Win probs do not sum to ~100'
+          print('✓ Sanity checks passed')
+          "
+
+      - name: Upload coverage report
+        if: matrix.python-version == '3.12'
+        run: |
+          pip install pytest-cov
+          pytest tests/ --cov=engine --cov-report=xml --cov-report=term-missing
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install linters
+        run: pip install ruff
+      - name: Lint with ruff
+        run: ruff check . --ignore E501
