@@ -1,13 +1,14 @@
 """
-HTML Report Generator.
+HTML Report Generator for F1 Predictions.
 
-Generates a self-contained single-file HTML race prediction report
-using Jinja2 templating and inline Chart.js for visualisations.
+Creates detailed HTML reports with prediction breakdowns, feature explanations,
+and uncertainty metrics.
 """
 
 import os
 import json
 from pathlib import Path
+from datetime import datetime
 from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
@@ -17,6 +18,7 @@ from config.settings import REPORT_OUTPUT_DIR
 
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
+TEMPLATE_VERSION = "1.2"  # Template version for tracking changes
 
 TEAM_COLOURS: dict = {
     "mercedes":     "#00D2BE",
@@ -41,7 +43,7 @@ def generate_report(
 ) -> str:
     """
     Generate a full HTML prediction report.
-
+    
     Returns the path to the generated file.
     """
     result = predict(PredictionRequest(
@@ -56,6 +58,8 @@ def generate_report(
     # Attach team colour for template
     for p in predictions:
         p["team_colour"] = TEAM_COLOURS.get(p["team"], "#888888")
+        # Add confidence indicator for explanation panel
+        p["confidence"] = _get_confidence_indicator(p["uncertainty_score"])
 
     # Chart.js data payloads
     top8 = predictions[:8]
@@ -66,6 +70,16 @@ def generate_report(
         "colours": [TEAM_COLOURS.get(p["team"], "#888") for p in top8],
     }
 
+    # Add explanation data to meta
+    meta["version"] = TEMPLATE_VERSION
+    meta["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    meta["top_3_by_composite"] = sorted(predictions, key=lambda x: x.get("composite_score", 0), reverse=True)[:3]
+    meta["uncertainty_factors"] = [
+        "High safety car probability (unpredictable race conditions)",
+        "High rain probability (variable conditions)",
+        "Tightly matched driver scores (small performance differences)"
+    ]
+    
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)))
     template = env.get_template("report.html")
 

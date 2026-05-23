@@ -602,3 +602,40 @@ def get_all_drivers() -> list:
 def get_drivers_for_team(team_id: str) -> list:
     """Return drivers belonging to a specific constructor."""
     return [d for d in DRIVERS.values() if d["team"] == team_id]
+
+
+def validate_driver_data_integrity():
+    """Run integrity checks on driver data."""
+    errors = []
+    
+    for driver_id, driver in DRIVERS.items():
+        # Check that required fields exist
+        required_fields = ["name", "team", "nationality", "elo", "wet_skill", 
+                          "brakezone_skill", "tire_management", "dnf_rate_career", 
+                          "dnf_rate_recent"]
+        
+        for field in required_fields:
+            if field not in driver:
+                errors.append(f"Driver {driver_id} missing required field: {field}")
+        
+        # Check ELO range
+        elo = driver.get("elo")
+        if elo is not None and not (1000 <= elo <= 2500):
+            errors.append(f"Driver {driver_id} has ELO out of range: {elo}")
+        
+        # Check skill values
+        for skill_field in ["wet_skill", "brakezone_skill", "tire_management"]:
+            skill_value = driver.get(skill_field)
+            if skill_value is not None and not (0 <= skill_value <= 10):
+                errors.append(f"Driver {driver_id} has {skill_field} out of range: {skill_value}")
+        
+        # Check probability ranges
+        for prob_field in ["dnf_rate_career", "dnf_rate_recent"]:
+            prob_value = driver.get(prob_field)
+            if prob_value is not None and not (0.0 <= prob_value <= 1.0):
+                errors.append(f"Driver {driver_id} has {prob_field} out of range: {prob_value}")
+    
+    if errors:
+        error_msg = "Driver data integrity issues found:\n" + "\n".join(errors)
+        logger.error(error_msg)
+        raise ValueError(error_msg)

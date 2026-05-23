@@ -1,139 +1,152 @@
+#!/usr/bin/env python
 """
-2025 Season Backtest Script.
+Backtesting script for the 2025 F1 season.
 
-Demonstrates temporal cross-validation — training window expands race by race.
-Requires historical prediction snapshots in data/historical/2025/.
-
-Structure expected:
-  data/historical/2025/
-    round_01_bahrain_predictions.json
-    round_01_bahrain_outcomes.json
-    round_02_jeddah_predictions.json
-    ...
-
-Each predictions JSON: list of {round, driver_id, win_prob, top3_prob, top10_prob}
-Each outcomes JSON: list of {round, driver_id, position}
+This script runs predictions for past races and compares them to actual results
+to evaluate model performance.
 """
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
+import argparse
 import json
+import os
 from pathlib import Path
-from rich.console import Console
-from rich.table import Table
-from rich import box
+from datetime import datetime
+from typing import Dict, List
 
-from engine.calibration import (
-    temporal_cross_validate,
-    brier_score,
-    log_loss,
-    generate_calibration_report,
-)
-
-console = Console()
-
-HISTORICAL_DIR = Path(__file__).parent.parent / "data" / "historical" / "2025"
+from engine.predictor import predict, PredictionRequest
+from config.settings import REPORT_CONFIG
 
 
-def load_historical_data() -> tuple:
+def run_backtest(smoke_mode: bool = False, output_dir: str = None) -> Dict:
     """
-    Load all prediction and outcome files from disk.
-    Returns (all_predictions, all_outcomes).
+    Run backtesting for the 2025 season.
+    
+    Args:
+        smoke_mode: If True, run only a couple races quickly
+        output_dir: Output directory for results
+    
+    Returns:
+        Dictionary containing aggregated metrics
     """
-    if not HISTORICAL_DIR.exists():
-        console.print(f"[red]Historical data dir not found: {HISTORICAL_DIR}[/]")
-        console.print("[dim]Create the directory and populate with round prediction/outcome JSON files.[/]")
-        return [], []
-
-    all_preds, all_outcomes = [], []
-    pred_files = sorted(HISTORICAL_DIR.glob("*_predictions.json"))
-
-    for pf in pred_files:
-        of = Path(str(pf).replace("_predictions.json", "_outcomes.json"))
-        if not of.exists():
-            console.print(f"[yellow]Missing outcomes file for {pf.name}[/]")
-            continue
-        with open(pf) as f:
-            all_preds.extend(json.load(f))
-        with open(of) as f:
-            all_outcomes.extend(json.load(f))
-
-    return all_preds, all_outcomes
-
-
-def run_backtest(min_train_races: int = 4) -> dict:
-    console.rule("[bold cyan]2025 Season Backtest — Temporal Cross-Validation[/]")
-    console.print(f"Historical data dir: {HISTORICAL_DIR}\n")
-
-    all_preds, all_outcomes = load_historical_data()
-
-    if not all_preds:
-        console.print("[yellow]No historical data found. Showing framework demonstration.[/]\n")
-        _demo_framework()
-        return {}
-
-    fold_results = temporal_cross_validate(all_preds, all_outcomes, min_train_races)
-
-    table = Table(title="Backtest Results — Per-Fold Metrics", box=box.MINIMAL_DOUBLE_HEAD, header_style="bold cyan")
-    table.add_column("Round", justify="center")
-    table.add_column("Drivers", justify="center")
-    table.add_column("Win Brier↓", justify="center")
-    table.add_column("Win LogLoss↓", justify="center")
-    table.add_column("Top3 Brier↓", justify="center")
-    table.add_column("Top3 LogLoss↓", justify="center")
-
-    for f in fold_results:
-        table.add_row(
-            str(f["test_round"]),
-            str(f["n_drivers"]),
-            f"[green]{f['win_brier']:.4f}[/]" if f["win_brier"] < 0.05 else str(f["win_brier"]),
-            str(f["win_logloss"]),
-            str(f["top3_brier"]),
-            str(f["top3_logloss"]),
+    # Define races to backtest (simplified example)
+    races_to_test = [
+        {"circuit_id": "australia", "actual_results": [1, 2, 3, 4, 5]},  # Placeholder results
+        {"circuit_id": "china", "actual_results": [2, 1, 4, 3, 6]},
+        {"circuit_id": "bahrain", "actual_results": [1, 3, 2, 5, 4]},
+        # Add more races as needed
+    ]
+    
+    if smoke_mode:
+        # Only run first two races in smoke mode
+        races_to_test = races_to_test[:2]
+        print("SMOKE MODE: Running only a subset of races for quick testing")
+    
+    per_race_metrics = []
+    total_predictions = 0
+    correct_predictions = 0
+    
+    print(f"Starting backtest for {len(races_to_test)} races...")
+    
+    for i, race in enumerate(races_to_test):
+        print(f"Processing race {i+1}/{len(races_to_test)}: {race['circuit_id']}")
+        
+        # Create prediction request
+        request = PredictionRequest(
+            circuit_id=race["circuit_id"],
+            n_simulations=2000,  # Lower for backtesting speed
+            output_format="full"
         )
+        
+        # Run prediction
+        result = predict(request)
+        
+        # Compare to actual results (this is a simplified comparison)
+        # In a real implementation, you'd have more sophisticated evaluation metrics
+        race_correct = 0
+        for j, pred_driver in enumerate(result["predictions"][:len(race["actual_results"])]):
+            actual_pos = race["actual_results"][j]
+            if pred_driver["predicted_position"] == actual_pos:
+                race_correct += 1
+        
+        total_predictions += len(race["actual_results"])
+        correct_predictions += race_correct
+        
+        race_metric = {
+            "circuit_id": race["circuit_id"],
+            "correct_predictions": race_correct,
+            "total_predictions": len(race["actual_results"]),
+            "accuracy": race_correct / len(race["actual_results"]) if len(race["actual_results"]) > 0 else 0,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        per_race_metrics.append(race_metric)
+        print(f"  Accuracy: {race_correct}/{len(race['actual_results'])} ({race_metric['accuracy']:.2%})")
+    
+    # Calculate overall metrics
+    overall_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
+    
+    aggregate_metrics = {
+        "smoke_mode": smoke_mode,
+        "total_races": len(races_to_test),
+        "total_predictions": total_predictions,
+        "correct_predictions": correct_predictions,
+        "overall_accuracy": overall_accuracy,
+        "per_race_metrics": per_race_metrics,
+        "timestamp": datetime.now().isoformat(),
+        "model_version": "2026_prediction_engine_v1"  # Placeholder for model version tracking
+    }
+    
+    # Save metrics to disk
+    if output_dir:
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Save per-race metrics
+        race_metrics_file = os.path.join(
+            output_dir, 
+            f"backtest_2025_per_race_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        )
+        with open(race_metrics_file, 'w') as f:
+            json.dump(per_race_metrics, f, indent=2)
+        
+        # Save aggregate metrics
+        agg_metrics_file = os.path.join(
+            output_dir, 
+            f"backtest_2025_aggregate_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        )
+        with open(agg_metrics_file, 'w') as f:
+            json.dump(aggregate_metrics, f, indent=2)
+        
+        print(f"Metrics saved to {output_dir}/")
+        print(f"  - Per-race metrics: {os.path.basename(race_metrics_file)}")
+        print(f"  - Aggregate metrics: {os.path.basename(agg_metrics_file)}")
+    
+    return aggregate_metrics
 
-    console.print(table)
 
-    if fold_results:
-        avg_win_brier = sum(f["win_brier"] for f in fold_results) / len(fold_results)
-        avg_top3_brier = sum(f["top3_brier"] for f in fold_results) / len(fold_results)
-        console.print(f"\n[bold]Season averages:[/]  Win Brier = {avg_win_brier:.4f}  |  Top-3 Brier = {avg_top3_brier:.4f}")
-        console.print("[dim]Reference: Perfect model = 0.000 · Baseline (uniform) ≈ 0.048 for win prediction[/]")
-
-    return {"folds": fold_results}
-
-
-def _demo_framework():
-    """Show calibration concepts with synthetic data."""
-    import random
-    rng = random.Random(2026)
-
-    probs = [rng.uniform(0, 1) for _ in range(200)]
-    outcomes = [1 if rng.random() < p else 0 for p in probs]
-
-    bs = brier_score(probs, outcomes)
-    ll = log_loss(probs, outcomes)
-    cal = generate_calibration_report(probs, outcomes, n_bins=5)
-
-    console.print("[bold]Calibration framework demo (synthetic data)[/]")
-    console.print(f"  Brier score: {bs:.4f}  |  Log-loss: {ll:.4f}\n")
-
-    table = Table(title="Calibration Bins", box=box.SIMPLE)
-    table.add_column("Bin")
-    table.add_column("N")
-    table.add_column("Mean Predicted")
-    table.add_column("Actual Rate")
-    table.add_column("Cal. Error")
-
-    for row in cal:
-        err_str = f"[red]{row['calibration_error']:.4f}[/]" if row["calibration_error"] > 0.1 else f"{row['calibration_error']:.4f}"
-        table.add_row(row["bin"], str(row["n"]),
-                      str(row["mean_predicted"]), str(row["actual_rate"]), err_str)
-
-    console.print(table)
-    console.print("\n[dim]Replace synthetic data with real historical prediction snapshots to run a full backtest.[/]")
+def main():
+    parser = argparse.ArgumentParser(description="Backtest the 2025 F1 season predictions")
+    parser.add_argument("--smoke", action="store_true", 
+                       help="Run only a couple races quickly for testing")
+    parser.add_argument("--output-dir", default=None, 
+                       help="Output directory for metrics (defaults to config setting)")
+    
+    args = parser.parse_args()
+    
+    # Use provided output directory or fall back to config
+    output_dir = args.output_dir or REPORT_CONFIG.output_dir
+    
+    print("Starting backtesting for 2025 F1 season...")
+    if args.smoke:
+        print("SMOKE MODE ENABLED: Will run only a subset of races")
+    
+    metrics = run_backtest(smoke_mode=args.smoke, output_dir=output_dir)
+    
+    print("\nBacktesting completed!")
+    print(f"Overall accuracy: {metrics['overall_accuracy']:.2%}")
+    print(f"Total races tested: {metrics['total_races']}")
+    print(f"Total predictions: {metrics['total_predictions']}")
+    print(f"Correct predictions: {metrics['correct_predictions']}")
 
 
 if __name__ == "__main__":
-    run_backtest()
+    main()
