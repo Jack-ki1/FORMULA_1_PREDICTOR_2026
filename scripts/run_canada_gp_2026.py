@@ -1,19 +1,16 @@
 """
-Script to run predictions for the Canadian Grand Prix 2026.
+One-shot script: Run the full 2026 Canadian Grand Prix prediction.
 
-This script demonstrates the usage of the prediction engine and generates
-both raw data and HTML reports for the Canadian GP.
+Usage:
+  python scripts/run_canada_gp_2026.py
+  python scripts/run_canada_gp_2026.py --rain 0.55   # wet race scenario
+  python scripts/run_canada_gp_2026.py --sims 10000  # more simulations
 """
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import argparse
-import json
-import os
-from pathlib import Path
-from datetime import datetime
-
 import json
 from rich.console import Console
 from rich.table import Table
@@ -22,50 +19,23 @@ from rich import box
 
 from engine.predictor import predict, PredictionRequest
 from reports.html_report import generate_report
-from config.settings import REPORT_CONFIG
 
 console = Console()
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Run F1 predictions for Canadian GP 2026")
-    parser.add_argument("--circuit", default="canada", help="Circuit ID (default: canada)")
-    parser.add_argument("--rain-prob", type=float, default=None, help="Rain probability (0.0-1.0)")
-    parser.add_argument("--sim-count", type=int, default=5000, help="Number of simulations")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for deterministic runs")
-    parser.add_argument("--output-dir", default=None, help="Output directory for reports")
-    parser.add_argument("--output-format", default="full", choices=["full", "summary", "intermediate", "winner_only"],
-                        help="Output format for predictions")
-    parser.add_argument("--save-json", action="store_true", help="Save raw JSON output")
-    
-    args = parser.parse_args()
-    
-    # Use provided output directory or fall back to config
-    output_dir = args.output_dir or REPORT_CONFIG.output_dir
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    
-    # Create prediction request
-    request = PredictionRequest(
-        circuit_id=args.circuit,
-        rain_probability=args.rain_prob,
-        n_simulations=args.sim_count,
-        seed=args.seed,
-        output_format=args.output_format,
-        include_intermediate_artifacts=(args.output_format == 'intermediate')
-    )
-    
-    console.print(f"Generating prediction for {args.circuit} GP with {args.sim_count:,} simulations...")
-    if args.seed:
-        console.print(f"Using seed: {args.seed}")
-    if args.rain_prob is not None:
-        console.print(f"Rain probability: {args.rain_prob:.2f}")
-    
-    console.print(f"[cyan]Running {args.sim_count:,} Monte Carlo simulations…[/]")
-    
-    # Run prediction
-    result = predict(request)
-    
+def run(rain: float = None, sims: int = 5000, save_report: bool = True):
+    console.rule("[bold red]F1 2026 CANADIAN GRAND PRIX — PREDICTION[/]")
+    console.print()
+
+    with console.status(f"[cyan]Running {sims:,} Monte Carlo simulations…[/]"):
+        result = predict(PredictionRequest(
+            circuit_id="canada",
+            rain_probability=rain,
+            n_simulations=sims,
+        ))
+
     meta = result["meta"]
+
     console.print(Panel(
         f"[bold white]{meta['circuit']}[/] · {meta['city']} · {meta['race_date']}\n"
         f"Sprint weekend: [{'green]YES' if meta['sprint_weekend'] else 'red]NO'}[/]\n"
@@ -126,29 +96,21 @@ def main():
         for name in result["likely_top_surprises"]:
             console.print(f"  • {name}")
 
-    # Save raw JSON if requested
-    if args.save_json or True:  # Always save JSON for reproducibility
-        json_filename = f"{args.circuit}_gp_2026_pred_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        json_path = os.path.join(output_dir, json_filename)
-        
-        with open(json_path, 'w') as f:
-            json.dump(result, f, indent=2)
-        
-        console.print(f"[green]✓ Raw prediction JSON saved to {json_path}[/]")
+    # Save report
+    if save_report:
+        with console.status("Generating HTML report…"):
+            path = generate_report("canada", rain_probability=rain, n_simulations=sims)
+        console.print(f"\n[green]✓ HTML report saved → {path}[/]")
 
-    # Generate HTML report
-    html_filename = f"{args.circuit}_gp_2026_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-    html_path = os.path.join(output_dir, html_filename)
-    
-    generate_report(result, html_path)
-    
-    console.print(f"[green]✓ HTML report saved to {html_path}[/]")
-    console.print("\n[dim]Confidence statement: Model confidence dampened by Montreal's ~82% SC rate and variable late-May weather.[/]")
-
-    console.print("\n[bold green]Prediction completed successfully![/]")
-
+    console.print("\n[dim]Confidence statement: Model confidence dampened by Montreal's ~82% SC rate and variable late-May weather.[/]\n")
     return result
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="2026 Canadian GP Prediction")
+    parser.add_argument("--rain", type=float, default=None, help="Rain probability override")
+    parser.add_argument("--sims", type=int, default=5000, help="Simulation count")
+    parser.add_argument("--no-report", action="store_true", help="Skip HTML report")
+    args = parser.parse_args()
+
+    run(rain=args.rain, sims=args.sims, save_report=not args.no_report)

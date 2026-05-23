@@ -206,8 +206,7 @@ def compute_weather_score(driver_id: str, circuit_id: str, rain_probability: Opt
         # If lookup fails, return neutral score
         return 0.5
 
-    # circuit is a CircuitData (pydantic model), so use attribute access
-    rain_prob = rain_probability if rain_probability is not None else getattr(circuit, "rain_probability_typical", 0.2)
+    rain_prob = rain_probability if rain_probability is not None else circuit.get("rain_probability_typical", 0.2)
     wet_skill = driver["wet_skill"] / 10.0  # normalise to 0–1
 
     # Stronger wet advantage so rain changes composite_score enough to affect win probabilities.
@@ -328,45 +327,6 @@ def compute_composite_score(
     }
 
 
-def compute_feature_contributions(
-    driver_id: str,
-    circuit_id: str,
-    rain_probability: Optional[float] = None,
-    estimated_grid_pos: Optional[int] = None,
-) -> dict:
-    """Return per-feature contributions and the weights used.
-
-    This is primarily used for explainability / intermediate artifacts.
-    """
-    features_result = compute_composite_score(
-        driver_id=driver_id,
-        circuit_id=circuit_id,
-        rain_probability=rain_probability,
-        estimated_grid_pos=estimated_grid_pos,
-    )
-
-    features = features_result["features"]
-
-    contributions = {}
-    weights_used = {}
-    total = 0.0
-    for k, v in features.items():
-        w = FEATURE_WEIGHTS.get(k, 0.0)
-        weights_used[k] = w
-        c = w * float(v)
-        contributions[k] = c
-        total += c
-
-    return {
-        "driver_id": driver_id,
-        "circuit_id": circuit_id,
-        "weights_used": weights_used,
-        "feature_values": features,
-        "feature_contributions": contributions,
-        "composite_score_recomputed": round(total, 6),
-    }
-
-
 def compute_all_drivers(circuit_id: str, rain_probability: Optional[float] = None) -> list:
     """
     Run the full feature pipeline for every driver on the grid.
@@ -378,4 +338,3 @@ def compute_all_drivers(circuit_id: str, rain_probability: Optional[float] = Non
         for d in all_drivers
     ]
     return sorted(results, key=lambda x: x["composite_score"], reverse=True)
-

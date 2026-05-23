@@ -1,139 +1,222 @@
 """
-Main Entry Point for F1 Prediction System.
+F1 Prediction System — CLI Entrypoint.
 
-This module initializes the application and provides a command-line interface
-for running predictions.
+Usage:
+  python main.py predict --race canada
+  python main.py report  --race canada --output ./canada_report.html
+  python main.py api
+  python main.py backtest --seasons 2023 2024 2025
 """
 
-import argparse
 import sys
-import os
-from datetime import datetime
+import json
+import click
+import uvicorn
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
 
-# Add the project root to the path to import modules
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from engine.predictor import predict, PredictionRequest
-from fastapi import FastAPI
-
-# FastAPI app is mounted in api.routes.router
-from api.routes import router as api_router
-
-app: FastAPI = FastAPI(title="F1 Prediction API")
-app.include_router(api_router, prefix="/api/v1")
-
-from config.settings import API_CONFIG, ENGINE_CONFIG, logger
-from scripts.data_quality_report import run_data_quality_report
+console = Console()
 
 
-def run_api_server():
-    """Start the Flask API server."""
-    logger.info("Starting API server...")
-    app.run(
-        host=API_CONFIG.host,
-        port=API_CONFIG.port,
-        debug=API_CONFIG.debug
-    )
+@click.group()
+def cli():
+    """F1 Race Outcome Prediction System — 2026 Season."""
+    pass
 
 
-def run_prediction(args):
-    """Run a single prediction based on command-line arguments."""
-    logger.info("Running prediction from command line...")
+# ── predict ────────────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--race", "-r", required=True, help="Circuit ID (e.g. canada, monaco, australia)")
+@click.option("--rain", "-w", type=float, default=None, help="Override rain probability [0.0–1.0]")
+@click.option("--sims", "-n", type=int, default=5000, help="Monte Carlo simulations (default 5000)")
+@click.option("--seed", type=int, default=None, help="Deterministic seed for Monte Carlo")
+@click.option("--json-out", is_flag=True, help="Output raw JSON instead of table")
+def predict(race: str, rain: float, sims: int, seed: int, json_out: bool):
+
+    """Run a race outcome prediction."""
+    # Validate inputs
+    if rain is not None and (rain < 0.0 or rain > 1.0):
+        console.print(f"[red]Error:[/] Rain probability must be between 0.0 and 1.0")
+        sys.exit(1)
     
-    # Create prediction request from args
-    request = PredictionRequest(
-        circuit_id=args.circuit,
-        rain_probability=args.rain_prob,
-        n_simulations=args.sim_count,
-        seed=args.seed or ENGINE_CONFIG.default_seed,
-        output_format=args.output_format,
-        include_intermediate_artifacts=args.include_intermediate
-    )
+    if sims < 100:
+        console.print(f"[red]Error:[/] Number of simulations must be at least 100")
+        sys.exit(1)
     
-    print(f"Generating prediction for {args.circuit} GP with {args.sim_count} simulations...")
-    if request.seed is not None:
-        print(f"Using seed: {request.seed}")
-    if args.rain_prob is not None:
-        print(f"Rain probability: {args.rain_prob:.2f}")
-    
-    # Run prediction
-    result = predict(request)
-    
-    # Print summary
-    print(f"\nPredicted podium for {result['meta']['circuit']}:")
-    for i, driver in enumerate(result['predictions'][:3], 1):
-        print(f"{i}. {driver['driver']} ({driver['team']}) - Win prob: {driver['win_pct']}%")
-    
-    # Optionally save detailed results
-    if args.save_file:
-        import json
-        filename = args.save_file
-        if not filename.endswith('.json'):
-            filename += '.json'
-        
-        with open(filename, 'w') as f:
-            json.dump(result, f, indent=2)
-        
-        print(f"\nDetailed results saved to: {filename}")
+    try:
+        from engine.predictor import predict as run_predict, PredictionRequest
+    except ImportError as e:
+        console.print(f"[red]Error importing prediction engine:[/] {e}")
+        sys.exit(1)
+
+    console.print(f"\n[bold cyan]F1 Prediction Engine[/] — {race.upper()}\n")
+
+    try:
+        with console.status(f"Running {sims:,} Monte Carlo simulations…"):
+            result = run_predict(PredictionRequest(
+                circuit_id=race,
+                rain_probability=rain,
+                n_simulations=sims,
+                seed=seed,
+            ))
+
+    except Exception as e:
+        console.print(f"[red]Error during prediction:[/] {e}")
+        sys.exit(1)
+
+    if json_out:
+        click.echo(json.dumps(result, indent=2))
+        return
+
+    try:
+        meta = result["meta"]
+        console.print(Panel(
+            f"[bold]{meta['circuit']}[/] · {meta['city']} · {meta['race_date']}\n"
+            f"Safety Car prob: [yellow]{meta['safety_car_probability']*100:.0f}%[/]  "
+            f"Rain prob: [blue]{meta['rain_probability']*100:.0f}%[/]  "
+            f"Model confidence: [green]{meta['overall_model_confidence']*100:.0f}%[/]"
+            + ("\n[magenta]⚡ Sprint Weekend[/]" if meta['sprint_weekend'] else ""),
+            title="Race Info",
+        ))
+
+        console.print(f"\n[bold green]Predicted Podium:[/]  " + "  →  ".join(
+            f"{'🥇🥈🥉'[i]} {name}" for i, name in enumerate(result["podium_predictions"])
+        ))
+
+        table = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold cyan")
+        table.add_column("P", style="bold", justify="right", width=3)
+        table.add_column("Driver", width=20)
+        table.add_column("Team", width=14)
+        table.add_column("Win %", justify="center", width=8)
+        table.add_column("Top 3 %", justify="center", width=8)
+        table.add_column("Top 10 %", justify="center", width=9)
+        table.add_column("DNF %", justify="center", width=7)
+        table.add_column("Conf", justify="center", width=8)
+
+        conf_style = {"High": "green", "Medium": "yellow", "Low": "red"}
+
+        for p in result["predictions"]:
+            pos_str = f"{'🥇' if p['predicted_position'] == 1 else '🥈' if p['predicted_position'] == 2 else '🥉' if p['predicted_position'] == 3 else str(p['predicted_position'])}"
+            table.add_row(
+                pos_str,
+                p["driver"],
+                p["team"].replace("_", " ").title(),
+                f"[bold]{p['win_pct']}%[/]" if p["win_pct"] > 10 else f"{p['win_pct']}%",
+                f"{p['top3_pct']}%",
+                f"{p['top10_pct']}%",
+                f"[red]{p['dnf_pct']}%[/]" if p["dnf_pct"] > 14 else f"{p['dnf_pct']}%",
+                f"[{conf_style.get(p['confidence'], 'white')}]{p['confidence']}[/]",
+            )
+
+        console.print("\n")
+        console.print(table)
+
+        if result.get("likely_top_surprises"):
+            console.print(f"\n[bold yellow]⬆ Potential overperformers:[/] " +
+                          ", ".join(result["likely_top_surprises"]))
+
+        console.print()
+    except KeyError as e:
+        console.print(f"[red]Error: Missing expected data in prediction result:[/] {e}")
+        sys.exit(1)
 
 
-def run_data_quality_check():
-    """Run the data quality report."""
-    print("Running data quality report...\n")
-    issues, successes = run_data_quality_report()
+# ── report ─────────────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--race", "-r", required=True, help="Circuit ID")
+@click.option("--output", "-o", default=None, help="Output file path")
+@click.option("--rain", "-w", type=float, default=None)
+@click.option("--sims", "-n", type=int, default=5000)
+def report(race: str, output: str, rain: float, sims: int):
+
+    """Generate a full HTML race prediction report."""
+    # Validate inputs
+    if rain is not None and (rain < 0.0 or rain > 1.0):
+        console.print(f"[red]Error:[/] Rain probability must be between 0.0 and 1.0")
+        sys.exit(1)
     
-    print("SUCCESS CHECKS:")
-    for success in successes:
-        print(f"  ✓ {success}")
+    if sims < 100:
+        console.print(f"[red]Error:[/] Number of simulations must be at least 100")
+        sys.exit(1)
     
-    print("\nISSUES FOUND:")
-    if not issues:
-        print("  No issues found!")
-    else:
-        for issue in issues:
-            print(f"  ✗ {issue}")
-    
-    print(f"\nSummary: {len(successes)} checks passed, {len(issues)} issues found")
+    try:
+        from reports.html_report import generate_report
+    except ImportError as e:
+        console.print(f"[red]Error importing report generator:[/] {e}")
+        sys.exit(1)
+
+    console.print(f"\n[bold cyan]Generating HTML report for {race.upper()}…[/]")
+    try:
+        with console.status("Running prediction engine…"):
+            path = generate_report(race, rain_probability=rain, n_simulations=sims, output_path=output)
+
+        console.print(f"[green]✓ Report saved to:[/] {path}\n")
+    except Exception as e:
+        console.print(f"[red]Error during report generation:[/] {e}")
+        sys.exit(1)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="F1 Prediction System")
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    
-    # API server command
-    api_parser = subparsers.add_parser('api', help='Run the API server')
-    
-    # Prediction command
-    pred_parser = subparsers.add_parser('predict', help='Run a single prediction')
-    pred_parser.add_argument('--circuit', required=True, help='Circuit ID (e.g., canada, monaco)')
-    pred_parser.add_argument('--rain-prob', type=float, help='Rain probability (0.0-1.0)')
-    pred_parser.add_argument('--sim-count', type=int, default=5000, help='Number of simulations')
-    pred_parser.add_argument('--seed', type=int, help='Random seed for deterministic runs')
-    pred_parser.add_argument('--output-format', default='full', 
-                            choices=['full', 'summary', 'intermediate', 'winner_only'],
-                            help='Output format for predictions')
-    pred_parser.add_argument('--include-intermediate', action='store_true',
-                            help='Include intermediate artifacts in output')
-    pred_parser.add_argument('--save-file', help='Save results to JSON file')
-    
-    # Data quality command
-    dq_parser = subparsers.add_parser('quality-check', help='Run data quality report')
-    
-    args = parser.parse_args()
-    
-    # Configure logging
-    log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
-    logger.setLevel(log_level)
-    
-    if args.command == 'api':
-        run_api_server()
-    elif args.command == 'predict':
-        run_prediction(args)
-    elif args.command == 'quality-check':
-        run_data_quality_check()
-    else:
-        parser.print_help()
+# ── api ────────────────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--host", default=None)
+@click.option("--port", default=None, type=int)
+@click.option("--reload", is_flag=True)
+def api(host: str, port: int, reload: bool):
+    """Start the FastAPI prediction server."""
+    try:
+        from fastapi import FastAPI
+        from api.routes import router
+        from config.settings import API_HOST, API_PORT
+    except ImportError as e:
+        console.print(f"[red]Error importing API components:[/] {e}")
+        sys.exit(1)
+
+    # Use defaults if not overridden by CLI
+    host = host or API_HOST
+    port = port or API_PORT
+
+    try:
+        app = FastAPI(
+            title="F1 Race Prediction API",
+            description="Probabilistic F1 race outcome prediction system.",
+            version="1.0.0",
+        )
+        app.include_router(router, prefix="/api/v1")
+
+        console.print(f"\n[bold cyan]F1 Prediction API[/] starting at http://{host}:{port}")
+        console.print(f"[dim]Docs → http://{host}:{port}/docs[/]\n")
+        uvicorn.run(app, host=host, port=port, reload=reload)
+    except Exception as e:
+        console.print(f"[red]Error starting API server:[/] {e}")
+        sys.exit(1)
+
+
+# ── backtest ───────────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--seasons", "-s", multiple=True, type=int, default=[2024, 2025])
+def backtest(seasons):
+    """
+    Run temporal cross-validation backtest across historical seasons.
+    NOTE: Requires historical data in data/historical/ (not included in base package).
+    """
+    try:
+        from engine.calibration import temporal_cross_validate
+    except ImportError as e:
+        console.print(f"[red]Error importing backtest module:[/] {e}")
+        sys.exit(1)
+
+    console.print(f"\n[bold cyan]Backtesting seasons:[/] {list(seasons)}\n")
+    console.print("[yellow]⚠ Backtest requires historical race prediction data.[/]")
+    console.print("Populate data/historical/ with per-race prediction snapshots,")
+    console.print("then call temporal_cross_validate() with the assembled data.\n")
+    console.print("[dim]See scripts/backtest_2025_season.py for a full example.[/]")
 
 
 if __name__ == "__main__":
-    main()
+    cli()

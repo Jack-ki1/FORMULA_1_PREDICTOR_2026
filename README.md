@@ -540,7 +540,162 @@ Whenever you update any of the above:
 
 ---
 
+
+# GitHub Repository Preparation Guide
+
+## Project Overview
+This document outlines the core and necessary files and folders for the F1MLpredictions2026 repository. This is a Formula One race outcome prediction system that uses machine learning and Monte Carlo simulations to generate probabilistic predictions for race outcomes.
+
+## Core Files and Folders to Include
+
+### Essential Root Files
+- [main.py](main.py) - Main entry point for the application with CLI functionality
+- [requirements.txt](requirements.txt) - Project dependencies
+- [.gitignore](.gitignore) - New gitignore file to exclude unnecessary files
+- [README.md](README.md) - Comprehensive documentation about the project
+- [RUNNING.md](RUNNING.md) - Running instructions
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Deployment instructions
+- [SEASON_MAINTENANCE.md](SEASON_MAINTENANCE.md) - Instructions for maintaining the season data
+- [analysis_results.md](analysis_results.md) - Analysis results documentation
+
+### Core Source Code Directories
+- [api/](api/) - Contains API endpoints and schemas
+- [config/](config/) - Configuration settings
+- [data/](data/) - All data files including circuit, driver, and season data
+- [engine/](engine/) - Core prediction engine modules
+- [reports/](reports/) - Report generation functionality
+- [scripts/](scripts/) - Utility scripts for various operations
+- [tests/](tests/) - Test files
+
+### API Module
+- [api/routes.py](api/routes.py) - API route definitions
+- [api/schemas.py](api/schemas.py) - Pydantic schemas for request/response models
+- [api/__init__.py](api/__init__.py) - Package initialization
+
+### Config Module
+- [config/settings.py](config/settings.py) - Configuration settings
+- [config/__init__.py](config/__init__.py) - Package initialization
+
+### Data Module
+- [data/circuit_data.py](data/circuit_data.py) - Circuit definitions
+- [data/driver_data.py](data/driver_data.py) - Driver profiles and statistics
+- [data/season_2026.py](data/season_2026.py) - Season-specific data
+- [data/calendar_2026.py](data/calendar_2026.py) - Race calendar
+- [data/__init__.py](data/__init__.py) - Package initialization
+
+### Engine Module (Core Prediction Logic)
+- [engine/predictor.py](engine/predictor.py) - Main prediction orchestrator
+- [engine/feature_engineering.py](engine/feature_engineering.py) - Feature computation logic
+- [engine/probability_model.py](engine/probability_model.py) - Probability modeling
+- [engine/calibration.py](engine/calibration.py) - Model calibration utilities
+- [engine/__init__.py](engine/__init__.py) - Package initialization
+
+### Reports Module
+- [reports/html_report.py](reports/html_report.py) - HTML report generation
+- [reports/templates/report.html](reports/templates/report.html) - Report template
+- [reports/__init__.py](reports/__init__.py) - Package initialization
+
+### Scripts Module
+- [scripts/run_canada_gp_2026.py](scripts/run_canada_gp_2026.py) - Example prediction script
+- [scripts/data_quality_report.py](scripts/data_quality_report.py) - Data quality checking
+- [scripts/backtest_2025_season.py](scripts/backtest_2025_season.py) - Backtesting script
+- [scripts/post_race_update.py](scripts/post_race_update.py) - Post-race data update
+- [scripts/recalibrate_model.py](scripts/recalibrate_model.py) - Model recalibration
+- [scripts/generate_static_site.py](scripts/generate_static_site.py) - Static site generation
+- [scripts/archive_season.py](scripts/archive_season.py) - Season archiving
+- [scripts/__init__.py](scripts/__init__.py) - Package initialization
+
+### Tests Module
+- [tests/test_feature_engineering.py](tests/test_feature_engineering.py) - Feature engineering tests
+- [tests/test_predictor.py](tests/test_predictor.py) - Predictor tests
+- [tests/__init__.py](tests/__init__.py) - Package initialization
+
+## Files to Exclude from GitHub (via .gitignore)
+
+### Generated Output Files
+- [output_test.json](output_test.json) - Large test output file (168KB), should be excluded
+- Any generated output files in an output/ directory
+- Log files
+
+### Environment and Local Configuration
+- Virtual environment directories (.venv/, venv/, env/)
+- Local configuration files that contain secrets
+- OS-generated files (like .DS_Store, Thumbs.db)
+
+### Development Artifacts
+- Temporary files
+- IDE configuration files
+- Build artifacts
+
+## Additional Recommendations
+
+### Documentation Improvements
+Consider adding a LICENSE file to specify the project's licensing terms.
+
+### Security Considerations
+Ensure that any .env files containing secrets are properly excluded via .gitignore.
+
+### CI/CD Preparation
+Consider adding a GitHub Actions workflow file to automate testing and deployment.
+
+## Repository Structure Summary
+
+```
+F1MLpredictions2026/
+├── .gitignore                 # Excludes unnecessary files
+├── README.md                  # Project overview and documentation
+├── RUNNING.md                 # Running instructions
+├── DEPLOYMENT.md              # Deployment guidelines
+├── SEASON_MAINTENANCE.md      # Season maintenance instructions
+├── analysis_results.md        # Analysis results documentation
+├── main.py                    # Main application entry point
+├── requirements.txt           # Dependencies
+├── api/                       # API endpoints
+│   ├── __init__.py
+│   ├── routes.py
+│   └── schemas.py
+├── config/                    # Configuration
+│   ├── __init__.py
+│   └── settings.py
+├── data/                      # Data files
+│   ├── __init__.py
+│   ├── calendar_2026.py
+│   ├── circuit_data.py
+│   ├── driver_data.py
+│   └── season_2026.py
+├── engine/                    # Core prediction engine
+│   ├── __init__.py
+│   ├── calibration.py
+│   ├── feature_engineering.py
+│   ├── predictor.py
+│   └── probability_model.py
+├── reports/                   # Report generation
+│   ├── __init__.py
+│   ├── html_report.py
+│   └── templates/
+│       └── report.html
+├── scripts/                   # Utility scripts
+│   ├── __init__.py
+│   ├── archive_season.py
+│   ├── backtest_2025_season.py
+│   ├── data_quality_report.py
+│   ├── generate_static_site.py
+│   ├── post_race_update.py
+│   ├── recalibrate_model.py
+│   └── run_canada_gp_2026.py
+├── tests/                     # Test files
+│   ├── __init__.py
+│   ├── test_feature_engineering.py
+│   └── test_predictor.py
+└── GITHUB_PREPARATION.md      # This document
+```
+
+This structure maintains all the core functionality of the project while organizing it appropriately for GitHub sharing.
+
+
 ## License
 
 Specify your license here (MIT/Apache/etc.) if not already configured in your repo.
 
+"# F1MLpredictions2026" 
+"# F1MLpredictions2026" 
