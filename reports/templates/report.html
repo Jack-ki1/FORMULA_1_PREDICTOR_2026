@@ -3,176 +3,1052 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>F1 Prediction — {{ meta.circuit }} {{ meta.race_date }}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<title>F1 2026 Prediction — {{ meta.circuit_name }} · {{ meta.race_date }}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117; --surface: #1a1d27; --card: #1e2130;
-    --border: rgba(255,255,255,0.08); --text: #e8eaf0;
-    --muted: #8b8fa8; --accent: #00D2BE;
+/* ═══════════════════════════════════════════════════════════
+   MODERN F1 PREDICTION REPORT - v3
+   Dark theme with neon accents, fully responsive
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1f2937;
+  --bg-elevated: #374151;
+  
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  
+  --accent-cyan: #06b6d4;
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
+  
+  --gold: #ffd700;
+  --silver: #c0c0c0;
+  --bronze: #cd7f32;
+  
+  --border: rgba(255, 255, 255, 0.08);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* ── HEADER SECTION ─────────────────────────────────────── */
+
+.header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.header-content {
+  position: relative;
+  z-index: 1;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.header-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 1.5rem;
+}
+
+.header-badges {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.badge-icon {
+  font-size: 1.1rem;
+}
+
+/* ── STATS GRID ─────────────────────────────────────────── */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  line-height: 1;
+}
+
+.stat-sublabel {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+/* ── PODIUM SECTION ─────────────────────────────────────── */
+
+.podium-section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-title::before {
+  content: '';
+  width: 4px;
+  height: 24px;
+  background: var(--accent-cyan);
+  border-radius: 2px;
+}
+
+.podium-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 900px) {
+  .podium-grid {
+    grid-template-columns: 1fr;
   }
-  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
-  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
-  h1 { font-size: 26px; font-weight: 600; margin-bottom: 4px; }
-  h2 { font-size: 16px; font-weight: 500; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; margin: 2rem 0 .75rem; }
-  .hero { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: flex-start; }
-  .badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 500; background: rgba(255,255,255,0.1); color: var(--text); }
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
-  .stat-card .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .stat-card .value { font-size: 22px; font-weight: 600; }
-  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
-  thead th { padding: 10px 12px; text-align: left; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--card); }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
-  tbody tr:hover { background: var(--card); }
-  tbody td { padding: 10px 12px; }
-  .pos { width: 28px; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
-  .pos-1 { background: #b8860b; color: #fff; }
-  .pos-2 { background: #606060; color: #fff; }
-  .pos-3 { background: #8b4513; color: #fff; }
-  .pos-n { background: rgba(255,255,255,0.1); color: var(--muted); }
-  .team-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-  .prob-bar { background: rgba(255,255,255,0.08); border-radius: 2px; height: 4px; margin-top: 3px; }
-  .prob-fill { height: 100%; border-radius: 2px; }
-  .chart-wrap { position: relative; width: 100%; height: 260px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem; }
-  .podium { display: flex; gap: 12px; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .podium-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; flex: 1; min-width: 160px; }
-  .podium-card .place { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .podium-card .driver-name { font-size: 16px; font-weight: 600; }
-  .footer { margin-top: 3rem; font-size: 12px; color: var(--muted); text-align: center; border-top: 1px solid var(--border); padding-top: 1.5rem; }
-  .conf { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
-  .conf-high { background: rgba(29,158,117,0.2); color: #5DCAA5; }
-  .conf-medium { background: rgba(239,159,39,0.2); color: #EF9F27; }
-  .conf-low { background: rgba(226,75,74,0.2); color: #F09595; }
+}
+
+.podium-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  text-align: center;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.podium-card:hover {
+  transform: scale(1.02);
+}
+
+.podium-1 {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, var(--bg-card) 100%);
+}
+
+.podium-2 {
+  border-color: var(--silver);
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.1) 0%, var(--bg-card) 100%);
+}
+
+.podium-3 {
+  border-color: var(--bronze);
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.1) 0%, var(--bg-card) 100%);
+}
+
+.podium-medal {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.podium-driver {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.podium-team {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.podium-win-prob {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+}
+
+.podium-win-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+/* ── CHARTS SECTION ─────────────────────────────────────── */
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 700px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+
+.chart-container {
+  position: relative;
+  height: 300px;
+}
+
+/* ── PREDICTIONS TABLE ──────────────────────────────────── */
+
+.table-section {
+  margin-bottom: 2rem;
+}
+
+.table-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table thead th {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border);
+}
+
+.data-table thead th:not(:first-child) {
+  text-align: center;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg-secondary);
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.data-table td {
+  padding: 1rem 1.25rem;
+  vertical-align: middle;
+}
+
+.data-table td:not(:first-child):not(:nth-child(2)) {
+  text-align: center;
+}
+
+.position-cell {
+  font-size: 1.25rem;
+  font-weight: 700;
+  width: 60px;
+}
+
+.pos-1 { color: var(--gold); }
+.pos-2 { color: var(--silver); }
+.pos-3 { color: var(--bronze); }
+.pos-other { color: var(--text-secondary); }
+
+.driver-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.team-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.driver-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.driver-team {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.prob-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prob-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.prob-bar {
+  width: 60px;
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.prob-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-cyan);
+  transition: width 0.3s;
+}
+
+.dnf-high { color: var(--accent-red); }
+.dnf-medium { color: var(--accent-amber); }
+.dnf-low { color: var(--accent-green); }
+
+.confidence-badge {
+  display: inline-block;
+  padding: 0.375rem 0.875rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.conf-high {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.conf-medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-amber);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.conf-low {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ── CIRCUIT HISTORY CARDS ──────────────────────────────── */
+
+.circuit-history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.history-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  transition: all 0.2s;
+}
+
+.history-card:hover {
+  border-color: var(--accent-cyan);
+  transform: translateY(-2px);
+}
+
+.history-driver {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.history-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-stat-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.history-stat-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 0.25rem;
+}
+
+/* ── FOOTER ─────────────────────────────────────────────── */
+
+.footer {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+}
+
+.footer a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* ── ANIMATIONS ─────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .data-table {
+    font-size: 0.875rem;
+  }
+  
+  .data-table td,
+  .data-table th {
+    padding: 0.75rem;
+  }
+}
 </style>
 </head>
 <body>
 <div class="container">
-
-  <div class="hero">
-    <div>
-      <h1>🏁 {{ meta.circuit }}</h1>
-      <p style="color:var(--muted)">{{ meta.city }} · {{ meta.race_date }} · Round prediction report</p>
-      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-        {% if meta.sprint_weekend %}<span class="badge">⚡ Sprint Weekend</span>{% endif %}
-        <span class="badge">🌧 Rain: {{ (meta.rain_probability * 100)|round(0)|int }}%</span>
-        <span class="badge">🚗 Safety Car: {{ (meta.safety_car_probability * 100)|round(0)|int }}%</span>
-        <span class="badge">Model confidence: {{ (meta.overall_model_confidence * 100)|round(0)|int }}%</span>
+  
+  <!-- HEADER -->
+  <div class="header animate-in">
+    <div class="header-content">
+      <h1>🏁 {{ meta.race_name }}</h1>
+      <p class="header-subtitle">{{ meta.circuit_name }} · {{ meta.city }} · {{ meta.race_date }} · Round {{ meta.round_number }}</p>
+      <div class="header-badges">
+        {% if meta.sprint_weekend %}
+        <span class="badge"><span class="badge-icon">⚡</span> Sprint Weekend</span>
+        {% endif %}
+        {% if meta.rain_probability and meta.rain_probability > 0.3 %}
+        <span class="badge"><span class="badge-icon">🌧️</span> Rain: {{ (meta.rain_probability * 100)|round(0) }}%</span>
+        {% endif %}
+        <span class="badge"><span class="badge-icon">🚗</span> SC Probability: {{ (meta.sc_probability * 100)|round(0) }}%</span>
+        <span class="badge"><span class="badge-icon">📊</span> {{ meta.n_simulations|format_number }} Simulations</span>
       </div>
     </div>
-    <div style="text-align:right">
-      <div style="font-size:12px;color:var(--muted)">Simulations</div>
-      <div style="font-size:28px;font-weight:700;color:var(--accent)">{{ "{:,}".format(meta.n_simulations) }}</div>
+  </div>
+  
+  <!-- QUICK STATS -->
+  <div class="stats-grid animate-in">
+    <div class="stat-card">
+      <div class="stat-label">Predicted Winner</div>
+      <div class="stat-value">{{ podium[0].driver_name.split()[-1] }}</div>
+      <div class="stat-sublabel">{{ (podium[0].win_probability * 100)|round(1) }}% win probability</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Model Confidence</div>
+      <div class="stat-value">{{ meta.model_confidence }}%</div>
+      <div class="stat-sublabel">Based on historical accuracy</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Safety Car Risk</div>
+      <div class="stat-value">{{ (meta.sc_probability * 100)|round(0) }}%</div>
+      <div class="stat-sublabel">{{ meta.circuit_name }} average</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Weather Impact</div>
+      <div class="stat-value">{% if meta.rain_probability and meta.rain_probability > 0.5 %}High{% elif meta.rain_probability and meta.rain_probability > 0.3 %}Medium{% else %}Low{% endif %}</div>
+      <div class="stat-sublabel">Rain probability: {{ (meta.rain_probability * 100 if meta.rain_probability else 0)|round(0) }}%</div>
     </div>
   </div>
-
-  <h2>Predicted Podium</h2>
-  <div class="podium">
-    {% for name in podium %}
-    <div class="podium-card">
-      <div class="place">{% if loop.index == 1 %}🥇 1st{% elif loop.index == 2 %}🥈 2nd{% else %}🥉 3rd{% endif %}</div>
-      <div class="driver-name">{{ name }}</div>
-    </div>
-    {% endfor %}
-  </div>
-
-  <h2>Win Probability — Top 8</h2>
-  <div class="chart-wrap">
-    <canvas id="winChart" aria-label="Bar chart of win probabilities for top 8 drivers"></canvas>
-  </div>
-
-  <h2>Full Driver Predictions</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Pos</th>
-        <th>Driver</th>
-        <th>Win %</th>
-        <th>Top 3 %</th>
-        <th>Top 10 %</th>
-        <th>DNF %</th>
-        <th>Confidence</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in predictions %}
-      <tr>
-        <td>
-          <span class="pos pos-{% if p.predicted_position <= 3 %}{{ p.predicted_position }}{% else %}n{% endif %}">
-            {{ p.predicted_position }}
-          </span>
-        </td>
-        <td>
-          <span class="team-dot" style="background:{{ p.team_colour }}"></span>
-          <strong>{{ p.driver }}</strong>
-          <div style="font-size:11px;color:var(--muted)">{{ p.team|replace('_',' ')|title }}</div>
-        </td>
-        <td>
-          <div>{{ p.win_pct }}%</div>
-          <div class="prob-bar"><div class="prob-fill" style="width:{{ [p.win_pct * 2, 100]|min }}%;background:{{ p.team_colour }}"></div></div>
-        </td>
-        <td>
-          <div>{{ p.top3_pct }}%</div>
-          <div class="prob-bar"><div class="prob-fill" style="width:{{ p.top3_pct }}%;background:#378ADD"></div></div>
-        </td>
-        <td>
-          <div>{{ p.top10_pct }}%</div>
-          <div class="prob-bar"><div class="prob-fill" style="width:{{ p.top10_pct }}%;background:#1D9E75"></div></div>
-        </td>
-        <td style="color:{% if p.dnf_pct > 14 %}#F09595{% elif p.dnf_pct > 9 %}#EF9F27{% else %}var(--muted){% endif %}">
-          {{ p.dnf_pct }}%
-        </td>
-        <td>
-          <span class="conf conf-{{ p.confidence|lower }}">{{ p.confidence }}</span>
-        </td>
-      </tr>
+  
+  <!-- PODIUM PREDICTION -->
+  <div class="podium-section animate-in">
+    <h2 class="section-title">🏆 Predicted Podium</h2>
+    <div class="podium-grid">
+      {% for driver in podium[:3] %}
+      <div class="podium-card podium-{{ loop.index }}">
+        <div class="podium-medal">{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% else %}🥉{% endif %}</div>
+        <div class="podium-driver">{{ driver.driver_name }}</div>
+        <div class="podium-team">{{ driver.team|title }}</div>
+        <div class="podium-win-prob">{{ (driver.win_probability * 100)|round(1) }}%</div>
+        <div class="podium-win-label">Win Probability</div>
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
-
-  {% if surprises %}
-  <h2>Likely Surprise Performers</h2>
-  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1.5rem">
-    {% for name in surprises %}
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-weight:500">
-      ⬆ {{ name }}
     </div>
+  </div>
+  
+  <!-- CHARTS -->
+  <div class="charts-grid animate-in">
+    <div class="chart-card">
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">📊 Win & Podium Probabilities</h3>
+      <div class="chart-container">
+        <canvas id="winPodiumChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">⚠️ DNF Risk Analysis</h3>
+      <div class="chart-container">
+        <canvas id="dnfChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">🎯 Top 10 Finish Probability</h3>
+      <div class="chart-container">
+        <canvas id="top10Chart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">👥 Teammate Battle Probability</h3>
+      <div class="chart-container">
+        <canvas id="teammateChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">⭐ Composite Performance Score</h3>
+      <div class="chart-container">
+        <canvas id="compositeChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">📈 Position Distribution Heatmap</h3>
+      <div class="chart-container">
+        <canvas id="positionDistChart"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <!-- FULL PREDICTIONS TABLE -->
+  <div class="table-section animate-in">
+    <h2 class="section-title">📋 Complete Predictions</h2>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Driver</th>
+            <th>Win %</th>
+            <th>Top 3 %</th>
+            <th>Top 10 %</th>
+            <th>DNF %</th>
+            <th>Beat T/M %</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pred in predictions %}
+          <tr>
+            <td class="position-cell pos-{% if pred.display_position == 1 %}1{% elif pred.display_position == 2 %}2{% elif pred.display_position == 3 %}3{% else %}other{% endif %}">
+              {{ pred.display_position }}
+            </td>
+            <td>
+              <div class="driver-info">
+                <span class="team-dot" style="background: {{ pred.team_colour }}"></span>
+                <div>
+                  <div class="driver-name">{{ pred.driver_name }}</div>
+                  <div class="driver-team">{{ pred.team|title }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="prob-cell">
+                <span class="prob-value">{{ (pred.win_probability * 100)|round(1) }}%</span>
+                <div class="prob-bar">
+                  <div class="prob-fill" style="width: {{ (pred.win_probability * 100)|clamp(max_val=100) }}%; background: var(--accent-cyan)"></div>
+                </div>
+              </div>
+            </td>
+            <td>{{ (pred.top3_probability * 100)|round(1) }}%</td>
+            <td>{{ (pred.top10_probability * 100)|round(1) }}%</td>
+            <td class="{% if pred.dnf_probability > 0.25 %}dnf-high{% elif pred.dnf_probability > 0.15 %}dnf-medium{% else %}dnf-low{% endif %}">
+              {{ (pred.dnf_probability * 100)|round(1) }}%
+            </td>
+            <td>{{ (pred.teammate_beat_prob * 100)|round(1) }}%</td>
+            <td>
+              <span class="confidence-badge {% if pred.win_probability > 0.15 %}conf-high{% elif pred.win_probability > 0.05 %}conf-medium{% else %}conf-low{% endif %}">
+                {% if pred.win_probability > 0.15 %}High{% elif pred.win_probability > 0.05 %}Medium{% else %}Low{% endif %}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <!-- CIRCUIT HISTORY -->
+  <div class="animate-in">
+    <h2 class="section-title">🏎️ Driver Circuit History</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem;">Historical performance at {{ meta.circuit_name }} (wins, podiums, poles, confidence)</p>
+    <div class="circuit-history-grid">
+      {% for pred in predictions %}
+        {% if pred.circuit_history and pred.circuit_history.races_completed > 0 %}
+        <div class="history-card">
+          <div class="history-driver">
+            <span class="team-dot" style="background: {{ pred.team_colour }}"></span>
+            {{ pred.driver_name }}
+          </div>
+          <div class="history-stats">
+            <div class="history-stat">
+              <span class="history-stat-label">Avg Finish</span>
+              <span class="history-stat-value">{{ 'P' + pred.circuit_history.avg_finish|round(1)|string if pred.circuit_history.avg_finish else 'N/A' }}</span>
+            </div>
+            <div class="history-stat">
+              <span class="history-stat-label">Wins</span>
+              <span class="history-stat-value">{{ pred.circuit_history.wins }}</span>
+            </div>
+            <div class="history-stat">
+              <span class="history-stat-label">Podiums</span>
+              <span class="history-stat-value">{{ pred.circuit_history.podiums }}</span>
+            </div>
+            <div class="history-stat">
+              <span class="history-stat-label">Poles</span>
+              <span class="history-stat-value">{{ pred.circuit_history.poles }}</span>
+            </div>
+            <div class="history-stat">
+              <span class="history-stat-label">Races</span>
+              <span class="history-stat-value">{{ pred.circuit_history.races_completed }}</span>
+            </div>
+            <div class="history-stat">
+              <span class="history-stat-label">Confidence</span>
+              <span class="history-stat-value">{{ (pred.circuit_history.confidence_rating * 100)|round(0) if pred.circuit_history.confidence_rating else 'N/A' }}%</span>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% set drivers_with_history = [] %}
+    {% for pred in predictions %}
+      {% if pred.circuit_history and pred.circuit_history.races_completed > 0 %}
+        {% set _ = drivers_with_history.append(pred) %}
+      {% endif %}
     {% endfor %}
+    {% if drivers_with_history|length == 0 %}
+    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+      <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">📊 No historical data available</p>
+      <p>This is a new circuit or limited historical records exist for these drivers.</p>
+      <p style="margin-top: 1rem; font-size: 0.9rem;">Predictions are based on driver skills, team performance, and circuit characteristics.</p>
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
-
+  
+  <!-- FOOTER -->
   <div class="footer">
-    Generated by F1 Prediction System · Pre-race data only · No post-race leakage<br>
-    Predictions are probabilistic estimates, not certainties.
+    <p>Generated on {{ generation_time }} · F1 Prediction Engine v7.0</p>
+    <p style="margin-top: 0.5rem; font-size: 0.75rem;">
+      Model uses Monte Carlo simulation with Bayesian calibration and driver trait analysis
+    </p>
   </div>
+  
 </div>
 
+<!-- JAVASCRIPT FOR CHARTS -->
 <script>
-const data = {{ chart_data }};
-new Chart(document.getElementById('winChart'), {
+const chartData = {{ chart_data|safe }};
+
+// Win & Podium Chart
+const winPodiumCtx = document.getElementById('winPodiumChart').getContext('2d');
+new Chart(winPodiumCtx, {
   type: 'bar',
   data: {
-    labels: data.labels,
-    datasets: [{
-      label: 'Win probability (%)',
-      data: data.win_probs,
-      backgroundColor: data.colours.map(c => c + 'BB'),
-      borderColor: data.colours,
-      borderWidth: 1,
-      borderRadius: 4,
-    }]
+    labels: chartData.labels,
+    datasets: [
+      {
+        label: 'Win Probability',
+        data: chartData.win_probs,
+        backgroundColor: chartData.colours.map(c => c + 'CC'),
+        borderColor: chartData.colours,
+        borderWidth: 2,
+        borderRadius: 6,
+      },
+      {
+        label: 'Top 3 Probability',
+        data: chartData.top3_probs,
+        backgroundColor: 'rgba(6, 182, 212, 0.3)',
+        borderColor: '#06b6d4',
+        borderWidth: 2,
+        borderRadius: 6,
+      }
+    ]
   },
   options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#f9fafb' }
+      }
+    },
     scales: {
-      x: { ticks: { color: '#8b8fa8' }, grid: { display: false } },
-      y: { ticks: { color: '#8b8fa8', callback: v => v + '%' },
-           grid: { color: 'rgba(255,255,255,0.05)' }, max: 60 }
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { color: '#9ca3af' },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+      },
+      x: {
+        ticks: { color: '#9ca3af' },
+        grid: { display: false }
+      }
     }
   }
 });
+
+// DNF Chart
+const dnfCtx = document.getElementById('dnfChart').getContext('2d');
+new Chart(dnfCtx, {
+  type: 'line',
+  data: {
+    labels: chartData.labels,
+    datasets: [{
+      label: 'DNF Risk %',
+      data: chartData.dnf_probs,
+      borderColor: '#ef4444',
+      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+      borderWidth: 3,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 5,
+      pointBackgroundColor: '#ef4444',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#f9fafb' }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#9ca3af' },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+      },
+      x: {
+        ticks: { color: '#9ca3af' },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+// Top 10 Finish Chart
+const top10Ctx = document.getElementById('top10Chart').getContext('2d');
+new Chart(top10Ctx, {
+  type: 'bar',
+  data: {
+    labels: chartData.labels,
+    datasets: [{
+      label: 'Top 10 Finish %',
+      data: chartData.top10_probs,
+      backgroundColor: 'rgba(16, 185, 129, 0.6)',
+      borderColor: '#10b981',
+      borderWidth: 2,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#f9fafb' }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { color: '#9ca3af' },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+      },
+      x: {
+        ticks: { color: '#9ca3af' },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+// Teammate Battle Chart
+const teammateCtx = document.getElementById('teammateChart').getContext('2d');
+new Chart(teammateCtx, {
+  type: 'bar',
+  data: {
+    labels: chartData.labels,
+    datasets: [{
+      label: 'Beat Teammate %',
+      data: chartData.teammate_beat_probs,
+      backgroundColor: chartData.colours.map((c, i) => {
+        return i % 2 === 0 ? c + 'CC' : 'rgba(156, 163, 175, 0.4)';
+      }),
+      borderColor: chartData.colours.map((c, i) => {
+        return i % 2 === 0 ? c : '#9ca3af';
+      }),
+      borderWidth: 2,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#f9fafb' }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { color: '#9ca3af' },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+      },
+      x: {
+        ticks: { color: '#9ca3af' },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+// Composite Score Chart
+const compositeCtx = document.getElementById('compositeChart').getContext('2d');
+new Chart(compositeCtx, {
+  type: 'radar',
+  data: {
+    labels: chartData.labels,
+    datasets: [{
+      label: 'Composite Score',
+      data: chartData.composite_scores,
+      backgroundColor: 'rgba(139, 92, 246, 0.2)',
+      borderColor: '#8b5cf6',
+      borderWidth: 2,
+      pointBackgroundColor: '#8b5cf6',
+      pointBorderColor: '#fff',
+      pointHoverBackgroundColor: '#fff',
+      pointHoverBorderColor: '#8b5cf6',
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#f9fafb' }
+      }
+    },
+    scales: {
+      r: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { 
+          color: '#9ca3af',
+          backdropColor: 'transparent'
+        },
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        pointLabels: { color: '#f9fafb' }
+      }
+    }
+  }
+});
+
+// Position Distribution Chart (Stacked Bar)
+const positionDistCtx = document.getElementById('positionDistChart').getContext('2d');
+const positionLabels = Array.from({length: 20}, (_, i) => `P${i + 1}`);
+
+// Prepare stacked bar data for position distributions
+const positionDatasets = chartData.position_distributions.slice(0, 5).map((dist, idx) => ({
+  label: chartData.full_names[idx],
+  data: dist.slice(0, 20),
+  backgroundColor: chartData.colours[idx] + '99',
+  borderColor: chartData.colours[idx],
+  borderWidth: 1,
+}));
+
+new Chart(positionDistCtx, {
+  type: 'bar',
+  data: {
+    labels: positionLabels,
+    datasets: positionDatasets
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#f9fafb' }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+      }
+    },
+    scales: {
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: { color: '#9ca3af' },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+      },
+      x: {
+        stacked: true,
+        ticks: { color: '#9ca3af' },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
 </script>
+
 </body>
 </html>

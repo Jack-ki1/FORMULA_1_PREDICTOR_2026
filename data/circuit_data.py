@@ -1,172 +1,309 @@
 """
-F1 Circuit Database — 2026 Season
+F1 Circuit Database — 2026 Season (v2 — all 21 calendar circuits).
 
-Each circuit entry contains:
-  - circuit_type: primary classification
-  - safety_car_probability: historical SC occurrence rate
-  - overtaking_difficulty: 1-10 (10 = near impossible)
-  - power_unit_demand: 1-10
-  - brake_demand: 1-10
-  - tire_deg_rate: 1-10
-  - rain_probability_typical: climatological rain chance for race date
-  - wall_crash_probability: probability of pit-lane/barrier incident per lap
-  - lap_count: race laps
-  - lap_distance_km: lap length
-  - drs_zones: number of DRS/overtake zones
-  - team_historical_wins: map of team → win count since 2010
+FIX: v1 only had 4 circuits (canada, australia, china, monaco).
+     The static site generator was silently skipping 17 rounds.
+     All remaining calendar circuits added here.
 """
 
 CIRCUITS: dict = {
+
+    # ── Completed ────────────────────────────────────────────────────────────
+
+    "australia": {
+        "id": "australia", "name": "Albert Park Circuit",
+        "city": "Melbourne", "country": "Australia",
+        "round_2026": 1, "race_date": "2026-03-08", "sprint_weekend": False,
+        "circuit_type": ["street", "balanced"], "lap_count": 58,
+        "lap_distance_km": 5.303, "total_distance_km": 307.574,
+        "safety_car_probability": 0.68, "overtaking_difficulty": 6,
+        "power_unit_demand": 6.5, "brake_demand": 7.0, "tire_deg_rate": 5.5,
+        "active_aero_demand": 7.0, "rain_probability_typical": 0.25,
+        "wall_crash_probability_per_lap": 0.003, "drs_zones": 3,
+        "team_historical_wins_since_2010": {"mercedes": 7, "red_bull": 5, "ferrari": 3, "mclaren": 1},
+    },
+    "china": {
+        "id": "china", "name": "Shanghai International Circuit",
+        "city": "Shanghai", "country": "China",
+        "round_2026": 2, "race_date": "2026-03-15", "sprint_weekend": True,
+        "circuit_type": ["balanced", "high_downforce"], "lap_count": 56,
+        "lap_distance_km": 5.451, "total_distance_km": 305.066,
+        "safety_car_probability": 0.55, "overtaking_difficulty": 5,
+        "power_unit_demand": 7.0, "brake_demand": 6.5, "tire_deg_rate": 7.5,
+        "active_aero_demand": 7.5, "rain_probability_typical": 0.20,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 6, "red_bull": 6, "ferrari": 2, "mclaren": 2},
+    },
+    "japan": {
+        "id": "japan", "name": "Suzuka International Racing Course",
+        "city": "Suzuka", "country": "Japan",
+        "round_2026": 3, "race_date": "2026-04-06", "sprint_weekend": False,
+        "circuit_type": ["technical", "balanced"], "lap_count": 53,
+        "lap_distance_km": 5.807, "total_distance_km": 307.471,
+        "safety_car_probability": 0.52, "overtaking_difficulty": 7,
+        "power_unit_demand": 7.0, "brake_demand": 7.5, "tire_deg_rate": 7.0,
+        "active_aero_demand": 8.5, "rain_probability_typical": 0.30,
+        "wall_crash_probability_per_lap": 0.003, "drs_zones": 1,
+        "team_historical_wins_since_2010": {"mercedes": 6, "red_bull": 7, "ferrari": 2, "mclaren": 1},
+    },
+    "miami": {
+        "id": "miami", "name": "Miami International Autodrome",
+        "city": "Miami Gardens", "country": "USA",
+        "round_2026": 4, "race_date": "2026-05-03", "sprint_weekend": True,
+        "circuit_type": ["street", "power_unit"], "lap_count": 57,
+        "lap_distance_km": 5.412, "total_distance_km": 308.484,
+        "safety_car_probability": 0.72, "overtaking_difficulty": 5,
+        "power_unit_demand": 7.5, "brake_demand": 7.5, "tire_deg_rate": 6.5,
+        "active_aero_demand": 7.0, "rain_probability_typical": 0.35,
+        "wall_crash_probability_per_lap": 0.004, "drs_zones": 3,
+        "team_historical_wins_since_2010": {"mercedes": 1, "red_bull": 2, "ferrari": 0, "mclaren": 1},
+    },
+
+    # ── Upcoming ─────────────────────────────────────────────────────────────
+
     "canada": {
-        "id": "canada",
-        "name": "Circuit Gilles-Villeneuve",
-        "city": "Montreal",
-        "country": "Canada",
-        "round_2026": 5,
-        "race_date": "2026-05-24",
-        "sprint_weekend": True,
-        "circuit_type": ["power_unit", "street"],
-        "lap_count": 70,
-        "lap_distance_km": 4.361,
-        "total_distance_km": 305.27,
-        "safety_car_probability": 0.82,        # Highest on calendar
-        "overtaking_difficulty": 4,             # Relatively easy (long straight)
-        "power_unit_demand": 8.5,
-        "brake_demand": 8.5,
-        "tire_deg_rate": 6.0,
-        "active_aero_demand": 8.0,
-        "rain_probability_typical": 0.35,       # Late May Montreal
-        "wall_crash_probability_per_lap": 0.004, # Wall of Champions effect
-        "drs_zones": 2,
-        "overtake_zones": ["Pit straight", "After Hairpin"],
+        "id": "canada", "name": "Circuit Gilles-Villeneuve",
+        "city": "Montreal", "country": "Canada",
+        "round_2026": 5, "race_date": "2026-05-24", "sprint_weekend": True,
+        "circuit_type": ["power_unit", "street"], "lap_count": 70,
+        "lap_distance_km": 4.361, "total_distance_km": 305.27,
+        "safety_car_probability": 0.82, "overtaking_difficulty": 4,
+        "power_unit_demand": 8.5, "brake_demand": 8.5, "tire_deg_rate": 6.0,
+        "active_aero_demand": 8.0, "rain_probability_typical": 0.35,
+        "wall_crash_probability_per_lap": 0.004, "drs_zones": 2,
         "key_corners": ["Turn 1–2 chicane", "Turn 10 Hairpin", "Wall of Champions"],
         "optimal_setup": "low_drag",
         "team_historical_wins_since_2010": {
-            "mercedes": 10,
-            "red_bull": 8,
-            "ferrari": 4,
-            "mclaren": 2,
-            "renault": 1,
-            "williams": 0,
+            "mercedes": 10, "red_bull": 8, "ferrari": 4, "mclaren": 2, "renault": 1,
         },
-        "driver_historical_wins": {
-            "hamilton": 7,
-            "verstappen": 5,
-            "vettel": 3,
-            "alonso": 2,
-            "button": 2,
-        },
-        "notes": "Stop-start island circuit. Wall of Champions catches title-fight leaders regularly.",
-    },
-    "australia": {
-        "id": "australia",
-        "name": "Albert Park Circuit",
-        "city": "Melbourne",
-        "country": "Australia",
-        "round_2026": 1,
-        "race_date": "2026-03-08",
-        "sprint_weekend": False,
-        "circuit_type": ["street", "balanced"],
-        "lap_count": 58,
-        "lap_distance_km": 5.303,
-        "total_distance_km": 307.574,
-        "safety_car_probability": 0.68,
-        "overtaking_difficulty": 6,
-        "power_unit_demand": 6.5,
-        "brake_demand": 7.0,
-        "tire_deg_rate": 5.5,
-        "active_aero_demand": 7.0,
-        "rain_probability_typical": 0.25,
-        "wall_crash_probability_per_lap": 0.003,
-        "drs_zones": 3,
-        "team_historical_wins_since_2010": {
-            "mercedes": 7,
-            "red_bull": 5,
-            "ferrari": 3,
-            "mclaren": 1,
-        },
-    },
-    "china": {
-        "id": "china",
-        "name": "Shanghai International Circuit",
-        "city": "Shanghai",
-        "country": "China",
-        "round_2026": 2,
-        "race_date": "2026-03-15",
-        "sprint_weekend": True,
-        "circuit_type": ["balanced", "high_downforce"],
-        "lap_count": 56,
-        "lap_distance_km": 5.451,
-        "total_distance_km": 305.066,
-        "safety_car_probability": 0.55,
-        "overtaking_difficulty": 5,
-        "power_unit_demand": 7.0,
-        "brake_demand": 6.5,
-        "tire_deg_rate": 7.5,
-        "active_aero_demand": 7.5,
-        "rain_probability_typical": 0.20,
-        "wall_crash_probability_per_lap": 0.002,
-        "drs_zones": 2,
-        "team_historical_wins_since_2010": {
-            "mercedes": 6,
-            "red_bull": 6,
-            "ferrari": 2,
-            "mclaren": 2,
-        },
+        "driver_historical_wins": {"hamilton": 7, "verstappen": 5, "vettel": 3},
+        "notes": "Highest SC probability on calendar. Wall of Champions is notorious.",
     },
     "monaco": {
-        "id": "monaco",
-        "name": "Circuit de Monaco",
-        "city": "Monte Carlo",
-        "country": "Monaco",
-        "round_2026": 6,
-        "race_date": "2026-06-07",
-        "sprint_weekend": False,
-        "circuit_type": ["technical", "street"],
-        "lap_count": 78,
-        "lap_distance_km": 3.337,
-        "total_distance_km": 260.286,
-        "safety_car_probability": 0.78,
-        "overtaking_difficulty": 10,
-        "power_unit_demand": 4.5,
-        "brake_demand": 9.0,
-        "tire_deg_rate": 3.0,
-        "active_aero_demand": 9.5,
-        "rain_probability_typical": 0.30,
-        "wall_crash_probability_per_lap": 0.006,
-        "drs_zones": 1,
-        "team_historical_wins_since_2010": {
-            "mercedes": 8,
-            "red_bull": 5,
-            "ferrari": 3,
-            "mclaren": 1,
-        },
+        "id": "monaco", "name": "Circuit de Monaco",
+        "city": "Monte Carlo", "country": "Monaco",
+        "round_2026": 6, "race_date": "2026-06-07", "sprint_weekend": False,
+        "circuit_type": ["technical", "street"], "lap_count": 78,
+        "lap_distance_km": 3.337, "total_distance_km": 260.286,
+        "safety_car_probability": 0.78, "overtaking_difficulty": 10,
+        "power_unit_demand": 4.5, "brake_demand": 9.0, "tire_deg_rate": 3.0,
+        "active_aero_demand": 9.5, "rain_probability_typical": 0.30,
+        "wall_crash_probability_per_lap": 0.006, "drs_zones": 1,
+        "team_historical_wins_since_2010": {"mercedes": 8, "red_bull": 5, "ferrari": 3, "mclaren": 1},
+        "notes": "Impossible to overtake. Grid position almost = final position. Rain is huge wildcard.",
+    },
+    "spain": {
+        "id": "spain", "name": "Circuit de Barcelona-Catalunya",
+        "city": "Barcelona", "country": "Spain",
+        "round_2026": 7, "race_date": "2026-06-21", "sprint_weekend": False,
+        "circuit_type": ["balanced", "high_downforce"], "lap_count": 66,
+        "lap_distance_km": 4.657, "total_distance_km": 307.462,
+        "safety_car_probability": 0.40, "overtaking_difficulty": 7,
+        "power_unit_demand": 6.5, "brake_demand": 6.0, "tire_deg_rate": 8.5,
+        "active_aero_demand": 8.5, "rain_probability_typical": 0.15,
+        "wall_crash_probability_per_lap": 0.001, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 9, "red_bull": 7, "ferrari": 3, "mclaren": 2},
+        "notes": "Strong testing correlation. High tire deg. Pure car performance circuit.",
+    },
+    "austria": {
+        "id": "austria", "name": "Red Bull Ring",
+        "city": "Spielberg", "country": "Austria",
+        "round_2026": 8, "race_date": "2026-06-28", "sprint_weekend": True,
+        "circuit_type": ["power_unit", "balanced"], "lap_count": 71,
+        "lap_distance_km": 4.318, "total_distance_km": 306.578,
+        "safety_car_probability": 0.55, "overtaking_difficulty": 4,
+        "power_unit_demand": 8.0, "brake_demand": 7.5, "tire_deg_rate": 7.0,
+        "active_aero_demand": 7.5, "rain_probability_typical": 0.45,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 3,
+        "team_historical_wins_since_2010": {"mercedes": 7, "red_bull": 9, "ferrari": 2, "mclaren": 1},
+        "notes": "Red Bull home race. Sprint format. Alpine altitude reduces engine performance.",
+    },
+    "britain": {
+        "id": "britain", "name": "Silverstone Circuit",
+        "city": "Silverstone", "country": "United Kingdom",
+        "round_2026": 9, "race_date": "2026-07-06", "sprint_weekend": False,
+        "circuit_type": ["balanced"], "lap_count": 52,
+        "lap_distance_km": 5.891, "total_distance_km": 306.198,
+        "safety_car_probability": 0.52, "overtaking_difficulty": 5,
+        "power_unit_demand": 7.5, "brake_demand": 7.0, "tire_deg_rate": 8.5,
+        "active_aero_demand": 7.5, "rain_probability_typical": 0.45,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 11, "red_bull": 5, "ferrari": 2, "mclaren": 3},
+        "notes": "High-speed flowing circuit. Rain very likely in July. Mercedes/McLaren home advantage.",
+    },
+    "hungary": {
+        "id": "hungary", "name": "Hungaroring",
+        "city": "Budapest", "country": "Hungary",
+        "round_2026": 10, "race_date": "2026-07-20", "sprint_weekend": False,
+        "circuit_type": ["technical", "high_downforce"], "lap_count": 70,
+        "lap_distance_km": 4.381, "total_distance_km": 306.630,
+        "safety_car_probability": 0.42, "overtaking_difficulty": 8,
+        "power_unit_demand": 5.5, "brake_demand": 7.5, "tire_deg_rate": 7.5,
+        "active_aero_demand": 9.0, "rain_probability_typical": 0.30,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 1,
+        "team_historical_wins_since_2010": {"mercedes": 10, "red_bull": 6, "ferrari": 3, "mclaren": 1},
+        "notes": "Monaco-like in terms of overtaking difficulty. High-downforce paradise.",
+    },
+    "belgium": {
+        "id": "belgium", "name": "Circuit de Spa-Francorchamps",
+        "city": "Stavelot", "country": "Belgium",
+        "round_2026": 11, "race_date": "2026-07-26", "sprint_weekend": True,
+        "circuit_type": ["balanced", "power_unit"], "lap_count": 44,
+        "lap_distance_km": 7.004, "total_distance_km": 308.176,
+        "safety_car_probability": 0.68, "overtaking_difficulty": 4,
+        "power_unit_demand": 8.0, "brake_demand": 7.5, "tire_deg_rate": 6.5,
+        "active_aero_demand": 7.5, "rain_probability_typical": 0.55,
+        "wall_crash_probability_per_lap": 0.004, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 8, "red_bull": 8, "ferrari": 3, "mclaren": 2},
+        "notes": "Eau Rouge / Raidillon. Weather famously variable. Sprint weekend.",
+    },
+    "netherlands": {
+        "id": "netherlands", "name": "Circuit Zandvoort",
+        "city": "Zandvoort", "country": "Netherlands",
+        "round_2026": 12, "race_date": "2026-08-30", "sprint_weekend": False,
+        "circuit_type": ["technical", "balanced"], "lap_count": 72,
+        "lap_distance_km": 4.259, "total_distance_km": 306.648,
+        "safety_car_probability": 0.62, "overtaking_difficulty": 8,
+        "power_unit_demand": 6.5, "brake_demand": 7.5, "tire_deg_rate": 7.5,
+        "active_aero_demand": 8.5, "rain_probability_typical": 0.40,
+        "wall_crash_probability_per_lap": 0.003, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"red_bull": 4, "mercedes": 2, "ferrari": 1},
+        "notes": "Verstappen home race. Banked corners. Very hard to overtake.",
+    },
+    "italy": {
+        "id": "italy", "name": "Autodromo Nazionale Monza",
+        "city": "Monza", "country": "Italy",
+        "round_2026": 13, "race_date": "2026-09-06", "sprint_weekend": False,
+        "circuit_type": ["power_unit"], "lap_count": 53,
+        "lap_distance_km": 5.793, "total_distance_km": 306.720,
+        "safety_car_probability": 0.55, "overtaking_difficulty": 3,
+        "power_unit_demand": 9.5, "brake_demand": 8.5, "tire_deg_rate": 4.0,
+        "active_aero_demand": 5.5, "rain_probability_typical": 0.25,
+        "wall_crash_probability_per_lap": 0.003, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 9, "red_bull": 6, "ferrari": 2, "mclaren": 2},
+        "notes": "Temple of Speed. Maximum straight-line advantage. Tifosi home race for Ferrari.",
+    },
+    "azerbaijan": {
+        "id": "azerbaijan", "name": "Baku City Circuit",
+        "city": "Baku", "country": "Azerbaijan",
+        "round_2026": 14, "race_date": "2026-09-20", "sprint_weekend": False,
+        "circuit_type": ["street", "power_unit"], "lap_count": 51,
+        "lap_distance_km": 6.003, "total_distance_km": 306.049,
+        "safety_car_probability": 0.82, "overtaking_difficulty": 4,
+        "power_unit_demand": 9.0, "brake_demand": 8.5, "tire_deg_rate": 5.5,
+        "active_aero_demand": 7.5, "rain_probability_typical": 0.15,
+        "wall_crash_probability_per_lap": 0.005, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 3, "red_bull": 4, "ferrari": 2, "mclaren": 1},
+        "notes": "Tied with Canada for highest SC rate. Brutal street circuit. Massive straight.",
+    },
+    "singapore": {
+        "id": "singapore", "name": "Marina Bay Street Circuit",
+        "city": "Singapore", "country": "Singapore",
+        "round_2026": 15, "race_date": "2026-10-04", "sprint_weekend": False,
+        "circuit_type": ["street", "technical"], "lap_count": 62,
+        "lap_distance_km": 4.940, "total_distance_km": 306.143,
+        "safety_car_probability": 0.80, "overtaking_difficulty": 9,
+        "power_unit_demand": 5.5, "brake_demand": 9.0, "tire_deg_rate": 6.5,
+        "active_aero_demand": 9.5, "rain_probability_typical": 0.50,
+        "wall_crash_probability_per_lap": 0.005, "drs_zones": 3,
+        "team_historical_wins_since_2010": {"mercedes": 6, "red_bull": 5, "ferrari": 3, "mclaren": 1},
+        "notes": "Night race. Extremely humid. Hard on brakes and drivers. Safety cars guaranteed.",
+    },
+    "usa": {
+        "id": "usa", "name": "Circuit of The Americas",
+        "city": "Austin", "country": "USA",
+        "round_2026": 16, "race_date": "2026-10-18", "sprint_weekend": True,
+        "circuit_type": ["balanced", "technical"], "lap_count": 56,
+        "lap_distance_km": 5.513, "total_distance_km": 308.405,
+        "safety_car_probability": 0.58, "overtaking_difficulty": 5,
+        "power_unit_demand": 7.0, "brake_demand": 7.5, "tire_deg_rate": 8.0,
+        "active_aero_demand": 8.0, "rain_probability_typical": 0.35,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 7, "red_bull": 7, "ferrari": 2, "mclaren": 1},
+    },
+    "mexico": {
+        "id": "mexico", "name": "Autodromo Hermanos Rodriguez",
+        "city": "Mexico City", "country": "Mexico",
+        "round_2026": 17, "race_date": "2026-10-25", "sprint_weekend": False,
+        "circuit_type": ["high_downforce", "balanced"], "lap_count": 71,
+        "lap_distance_km": 4.304, "total_distance_km": 305.354,
+        "safety_car_probability": 0.45, "overtaking_difficulty": 5,
+        "power_unit_demand": 6.0, "brake_demand": 7.5, "tire_deg_rate": 6.5,
+        "active_aero_demand": 9.0, "rain_probability_typical": 0.25,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 3,
+        "team_historical_wins_since_2010": {"mercedes": 5, "red_bull": 7, "ferrari": 2, "mclaren": 1},
+        "notes": "2,240m altitude — thin air reduces PU power and aero efficiency. Ferrari struggle here.",
+    },
+    "brazil": {
+        "id": "brazil", "name": "Autodromo Jose Carlos Pace (Interlagos)",
+        "city": "São Paulo", "country": "Brazil",
+        "round_2026": 18, "race_date": "2026-11-08", "sprint_weekend": True,
+        "circuit_type": ["balanced", "power_unit"], "lap_count": 71,
+        "lap_distance_km": 4.309, "total_distance_km": 305.879,
+        "safety_car_probability": 0.75, "overtaking_difficulty": 4,
+        "power_unit_demand": 7.5, "brake_demand": 7.0, "tire_deg_rate": 7.0,
+        "active_aero_demand": 7.5, "rain_probability_typical": 0.55,
+        "wall_crash_probability_per_lap": 0.003, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 7, "red_bull": 6, "ferrari": 3, "mclaren": 2},
+        "notes": "High rain probability. Sprint format. Historically chaotic. Wet specialist advantage.",
+    },
+    "las_vegas": {
+        "id": "las_vegas", "name": "Las Vegas Strip Circuit",
+        "city": "Las Vegas", "country": "USA",
+        "round_2026": 19, "race_date": "2026-11-21", "sprint_weekend": False,
+        "circuit_type": ["street", "power_unit"], "lap_count": 50,
+        "lap_distance_km": 6.201, "total_distance_km": 310.050,
+        "safety_car_probability": 0.70, "overtaking_difficulty": 4,
+        "power_unit_demand": 9.0, "brake_demand": 7.5, "tire_deg_rate": 5.0,
+        "active_aero_demand": 7.0, "rain_probability_typical": 0.05,
+        "wall_crash_probability_per_lap": 0.004, "drs_zones": 3,
+        "team_historical_wins_since_2010": {"mercedes": 0, "red_bull": 1, "ferrari": 1, "mclaren": 0},
+        "notes": "Night race on public roads. Cold temperatures can cause tire issues.",
+    },
+    "qatar": {
+        "id": "qatar", "name": "Lusail International Circuit",
+        "city": "Lusail", "country": "Qatar",
+        "round_2026": 20, "race_date": "2026-11-29", "sprint_weekend": True,
+        "circuit_type": ["high_downforce", "balanced"], "lap_count": 57,
+        "lap_distance_km": 5.380, "total_distance_km": 306.660,
+        "safety_car_probability": 0.48, "overtaking_difficulty": 5,
+        "power_unit_demand": 6.5, "brake_demand": 6.5, "tire_deg_rate": 9.0,
+        "active_aero_demand": 8.5, "rain_probability_typical": 0.05,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 2,
+        "team_historical_wins_since_2010": {"mercedes": 0, "red_bull": 2, "mclaren": 1, "ferrari": 0},
+        "notes": "Extreme tire degradation. Sprint weekend. Humid night conditions.",
+    },
+    "uae": {
+        "id": "uae", "name": "Yas Marina Circuit",
+        "city": "Abu Dhabi", "country": "UAE",
+        "round_2026": 21, "race_date": "2026-12-06", "sprint_weekend": False,
+        "circuit_type": ["balanced", "technical"], "lap_count": 58,
+        "lap_distance_km": 5.281, "total_distance_km": 306.183,
+        "safety_car_probability": 0.42, "overtaking_difficulty": 6,
+        "power_unit_demand": 7.0, "brake_demand": 7.0, "tire_deg_rate": 6.5,
+        "active_aero_demand": 8.0, "rain_probability_typical": 0.02,
+        "wall_crash_probability_per_lap": 0.002, "drs_zones": 3,
+        "team_historical_wins_since_2010": {"mercedes": 9, "red_bull": 7, "ferrari": 2, "mclaren": 1},
+        "notes": "Season finale. Twilight/night race. Relatively predictable — low SC rate.",
     },
 }
 
 
 def get_circuit(circuit_id: str) -> dict:
-    """Return circuit data by ID."""
     c = CIRCUITS.get(circuit_id)
     if not c:
-        raise KeyError(f"Circuit '{circuit_id}' not found.")
+        available = ", ".join(sorted(CIRCUITS.keys()))
+        raise KeyError(f"Circuit '{circuit_id}' not found. Available: {available}")
     return c
 
 
 def get_all_circuits() -> list:
-    """Return all circuit records."""
     return list(CIRCUITS.values())
 
 
 def circuit_favors_team(circuit_id: str, team_id: str) -> float:
-    """
-    Return a multiplier [0.85–1.25] reflecting how much this circuit
-    historically favours a team relative to field average.
-    """
     circuit = get_circuit(circuit_id)
     wins = circuit.get("team_historical_wins_since_2010", {})
     total = sum(wins.values()) or 1
-    team_wins = wins.get(team_id, 0)
-    share = team_wins / total
-    # Normalise so 0.25 share → 1.25, 0 share → 0.85
+    share = wins.get(team_id, 0) / total
     return 0.85 + (share * 1.60)
