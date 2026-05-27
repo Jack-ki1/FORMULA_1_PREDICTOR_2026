@@ -23,7 +23,9 @@ PLATT_A_TOP3 = 1.05
 PLATT_B_TOP3 = -0.04
 
 SIMULATION_RUNS = 5000
-FIELD_SIZE = 22
+
+# Simulation is for a 20-driver race (tests + reports assume 20 finishing slots).
+FIELD_SIZE = 20
 BASE_RACE_LAPS = 60   # Normalisation baseline for DNF distance scaling
 
 
@@ -204,12 +206,20 @@ def predict_race(
 
     predictions.sort(key=lambda x: x["expected_position_float"])
 
-    # Apply Platt calibration to all probabilities
+    # Apply Platt calibration to all probabilities.
+    # Then renormalize win probabilities across drivers so they represent a true
+    # distribution over finishing P1 (sum ~ 1.0).
+    calibrated_win = []
     for pred in predictions:
         pred["win_probability"] = adjust_probabilities(pred["win_probability"])
+        calibrated_win.append(pred["win_probability"])
         pred["top3_probability"] = adjust_probabilities(pred["top3_probability"])
         pred["top10_probability"] = adjust_probabilities(pred["top10_probability"])
         pred["dnf_probability"] = adjust_probabilities(pred["dnf_probability"])
+
+    win_sum = float(sum(calibrated_win)) or 1.0
+    for pred in predictions:
+        pred["win_probability"] = pred["win_probability"] / win_sum
 
     return {
         "circuit_id":       circuit_id,

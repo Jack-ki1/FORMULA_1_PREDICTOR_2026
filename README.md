@@ -321,16 +321,6 @@ pip install -r requirements.txt
 
 This installs all necessary packages (FastAPI, NumPy, Rich, etc.).
 
-### Step 5: Run Your First Prediction
-```bash
-py scripts/run_canada_gp_2026.py
-```
-
-Wait about 10 seconds, and you'll see a beautiful prediction table showing win probabilities, podium chances, and DNF risks for all 22 drivers!
-
-**That's it!** You've just run your first F1 race prediction.
-
----
 
 ## 🛠️ Installation (Step by Step)
 
@@ -431,47 +421,13 @@ This installs all required packages:
 
 This might take 1-2 minutes. You'll see lots of text scrolling by — that's normal!
 
-#### Step 5 — Verify Installation
-
-Run a test prediction:
-```bash
-py scripts/run_canada_gp_2026.py --no-report
-```
-
-If everything is installed correctly, you'll see a prediction table appear in about 10 seconds.
-
-**Congratulations!** Your setup is complete.
-
----
 
 ## 🎮 How to Use It
 
 You have **four ways** to interact with the prediction system:
 
-### Option 1 — One-Command Prediction (Easiest)
 
-Perfect for quick predictions without any configuration.
-
-```bash
-# Predict the Canadian GP with default settings
-py scripts/run_canada_gp_2026.py
-
-# Predict with custom rain probability (0.0 = dry, 1.0 = definitely wet)
-py scripts/run_canada_gp_2026.py --rain 0.80
-
-# More accurate but slower (20,000 simulations instead of 5,000)
-py scripts/run_canada_gp_2026.py --sims 20000
-
-# Skip HTML report generation (faster)
-py scripts/run_canada_gp_2026.py --no-report
-```
-
-**When to use this:**
-- Quick pre-race analysis
-- Comparing different weather scenarios
-- Sharing predictions with friends
-
-### Option 2 — CLI for Any Race (Flexible)
+### Option 1  — CLI for Any Race (Flexible)
 
 Use the main command-line interface to predict any circuit.
 
