@@ -35,7 +35,8 @@ RECENCY_WINDOW = 8      # Maximum races to include in form calculation
 
 # ── API settings ───────────────────────────────────────────────────────────────
 API_DEBUG = os.getenv("API_DEBUG", "false").lower() == "true"
-API_HOST  = os.getenv("API_HOST", "0.0.0.0")
+# DEPLOY-04 FIX: Default to localhost for security; require explicit override to 0.0.0.0 for containers
+API_HOST  = os.getenv("API_HOST", "127.0.0.1")
 API_PORT  = int(os.getenv("API_PORT", "8000"))
 
 # ── Report / output ────────────────────────────────────────────────────────────
@@ -55,7 +56,5 @@ def validate_settings():
     if errors:
         raise ValueError("Config errors:\n" + "\n".join(errors))
 
-try:
-    validate_settings()
-except ValueError as e:
-    print(f"⚠ Configuration warning: {e}")
+# QUALITY-05 FIX: Configuration errors must be fatal, not warnings
+validate_settings()

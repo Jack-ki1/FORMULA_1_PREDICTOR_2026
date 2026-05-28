@@ -109,7 +109,7 @@ def clamp(value, min_val=None, max_val=None):
 def generate_report(
     circuit_id: str,
     rain_probability: float = 0.0,
-    n_simulations: int = 50000,
+    n_simulations: int = 5000,  # QUALITY-06 FIX: Was 50000 — now matches CLI/API default of 5000
     output_path: Optional[str] = None,
 ) -> str:
     """
@@ -138,6 +138,9 @@ def generate_report(
     
     # Add sc_probability alias for template compatibility
     meta["sc_probability"] = meta.get("safety_car_probability", 0.0)
+    
+    # BUG-10 FIX: Add model_confidence alias for template stat card
+    meta["model_confidence"] = round(meta.get("overall_model_confidence", 0) * 100)
     
     # Get circuit details from calendar
     from data.calendar_2026 import CALENDAR_2026
@@ -174,6 +177,15 @@ def generate_report(
                     pred["composite_score"] = raw_pred["composite_score"]
                     pred["position_distribution"] = raw_pred.get("position_distribution", [0] * 22)
                     break
+    
+    # BUG-02 FIX: Normalize all keys to ensure both 'driver' and 'driver_name' exist
+    for p in predictions:
+        # Ensure both driver and driver_name exist with the same value
+        p["driver_name"] = p.get("driver_name") or p.get("driver", "Unknown")
+        p["driver"]      = p["driver_name"]
+        # Ensure win_probability is the float version (not win_pct)
+        if "win_probability" not in p:
+            p["win_probability"] = p.get("win_pct", 0) / 100.0
     
     # FIX: Assign proper sequential positions
     predictions = _assign_positions(predictions)
@@ -214,7 +226,8 @@ def generate_report(
             "top10_pct": round(p.get("top10_probability", 0) * 100, 1),
             "dnf_pct": round(p.get("dnf_probability", 0) * 100, 1),
             "teammate_beat_pct": round(p.get("teammate_beat_prob", 0) * 100, 1),
-            "composite_score": round(p.get("composite_score", 0) * 100 if isinstance(p.get("composite_score"), float) else 0, 1),
+            # QUALITY-07 FIX: Always convert to float before multiplication
+            "composite_score": round(float(p.get("composite_score", 0)) * 100, 1),
             "team_colour": p.get("team_colour", "#888"),
             "position_distribution": p.get("position_distribution", [0] * 22),
             "circuit_history": p.get("circuit_history"),

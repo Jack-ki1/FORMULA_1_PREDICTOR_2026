@@ -36,7 +36,8 @@ class DriverPrediction:
 
     def to_dict(self) -> dict:
         return {
-            "driver":            self.driver_name,
+            "driver_name":       self.driver_name,  # QUALITY-10 FIX: Use driver_name consistently
+            "driver":            self.driver_name,  # Keep 'driver' for backward compatibility
             "team":              self.team,
             "predicted_position":self.predicted_position,
             "win_pct":           round(self.win_probability * 100, 1),
@@ -120,8 +121,3 @@ def predict(request: PredictionRequest) -> dict:
         "raw":                  raw if request.output_format == "full" else None,
     }
 
-
-# Pass grid_overrides into predict_race
-def run_simulation(grid_overrides=None):
-    results = predict_race(..., grid_overrides=grid_overrides)
-    return results

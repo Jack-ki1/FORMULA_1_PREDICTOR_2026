@@ -96,28 +96,29 @@ SEASON_RESULTS_2026: list = [
 ]
 
 # ── Championship Standings after Round 4 ──────────────────────────────────────
+# BUG-08 FIX: Sorted by points descending with correct position assignment
 DRIVER_STANDINGS_AFTER_R4: list = [
     {"position": 1,  "driver": "antonelli",  "points": 100},
     {"position": 2,  "driver": "russell",    "points": 80},
-    {"position": 3,  "driver": "leclerc",    "points": 73},  # Improved after Japan podium
-    {"position": 4,  "driver": "norris",     "points": 66},  # Lower after Japan result
-    {"position": 5,  "driver": "hamilton",   "points": 52},
-    {"position": 6,  "driver": "piastri",    "points": 63},  # Improved after Japan podium
+    {"position": 3,  "driver": "leclerc",    "points": 73},
+    {"position": 4,  "driver": "norris",     "points": 66},
+    {"position": 5,  "driver": "piastri",    "points": 63},  # FIXED: Was P6 with 63 pts (more than Hamilton's 52)
+    {"position": 6,  "driver": "hamilton",   "points": 52},  # FIXED: Was P5 with 52 pts (less than Piastri's 63)
     {"position": 7,  "driver": "verstappen", "points": 30},
-    {"position": 8,  "driver": "bearman",    "points": 18},
-    {"position": 9,  "driver": "gasly",      "points": 14},
-    {"position": 10, "driver": "lawson",     "points": 10},
-    {"position": 11, "driver": "colapinto",  "points": 11},
-    {"position": 12, "driver": "hadjar",     "points": 4},
-    {"position": 13, "driver": "lindblad",   "points": 4},
-    {"position": 14, "driver": "sainz",      "points": 4},
-    {"position": 15, "driver": "bortoleto",  "points": 2},
-    {"position": 16, "driver": "albon",      "points": 1},
-    {"position": 17, "driver": "ocon",       "points": 1},
-    {"position": 18, "driver": "stroll",     "points": 0},
-    {"position": 19, "driver": "alonso",     "points": 0},
-    {"position": 20, "driver": "perez",      "points": 25},  # New Cadillac driver points
-    {"position": 21, "driver": "bottas",     "points": 18},  # New Cadillac driver points
+    {"position": 8,  "driver": "perez",      "points": 25},  # Cadillac driver
+    {"position": 9,  "driver": "bearman",    "points": 18},
+    {"position": 10, "driver": "bottas",     "points": 18},  # Cadillac driver
+    {"position": 11, "driver": "gasly",      "points": 14},
+    {"position": 12, "driver": "colapinto",  "points": 11},
+    {"position": 13, "driver": "lawson",     "points": 10},
+    {"position": 14, "driver": "hadjar",     "points": 4},
+    {"position": 15, "driver": "lindblad",   "points": 4},
+    {"position": 16, "driver": "sainz",      "points": 4},
+    {"position": 17, "driver": "bortoleto",  "points": 2},
+    {"position": 18, "driver": "albon",      "points": 1},
+    {"position": 19, "driver": "ocon",       "points": 1},
+    {"position": 20, "driver": "stroll",     "points": 0},
+    {"position": 21, "driver": "alonso",     "points": 0},
     {"position": 22, "driver": "zhou",       "points": 0},   # Reserve driver
 ]
 
@@ -134,6 +135,10 @@ CONSTRUCTOR_STANDINGS_AFTER_R4: list = [
     {"position": 10,"team": "aston_martin", "points": 0},
     {"position": 11,"team": "cadillac",     "points": 43},   # Combined points for Perez and Bottas
 ]
+
+# QUALITY-02 FIX: Stable aliases that can be imported without updating every round
+CURRENT_DRIVER_STANDINGS = DRIVER_STANDINGS_AFTER_R4
+CURRENT_CONSTRUCTOR_STANDINGS = CONSTRUCTOR_STANDINGS_AFTER_R4
 
 
 def get_driver_last_n_results(driver_id: str, n: int = 4) -> list:

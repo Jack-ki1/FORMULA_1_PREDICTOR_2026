@@ -32,7 +32,8 @@ from api.schemas import (
 )
 from engine.predictor import predict, PredictionRequest
 from data.circuit_data import get_circuit, get_all_circuits
-from data.season_2026 import DRIVER_STANDINGS_AFTER_R4, CONSTRUCTOR_STANDINGS_AFTER_R4
+# QUALITY-02 FIX: Use stable aliases that don't need updating every round
+from data.season_2026 import CURRENT_DRIVER_STANDINGS as DRIVER_STANDINGS, CURRENT_CONSTRUCTOR_STANDINGS as CONSTRUCTOR_STANDINGS
 from data.driver_data import get_driver, get_all_drivers
 
 router = APIRouter()
@@ -162,7 +163,7 @@ async def custom_simulation(request: SimulationRequest):
 async def driver_standings():
     """Current 2026 F1 Driver Championship standings."""
     result = []
-    for s in DRIVER_STANDINGS_AFTER_R4:
+    for s in DRIVER_STANDINGS:  # QUALITY-02 FIX: Use stable alias
         try:
             d = get_driver(s["driver"])
             name = d["name"]
@@ -174,20 +175,20 @@ async def driver_standings():
 
 @router.get("/standings/constructors", tags=["Standings"])
 async def constructor_standings():
-    return [ConstructorStandingsEntry(**s) for s in CONSTRUCTOR_STANDINGS_AFTER_R4]
+    return [ConstructorStandingsEntry(**s) for s in CONSTRUCTOR_STANDINGS]  # QUALITY-02 FIX
 
 
 @router.get("/standings", response_model=StandingsResponse, tags=["Standings"])
 async def all_standings():
     """Combined driver + constructor standings."""
     drivers = []
-    for s in DRIVER_STANDINGS_AFTER_R4:
+    for s in DRIVER_STANDINGS:  # QUALITY-02 FIX
         try:
             name = get_driver(s["driver"])["name"]
         except KeyError:
             name = s["driver"]
         drivers.append(StandingsEntry(position=s["position"], driver=name, points=s["points"]))
-    constructors = [ConstructorStandingsEntry(**s) for s in CONSTRUCTOR_STANDINGS_AFTER_R4]
+    constructors = [ConstructorStandingsEntry(**s) for s in CONSTRUCTOR_STANDINGS]  # QUALITY-02 FIX
     return StandingsResponse(drivers=drivers, constructors=constructors)
 
 

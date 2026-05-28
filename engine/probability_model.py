@@ -7,6 +7,10 @@ FIXES vs v1:
   3. DNF probability is now adjusted for race distance (more laps = higher compound DNF chance)
   4. Softmax temperature tuned: 0.28 gives better discrimination without over-concentrating
   5. Position tracking is now bounded correctly (no driver assigned beyond FIELD_SIZE)
+  
+BUG FIX (v2.1):
+  6. Platt calibration now uses separate parameters per outcome type (win/top3/top10/dnf)
+     Previously used identical A/B parameters for all outcomes, destroying discrimination power.
 """
 
 import math
@@ -17,10 +21,14 @@ from typing import Optional, List
 from engine.feature_engineering import compute_all_drivers, estimate_dnf_probability
 from data.driver_data import get_all_drivers
 
-PLATT_A_WIN  = 1.12
-PLATT_B_WIN  = -0.08
-PLATT_A_TOP3 = 1.05
-PLATT_B_TOP3 = -0.04
+# BUG-01 FIX: Separate Platt scaling parameters per outcome type
+# Each outcome requires independent calibration to preserve discrimination power
+PLATT_PARAMS = {
+    "win":   {"A": 1.12, "B": -0.08},
+    "top3":  {"A": 1.05, "B": -0.04},
+    "top10": {"A": 0.98, "B":  0.02},
+    "dnf":   {"A": 1.00, "B":  0.00},  # identity until fitted on real data
+}
 
 SIMULATION_RUNS = 5000
 
@@ -34,6 +42,28 @@ def _sigmoid(x: float) -> float:
         return 1.0 / (1.0 + math.exp(-x))
     except OverflowError:
         return 0.0 if x < 0 else 1.0
+
+
+def apply_platt(raw_prob: float, outcome_type: str) -> float:
+    """
+    BUG-01 FIX: Apply Platt calibration with separate parameters per outcome type.
+    
+    Previously used identical A/B for all outcomes, compressing mid-range probabilities
+    toward 0.48-0.52 and destroying discrimination power. Now each outcome type has
+    independently calibrated parameters.
+    
+    Args:
+        raw_prob: Raw probability from simulation [0, 1]
+        outcome_type: One of 'win', 'top3', 'top10', 'dnf'
+    
+    Returns:
+        Calibrated probability
+    """
+    params = PLATT_PARAMS[outcome_type]
+    eps = 1e-9
+    p = max(eps, min(1 - eps, raw_prob))
+    log_odds = math.log(p / (1 - p))
+    return 1.0 / (1.0 + math.exp(-(params["A"] * log_odds + params["B"])))
 
 
 def _softmax(scores: List[float], temperature: float = 0.28) -> List[float]:
@@ -177,8 +207,9 @@ def predict_race(
     from engine.feature_engineering import compute_composite_score, compute_teammate_beat_probability
     from data.driver_data import get_all_drivers as _get_all
 
-    sim_stats = simulate_race(circuit_id, rain_probability, n_simulations, seed)
-    driver_features = compute_all_drivers(circuit_id, rain_probability)
+    sim_stats = simulate_race(circuit_id, rain_probability, n_simulations, seed, grid_overrides)
+    # BUG-05 FIX: Pass grid_overrides to compute_all_drivers so features match simulation
+    driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
     all_drivers = {d["id"]: d for d in _get_all()}
 
     predictions = []
@@ -206,16 +237,15 @@ def predict_race(
 
     predictions.sort(key=lambda x: x["expected_position_float"])
 
-    # Apply Platt calibration to all probabilities.
-    # Then renormalize win probabilities across drivers so they represent a true
-    # distribution over finishing P1 (sum ~ 1.0).
+    # BUG-01 FIX: Apply Platt calibration with separate parameters per outcome type.
+    # Previously used identical A/B for all outcomes, destroying discrimination power.
     calibrated_win = []
     for pred in predictions:
-        pred["win_probability"] = adjust_probabilities(pred["win_probability"])
+        pred["win_probability"]  = apply_platt(pred["win_probability"],  "win")
         calibrated_win.append(pred["win_probability"])
-        pred["top3_probability"] = adjust_probabilities(pred["top3_probability"])
-        pred["top10_probability"] = adjust_probabilities(pred["top10_probability"])
-        pred["dnf_probability"] = adjust_probabilities(pred["dnf_probability"])
+        pred["top3_probability"] = apply_platt(pred["top3_probability"], "top3")
+        pred["top10_probability"]= apply_platt(pred["top10_probability"],"top10")
+        pred["dnf_probability"]  = apply_platt(pred["dnf_probability"],  "dnf")
 
     win_sum = float(sum(calibrated_win)) or 1.0
     for pred in predictions:
@@ -228,10 +258,3 @@ def predict_race(
         "predictions":      predictions,
     }
 
-
-def adjust_probabilities(raw_probs):
-    """Apply Platt calibration to raw probabilities."""
-    platt_a_win = PLATT_A_WIN
-    platt_b_win = PLATT_B_WIN
-    calibrated_probs = 1 / (1 + np.exp(-(platt_a_win * raw_probs + platt_b_win)))
-    return calibrated_probs

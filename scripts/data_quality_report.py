@@ -188,6 +188,34 @@ def check_circuits() -> tuple:
     return issues, warnings, passes
 
 
+def check_calendar_vs_circuits() -> tuple:
+    """
+    BUG-07 FIX: Cross-reference calendar circuit IDs against circuit_data.
+    
+    Ensures every circuit referenced in the calendar actually exists in the
+    circuit database. Prevents silent failures when predicting races with
+    missing circuit definitions.
+    """
+    from data.calendar_2026 import CALENDAR_2026
+    from data.circuit_data import CIRCUITS
+    issues, warnings, passes = 0, 0, 0
+
+    console.print("\n[bold]Calendar ↔ Circuits cross-reference[/]")
+
+    for race in CALENDAR_2026:
+        circuit_id = race["circuit"]
+        if circuit_id not in CIRCUITS:
+            _fail(f"Round {race['round']} ({race['name']}): circuit '{circuit_id}' missing from circuit_data.py")
+            issues += 1
+        else:
+            passes += 1
+
+    if issues == 0:
+        _ok(f"All {len(CALENDAR_2026)} calendar circuits found in circuit database")
+    
+    return issues, warnings, passes
+
+
 def check_season_data() -> tuple:
     from data.season_2026 import SEASON_RESULTS_2026, DRIVER_STANDINGS_AFTER_R4
     from data.driver_data import DRIVERS
@@ -313,11 +341,12 @@ def run_all_checks() -> None:
     total_passes   = 0
 
     check_fns = [
-        ("Drivers",         check_drivers),
-        ("Circuits",        check_circuits),
-        ("Season data",     check_season_data),
-        ("Feature weights", check_feature_weights),
-        ("Engine imports",  check_engine_imports),
+        ("Drivers",                  check_drivers),
+        ("Circuits",                 check_circuits),
+        ("Calendar ↔ Circuits",      check_calendar_vs_circuits),  # BUG-07 FIX
+        ("Season data",              check_season_data),
+        ("Feature weights",          check_feature_weights),
+        ("Engine imports",           check_engine_imports),
     ]
 
     results = []

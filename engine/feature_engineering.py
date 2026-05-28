@@ -91,11 +91,9 @@ def compute_grid_position_score(
     driver_id: str,
     actual_grid_pos: Optional[int] = None,
 ) -> float:
-    # NOTE: grid overrides are expected to map P1→1.0 and P20→0.0.
-    # Keep this function deterministic for tests and callers.
-
-    
     """
+    QUALITY-01 FIX: Moved docstring to first statement (was after NOTE comment).
+
     FIX: v1 always returned 0.5 (neutral), wasting the grid_position feature slot.
 
     Pre-race mode (no actual_grid_pos):
@@ -104,6 +102,9 @@ def compute_grid_position_score(
 
     Post-qualifying mode (actual_grid_pos provided):
       Direct inverse mapping: P1 → 1.0, P20 → 0.0.
+
+    NOTE: grid overrides are expected to map P1→1.0 and P20→0.0.
+    Keep this function deterministic for tests and callers.
     """
     if actual_grid_pos is not None:
         # Actual qualifying result — most accurate

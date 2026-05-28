@@ -637,6 +637,7 @@ DRIVERS: dict = {
         "championship_points_2026": 0,
         "wins_2026": 0,
         "poles_2026": 0,
+        "active": False,  # BUG-06 FIX: Mark as reserve driver, not active race driver
         "notes": "Reserve driver for Cadillac. Brings valuable experience as former full-time F1 driver."
     },
 
@@ -649,12 +650,21 @@ def get_driver(driver_id: str) -> dict:
     return DRIVERS.get(driver_id)
 
 def get_all_drivers() -> list:
-    """Return all drivers as a list."""
-    return list(DRIVERS.values())
+    """
+    BUG-06 FIX: Return all ACTIVE drivers only. Filters out reserve/inactive drivers.
+    
+    Drivers can be marked as inactive by setting "active": False in their profile.
+    This prevents reserve drivers from being included in predictions and teammate logic.
+    """
+    return [d for d in DRIVERS.values() if d.get("active", True)]
 
 def get_drivers_for_team(team_name: str) -> list:
-    """Return all drivers for a given team."""
-    return [driver for driver in DRIVERS.values() if driver['team'] == team_name]
+    """
+    BUG-06 FIX: Return all ACTIVE drivers for a given team.
+    
+    Ensures teams have exactly 2 active race drivers, excluding reserves.
+    """
+    return [d for d in DRIVERS.values() if d['team'] == team_name and d.get("active", True)]
 
 def get_driver_by_id(driver_id: str):
     """Return a specific driver by ID (alias for get_driver)."""

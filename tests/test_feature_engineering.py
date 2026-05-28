@@ -66,7 +66,7 @@ class TestBoundaries:
             assert 0.0 <= p <= 0.45, f"DNF prob out of range for {d['id']}: {p}"
 
     def test_weather_score_bounded(self):
-        for driver_id in ["antonelli", "verstappen", "hamilton", "herta"]:
+        for driver_id in ["antonelli", "verstappen", "hamilton", "stroll"]:  # BUG-09 FIX: herta → stroll
             for rain in [0.0, 0.5, 1.0]:
                 s = compute_weather_score(driver_id, "canada", rain_probability=rain)
                 assert 0.0 <= s <= 1.0
@@ -118,7 +118,7 @@ class TestDirectional:
     def test_safety_car_upside_increases_with_grid_position(self):
         """Backmarker should benefit more from SC than frontrunner — FIX: was "bahrain"."""
         front = compute_safety_car_upside("verstappen", "canada", estimated_grid_pos=1)
-        back  = compute_safety_car_upside("herta",      "canada", estimated_grid_pos=19)
+        back  = compute_safety_car_upside("stroll",      "canada", estimated_grid_pos=19)  # BUG-09 FIX: herta → stroll
         assert back >= front, f"Back ({back}) should ≥ front ({front})"
 
     def test_sc_upside_monotonic_across_grid_positions(self):
@@ -133,7 +133,7 @@ class TestDirectional:
         assert merc > caddy
 
     def test_elo_leader_higher_than_backmarker(self):
-        assert compute_elo_score("antonelli") > compute_elo_score("herta")
+        assert compute_elo_score("antonelli") > compute_elo_score("stroll")  # BUG-09 FIX: herta → stroll
 
     def test_grid_p1_better_than_p10(self):
         s1  = compute_grid_position_score("norris", actual_grid_pos=1)

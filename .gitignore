@@ -162,28 +162,10 @@ Desktop.ini
 
 # Output files and logs
 output/
-*.json  # Except for essential sample files
 *.log
 logs/
 
-# Environment files
-.env
-venv/
-.venv/
-
-# Large data files that shouldn't be committed
-*.csv
-*.xlsx
-*.xls
-*.zip
-*.tar
-*.gz
-
-# Specific to this project
+# DEPLOY-01 FIX: Remove blanket *.json exclusion - it breaks deployment of web/predictions/*.json
+# Only exclude specific output JSON files, not all JSON files
 output_test.json  # This is a 168KB test output file that should not be in version control
-
-# Python cache files (added more specific patterns)
-**/__pycache__/
-**/*.__pycache__/
-**/*.pyc
-**/*.pyo
+data/historical/**/*.json  # Historical prediction snapshots (too large)

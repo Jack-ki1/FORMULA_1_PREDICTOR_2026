@@ -344,8 +344,16 @@ def get_all_circuits() -> list:
 
 
 def circuit_favors_team(circuit_id: str, team_id: str) -> float:
+    """
+    QUALITY-08 FIX: Returns a modest circuit-specific modifier in [0.9, 1.1] range.
+    
+    Previously returned values up to 1.65 which were then clamped to 1.0 in
+    compute_constructor_strength(), losing all circuit affinity information.
+    Now uses additive approach with bounded range to preserve signal.
+    """
     circuit = get_circuit(circuit_id)
     wins = circuit.get("team_historical_wins_since_2010", {})
     total = sum(wins.values()) or 1
     share = wins.get(team_id, 0) / total
-    return 0.85 + (share * 1.60)
+    # Returns [0.90, 1.10] — a modest circuit-specific modifier
+    return 0.90 + (share * 0.20)

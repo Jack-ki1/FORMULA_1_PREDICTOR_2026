@@ -16,15 +16,17 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any
 import os
 
-# Jolpica-F1 API base URL
-JOLPICA_BASE_URL = "https://api.jolpica.com"
+# ARCH-06 FIX: Correct Jolpica-F1 API base URL (was returning 404)
+JOLPICA_BASE_URL = "https://api.jolpi.ca/ergast/f1"
 
 def fetch_current_drivers() -> List[Dict]:
     """Fetch current season drivers from Jolpica API."""
     try:
-        response = requests.get(f"{JOLPICA_BASE_URL}/current/drivers")
+        # ARCH-06 FIX: Use correct endpoint and parse Ergast-format response
+        response = requests.get(f"{JOLPICA_BASE_URL}/2026/drivers.json?limit=30")
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        return data["MRData"]["DriverTable"]["Drivers"]
     except Exception as e:
         print(f"Error fetching drivers: {e}")
         return []
@@ -32,9 +34,11 @@ def fetch_current_drivers() -> List[Dict]:
 def fetch_current_constructors() -> List[Dict]:
     """Fetch current season constructors from Jolpica API."""
     try:
-        response = requests.get(f"{JOLPICA_BASE_URL}/current/constructors")
+        # ARCH-06 FIX: Use correct endpoint and parse Ergast-format response
+        response = requests.get(f"{JOLPICA_BASE_URL}/2026/constructors.json?limit=30")
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        return data["MRData"]["ConstructorTable"]["Constructors"]
     except Exception as e:
         print(f"Error fetching constructors: {e}")
         return []
