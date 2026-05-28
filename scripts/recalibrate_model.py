@@ -140,24 +140,36 @@ def run_recalibration(season: int, fit_platt: bool = False):
     console.print(f"  Top3: A = [cyan]{A_top3}[/]  B = [cyan]{B_top3}[/]")
 
     if fit_platt:
-        # Write updated values back to probability_model.py
+        # NEW-09 FIX: Update PLATT_PARAMS dict in probability_model.py instead of searching for deleted scalar constants
         model_path = Path(__file__).parent.parent / "engine" / "probability_model.py"
         content = model_path.read_text()
-        content = content.replace(
-            f"PLATT_A_WIN = {_current_platt_val(content, 'PLATT_A_WIN')}",
-            f"PLATT_A_WIN = {A_win}"
-        ).replace(
-            f"PLATT_B_WIN = {_current_platt_val(content, 'PLATT_B_WIN')}",
-            f"PLATT_B_WIN = {B_win}"
-        ).replace(
-            f"PLATT_A_TOP3 = {_current_platt_val(content, 'PLATT_A_TOP3')}",
-            f"PLATT_A_TOP3 = {A_top3}"
-        ).replace(
-            f"PLATT_B_TOP3 = {_current_platt_val(content, 'PLATT_B_TOP3')}",
-            f"PLATT_B_TOP3 = {B_top3}"
-        )
-        model_path.write_text(content)
+        
+        # Use regex to find and replace values in the PLATT_PARAMS dict
+        import re
+        
+        # Pattern to match PLATT_PARAMS dict entries
+        # Example: "win":   {"A": 1.12, "B": -0.08},
+        def replace_platt_value(match):
+            outcome_type = match.group(1)
+            current_a = float(match.group(2))
+            current_b = float(match.group(3))
+            
+            if outcome_type == "win":
+                return f'"{outcome_type}":   {{"A": {A_win}, "B": {B_win}}},'
+            elif outcome_type == "top3":
+                return f'"{outcome_type}":  {{"A": {A_top3}, "B": {B_top3}}},'
+            else:
+                # Keep other outcome types unchanged
+                return match.group(0)
+        
+        # Replace win and top3 parameters
+        pattern = r'"(win|top3)":\s+\{"A": ([\d.-]+), "B": ([\d.-]+)\},'
+        updated_content = re.sub(pattern, replace_platt_value, content)
+        
+        model_path.write_text(updated_content)
         console.print("[green]✓ Platt parameters updated in engine/probability_model.py[/]")
+        console.print(f"  Win:  A={A_win:.4f}, B={B_win:.4f}")
+        console.print(f"  Top3: A={A_top3:.4f}, B={B_top3:.4f}")
     else:
         console.print("[dim]Re-run with --fit-platt to apply these values automatically.[/]")
 
@@ -179,14 +191,6 @@ def run_recalibration(season: int, fit_platt: bool = False):
         f"[dim]Suggested action: {'Model is well-calibrated ✓' if win_bs < 0.05 else 'Review FEATURE_WEIGHTS in config/settings.py'}[/]",
         title="[bold]Calibration Summary[/]",
     ))
-
-
-def _current_platt_val(content: str, var_name: str) -> str:
-    """Extract current Platt value from source code."""
-    for line in content.split("\n"):
-        if line.strip().startswith(var_name):
-            return line.split("=")[1].strip()
-    return "1.0"
 
 
 if __name__ == "__main__":

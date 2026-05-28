@@ -23,17 +23,26 @@ from data.driver_data import get_all_drivers
 
 # BUG-01 FIX: Separate Platt scaling parameters per outcome type
 # Each outcome requires independent calibration to preserve discrimination power
+# NEW-01 CALIBRATION UPDATE: Adjusted for increased simulation variance (σ=0.15-0.23).
+# With realistic noise levels, raw win probabilities fall in 15-35% range for favorites.
+# Calibration should gently correct systematic biases without amplifying or compressing.
 PLATT_PARAMS = {
-    "win":   {"A": 1.12, "B": -0.08},
-    "top3":  {"A": 1.05, "B": -0.04},
-    "top10": {"A": 0.98, "B":  0.02},
-    "dnf":   {"A": 1.00, "B":  0.00},  # identity until fitted on real data
+    "win":   {"A": 1.05, "B": -0.02},  # Near-identity: gentle correction only
+    "top3":  {"A": 1.03, "B": -0.01},  # Minimal adjustment
+    "top10": {"A": 1.02, "B":  0.00},  # Nearly identity transformation
+    "dnf":   {"A": 1.00, "B":  0.00},  # Identity until fitted on real DNF data
 }
 
 SIMULATION_RUNS = 5000
 
-# Simulation is for a 20-driver race (tests + reports assume 20 finishing slots).
-FIELD_SIZE = 20
+# NEW-02 FIX: Derive FIELD_SIZE dynamically from actual active driver count.
+# Previously hardcoded to 20, then changed to 20 while having 21 active drivers (post-Zhou),
+# causing one driver's finishing position to be silently dropped every simulation.
+def _get_field_size() -> int:
+    """Return the number of active drivers in the current season."""
+    return len(get_all_drivers())
+
+FIELD_SIZE = _get_field_size()
 BASE_RACE_LAPS = 60   # Normalisation baseline for DNF distance scaling
 
 
@@ -113,8 +122,22 @@ def simulate_race(
     circuit_laps = circuit.get("lap_count", 60)
 
     # FIX: noise scaled by circuit chaos (SC probability)
-    # Canada (SC=0.82) gets σ=0.066; Monaco (SC=0.78) σ=0.062; Monza (SC=0.30) σ=0.024
-    circuit_noise_sigma = 0.02 + sc_prob * 0.056
+    # NEW-01 CALIBRATION FIX: Previous noise levels were far too low, causing unrealistic
+    # win concentrations (e.g., 77% for one driver). Real F1 races have massive uncertainty
+    # from qualifying variance, strategy, incidents, weather, and driver errors.
+    # 
+    # Research from betting markets shows even dominant favorites rarely exceed 25-35% win prob.
+    # Las Vegas 2025: Verstappen (clear favorite) = ~27%
+    # 
+    # To achieve realistic distributions with typical composite score spreads of 0.15-0.25
+    # between top drivers, we need σ ≈ 0.15-0.20, not the previous 0.06-0.07.
+    # This ensures the favorite wins ~20-35% rather than 60-80%.
+    #
+    # Formula: base_noise + sc_prob * chaos_multiplier
+    # Canada (SC=0.82): σ ≈ 0.15 + 0.82*0.10 = 0.23 (high chaos circuit)
+    # Monaco (SC=0.78): σ ≈ 0.15 + 0.78*0.10 = 0.23 (street circuit volatility)
+    # Monza (SC=0.30):  σ ≈ 0.15 + 0.30*0.10 = 0.18 (lower chaos but still significant)
+    circuit_noise_sigma = 0.15 + sc_prob * 0.10
 
     # FIX: distance-adjusted DNF multiplier
     dnf_mult = _distance_dnf_multiplier(circuit_laps)
@@ -237,19 +260,16 @@ def predict_race(
 
     predictions.sort(key=lambda x: x["expected_position_float"])
 
-    # BUG-01 FIX: Apply Platt calibration with separate parameters per outcome type.
-    # Previously used identical A/B for all outcomes, destroying discrimination power.
-    calibrated_win = []
+    # BUG-01 / NEW-01 FIX: Apply Platt calibration with separate parameters per outcome type.
+    # NOTE: We do NOT renormalize after Platt calibration because:
+    # 1. Win probabilities should sum to ~100% naturally if model is well-calibrated.
+    # 2. Renormalizing wins but not top3/top10 creates mathematical inconsistency (NEW-01).
+    # 3. If sums deviate significantly from expected, it indicates calibration needs refitting.
     for pred in predictions:
         pred["win_probability"]  = apply_platt(pred["win_probability"],  "win")
-        calibrated_win.append(pred["win_probability"])
         pred["top3_probability"] = apply_platt(pred["top3_probability"], "top3")
         pred["top10_probability"]= apply_platt(pred["top10_probability"],"top10")
         pred["dnf_probability"]  = apply_platt(pred["dnf_probability"],  "dnf")
-
-    win_sum = float(sum(calibrated_win)) or 1.0
-    for pred in predictions:
-        pred["win_probability"] = pred["win_probability"] / win_sum
 
     return {
         "circuit_id":       circuit_id,

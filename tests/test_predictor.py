@@ -169,15 +169,16 @@ class TestWeather:
     def test_wet_reduces_less_skilled_driver(self, canada_dry, canada_wet):
         def get_win(pred, search):
             for p in pred["predictions"]:
-                if search in p["driver"]:
+                if search.lower() in p["driver"].lower():
                     return p["win_pct"]
             return 0.0
-        # Herta has wet_skill=6.5 — should lose relative ground in the wet
-        dry = get_win(canada_dry, "Herta")
-        wet = get_win(canada_wet, "Herta")
+        # NEW-04 FIX: Stroll has wet_skill=5.8 (below average) — should lose relative ground in the wet
+        # Previously used "Herta" who doesn't exist in driver database, making test vacuous
+        dry = get_win(canada_dry, "Stroll")
+        wet = get_win(canada_wet, "Stroll")
         # Either stays the same or drops (allow ±1% for simulation noise)
         assert wet <= dry + 1.5, (
-            f"Herta wet {wet}% should not be much higher than dry {dry}%"
+            f"Stroll wet {wet}% should not be much higher than dry {dry}%"
         )
 
 

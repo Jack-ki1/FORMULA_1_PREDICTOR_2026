@@ -441,7 +441,7 @@ py main.py predict --race britain        # Silverstone
 py main.py predict --race brazil --rain 0.70
 
 # Use exact grid positions after Saturday qualifying
-py main.py predict --race canada --grid-override "antonelli:1,russell:3,norris:2"
+py main.py predict --race canada --grid-override "antonelli:1,hamilton:3,norris:2"
 
 # Get raw JSON output (useful for scripting)
 py main.py predict --race canada --json-out
