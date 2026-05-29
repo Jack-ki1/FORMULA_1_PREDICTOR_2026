@@ -225,7 +225,18 @@ After calibration:
 - "70% probability" actually happens ~70% of the time
 - The model becomes trustworthy for decision-making
 
-**Technical detail:** Platt scaling uses a sigmoid function with learned parameters (PLATT_A_WIN, PLATT_B_WIN) defined in `engine/probability_model.py`.
+**IMPORTANT NOTE:** As of v2.1, Platt calibration parameters are set to near-identity values (A≈1.0, B≈0.0) because we only have 4 races of data. This means calibration currently has minimal effect on raw probabilities. 
+
+**The architecture supports proper Platt calibration**, which will be fitted once sufficient historical race data is available (typically after 12+ races). Until then, predictions rely primarily on well-calibrated Monte Carlo simulation with realistic noise levels (σ=0.15-0.23).
+
+To fit proper calibration parameters after more races:
+```bash
+py scripts/recalibrate_model.py --fit-platt
+```
+
+This will use actual race outcomes to learn optimal A/B parameters for each outcome type (win/top3/top10/dnf).
+
+**Technical detail:** Platt scaling uses a sigmoid function with learned parameters defined in `engine/probability_model.py`. Separate parameters are maintained for each outcome type to preserve discrimination power.
 
 ---
 

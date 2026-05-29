@@ -289,13 +289,22 @@ def api(host: str, port: int, port_auto: bool, max_port: int, reload: bool):
         port = chosen_port
 
     app = FastAPI(
-
         title="F1 Race Prediction API",
         description="Probabilistic F1 race outcome prediction — 2026 season.",
         version="2.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )
+    
+    # FIX-4.5: Add CORS middleware for frontend access from different origins
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # For production, restrict to specific domains
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
+    
     app.include_router(router, prefix="/api/v1")
 
     console.print(f"\n[bold cyan]F1 Prediction API v2[/] → http://{host}:{port}")

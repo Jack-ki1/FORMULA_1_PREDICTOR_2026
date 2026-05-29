@@ -63,14 +63,7 @@ CIRCUITS: dict = {
     "miami": {
         "id": "miami", "name": "Miami International Autodrome",
         "city": "Miami Gardens", "country": "USA",
-        "round_2026": 4, "race_date": "2026-05-03", "sprint_weekend": True,
-        "circuit_type": ["street", "power_unit"], "lap_count": 57,
-        "lap_distance_km": 5.412, "total_distance_km": 308.484,
-        "safety_car_probability": 0.72, "overtaking_difficulty": 5,
-        "power_unit_demand": 7.5, "brake_demand": 7.5, "tire_deg_rate": 6.5,
-        "active_aero_demand": 7.0, "rain_probability_typical": 0.35,
-        "wall_crash_probability_per_lap": 0.004, "drs_zones": 3,
-        "team_historical_wins_since_2010": {"mercedes": 1, "red_bull": 2, "ferrari": 0, "mclaren": 1},
+        "round_2026": 6, "race_date": "2026-05-03", "sprint_weekend": True,
     },
 
     # ── Upcoming ─────────────────────────────────────────────────────────────
@@ -109,7 +102,7 @@ CIRCUITS: dict = {
     "spain": {
         "id": "spain", "name": "Circuit de Barcelona-Catalunya",
         "city": "Barcelona", "country": "Spain",
-        "round_2026": 7, "race_date": "2026-06-21", "sprint_weekend": False,
+        "round_2026": 7, "race_date": "2026-06-14", "sprint_weekend": False,
         "circuit_type": ["balanced", "high_downforce"], "lap_count": 66,
         "lap_distance_km": 4.657, "total_distance_km": 307.462,
         "safety_car_probability": 0.40, "overtaking_difficulty": 7,
@@ -136,7 +129,7 @@ CIRCUITS: dict = {
     "austria": {
         "id": "austria", "name": "Red Bull Ring",
         "city": "Spielberg", "country": "Austria",
-        "round_2026": 8, "race_date": "2026-06-28", "sprint_weekend": True,
+        "round_2026": 10, "race_date": "2026-06-28", "sprint_weekend": True,
         "circuit_type": ["power_unit", "balanced"], "lap_count": 71,
         "lap_distance_km": 4.318, "total_distance_km": 306.578,
         "safety_car_probability": 0.55, "overtaking_difficulty": 4,
@@ -149,7 +142,7 @@ CIRCUITS: dict = {
     "britain": {
         "id": "britain", "name": "Silverstone Circuit",
         "city": "Silverstone", "country": "United Kingdom",
-        "round_2026": 9, "race_date": "2026-07-06", "sprint_weekend": False,
+        "round_2026": 11, "race_date": "2026-07-05", "sprint_weekend": True,
         "circuit_type": ["balanced"], "lap_count": 52,
         "lap_distance_km": 5.891, "total_distance_km": 306.198,
         "safety_car_probability": 0.52, "overtaking_difficulty": 5,
@@ -162,7 +155,7 @@ CIRCUITS: dict = {
     "hungary": {
         "id": "hungary", "name": "Hungaroring",
         "city": "Budapest", "country": "Hungary",
-        "round_2026": 10, "race_date": "2026-07-20", "sprint_weekend": False,
+        "round_2026": 12, "race_date": "2026-07-19", "sprint_weekend": False,
         "circuit_type": ["technical", "high_downforce"], "lap_count": 70,
         "lap_distance_km": 4.381, "total_distance_km": 306.630,
         "safety_car_probability": 0.42, "overtaking_difficulty": 8,
@@ -175,7 +168,7 @@ CIRCUITS: dict = {
     "belgium": {
         "id": "belgium", "name": "Circuit de Spa-Francorchamps",
         "city": "Stavelot", "country": "Belgium",
-        "round_2026": 11, "race_date": "2026-07-26", "sprint_weekend": True,
+        "round_2026": 13, "race_date": "2026-07-26", "sprint_weekend": False,
         "circuit_type": ["balanced", "power_unit"], "lap_count": 44,
         "lap_distance_km": 7.004, "total_distance_km": 308.176,
         "safety_car_probability": 0.68, "overtaking_difficulty": 4,
@@ -188,7 +181,7 @@ CIRCUITS: dict = {
     "netherlands": {
         "id": "netherlands", "name": "Circuit Zandvoort",
         "city": "Zandvoort", "country": "Netherlands",
-        "round_2026": 12, "race_date": "2026-08-30", "sprint_weekend": False,
+        "round_2026": 14, "race_date": "2026-08-30", "sprint_weekend": True,
         "circuit_type": ["technical", "balanced"], "lap_count": 72,
         "lap_distance_km": 4.259, "total_distance_km": 306.648,
         "safety_car_probability": 0.62, "overtaking_difficulty": 8,
@@ -201,7 +194,7 @@ CIRCUITS: dict = {
     "italy": {
         "id": "italy", "name": "Autodromo Nazionale Monza",
         "city": "Monza", "country": "Italy",
-        "round_2026": 13, "race_date": "2026-09-06", "sprint_weekend": False,
+        "round_2026": 15, "race_date": "2026-09-06", "sprint_weekend": False,
         "circuit_type": ["power_unit"], "lap_count": 53,
         "lap_distance_km": 5.793, "total_distance_km": 306.720,
         "safety_car_probability": 0.55, "overtaking_difficulty": 3,
@@ -240,7 +233,7 @@ CIRCUITS: dict = {
     "usa": {
         "id": "usa", "name": "Circuit of The Americas",
         "city": "Austin", "country": "USA",
-        "round_2026": 16, "race_date": "2026-10-18", "sprint_weekend": True,
+        "round_2026": 19, "race_date": "2026-10-18", "sprint_weekend": False,
         "circuit_type": ["balanced", "technical"], "lap_count": 56,
         "lap_distance_km": 5.513, "total_distance_km": 308.405,
         "safety_car_probability": 0.58, "overtaking_difficulty": 5,

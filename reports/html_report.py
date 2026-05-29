@@ -163,20 +163,25 @@ def generate_report(
     # If we have raw data, use it for richer information
     if result.get("raw"):
         raw_predictions = result["raw"]["predictions"]
-        # Merge raw data with processed predictions
+        # BUG-04 FIX: Index raw predictions by driver_id for efficient lookup
+        raw_by_driver_id = {p["driver_id"]: p for p in raw_predictions}
+        
+        # Merge raw data with processed predictions using driver_id consistently
         for pred in predictions:
-            driver_id = pred.get("driver")
-            for raw_pred in raw_predictions:
-                if raw_pred["driver_name"] == driver_id:
-                    pred["driver_id"] = raw_pred["driver_id"]
-                    pred["win_probability"] = raw_pred["win_probability"]
-                    pred["top3_probability"] = raw_pred["top3_probability"]
-                    pred["top10_probability"] = raw_pred["top10_probability"]
-                    pred["dnf_probability"] = raw_pred["dnf_probability"]
-                    pred["teammate_beat_prob"] = raw_pred["teammate_beat_prob"]
-                    pred["composite_score"] = raw_pred["composite_score"]
-                    pred["position_distribution"] = raw_pred.get("position_distribution", [0] * 22)
-                    break
+            driver_id = pred.get('driver_id')  # Use actual ID like "antonelli"
+            if not driver_id:
+                continue
+            raw_p = raw_by_driver_id.get(driver_id, {})
+            pred.update({
+                "win_probability": raw_p.get("win_probability", pred.get("win_pct", 0) / 100),
+                "top3_probability": raw_p.get("top3_probability", pred.get("top3_pct", 0) / 100),
+                "top10_probability": raw_p.get("top10_probability", pred.get("top10_pct", 0) / 100),
+                "dnf_probability": raw_p.get("dnf_probability", pred.get("dnf_pct", 0) / 100),
+                "teammate_beat_prob": raw_p.get("teammate_beat_prob", 0.5),
+                "composite_score": raw_p.get("composite_score", 0.5),
+                "position_distribution": raw_p.get("position_distribution", [0] * field_size),
+                "features": raw_p.get("features", {}),
+            })
     
     # BUG-02 FIX: Normalize all keys to ensure both 'driver' and 'driver_name' exist
     for p in predictions:
@@ -186,6 +191,18 @@ def generate_report(
         # Ensure win_probability is the float version (not win_pct)
         if "win_probability" not in p:
             p["win_probability"] = p.get("win_pct", 0) / 100.0
+        # CRITICAL FIX: Ensure all probability fields exist with proper fallbacks
+        # Template expects top3_probability, top10_probability, dnf_probability, teammate_beat_prob
+        if "top3_probability" not in p:
+            p["top3_probability"] = p.get("top3_pct", 0) / 100.0
+        if "top10_probability" not in p:
+            p["top10_probability"] = p.get("top10_pct", 0) / 100.0
+        if "dnf_probability" not in p:
+            p["dnf_probability"] = p.get("dnf_pct", 0) / 100.0
+        if "teammate_beat_prob" not in p:
+            p["teammate_beat_prob"] = p.get("teammate_beat_pct", 0) / 100.0
+        if "composite_score" not in p:
+            p["composite_score"] = p.get("composite_score", 0.5)  # Default neutral score
     
     # FIX: Assign proper sequential positions
     predictions = _assign_positions(predictions)

@@ -17,15 +17,26 @@ import math
 import random
 import numpy as np
 from typing import Optional, List
+import logging
 
 from engine.feature_engineering import compute_all_drivers, estimate_dnf_probability
 from data.driver_data import get_all_drivers
+# BUG-02 FIX: Move circuit data fetch outside simulation loop - no need to call importlib 5000 times
+from data.circuit_data import get_circuit as _get_circuit
+
+# Set up structured logging
+logger = logging.getLogger(__name__)
 
 # BUG-01 FIX: Separate Platt scaling parameters per outcome type
 # Each outcome requires independent calibration to preserve discrimination power
 # NEW-01 CALIBRATION UPDATE: Adjusted for increased simulation variance (σ=0.15-0.23).
 # With realistic noise levels, raw win probabilities fall in 15-35% range for favorites.
 # Calibration should gently correct systematic biases without amplifying or compressing.
+#
+# NOTE: These are PLACEHOLDER values pending real calibration data from 12+ races.
+# After sufficient historical data is collected, use scripts/recalibrate_model.py --fit-platt
+# to fit proper parameters. Currently these are near-identity transforms that don't significantly
+# alter raw simulation probabilities. See README section on Platt calibration limitations.
 PLATT_PARAMS = {
     "win":   {"A": 1.05, "B": -0.02},  # Near-identity: gentle correction only
     "top3":  {"A": 1.03, "B": -0.01},  # Minimal adjustment
@@ -42,6 +53,8 @@ def _get_field_size() -> int:
     """Return the number of active drivers in the current season."""
     return len(get_all_drivers())
 
+# NOTE: FIELD_SIZE is computed once at module import time. If you add/remove drivers
+# during runtime, restart the process. For dynamic field size, see simulate_race().
 FIELD_SIZE = _get_field_size()
 BASE_RACE_LAPS = 60   # Normalisation baseline for DNF distance scaling
 
@@ -103,6 +116,7 @@ def simulate_race(
     n_runs: int = SIMULATION_RUNS,
     seed: Optional[int] = None,
     grid_overrides: Optional[dict] = None,
+    driver_features: Optional[list] = None,  # FIX-3.2: Accept pre-computed features
 ) -> dict:
     """
     Monte Carlo race simulation with v2 accuracy improvements.
@@ -112,14 +126,23 @@ def simulate_race(
       - Per-circuit noise level (SC probability drives variance)
       - DNF probability adjusted for circuit lap count
       - Position counter bounded at FIELD_SIZE properly
+    
+    BUG-02 FIX: Circuit data fetched once before loop, not 5000 times via importlib.
+    BUG-03 FIX: FIELD_SIZE computed dynamically per simulation to handle driver changes.
+    FIX-3.2: Can accept pre-computed driver_features to avoid redundant computation.
     """
-    driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
-
-    import importlib
-    cd = importlib.import_module("data.circuit_data")
-    circuit = cd.get_circuit(circuit_id)
+    # BUG-02 FIX: Fetch circuit data ONCE before the simulation loop
+    circuit = _get_circuit(circuit_id)
     sc_prob     = circuit.get("safety_car_probability", 0.5)
     circuit_laps = circuit.get("lap_count", 60)
+    
+    # BUG-03 FIX: Compute field size dynamically instead of using stale module-level constant
+    drivers = get_all_drivers()
+    field_size = len(drivers)
+    
+    # FIX-3.2: Use pre-computed features if provided, otherwise compute them
+    if driver_features is None:
+        driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
 
     # FIX: noise scaled by circuit chaos (SC probability)
     # NEW-01 CALIBRATION FIX: Previous noise levels were far too low, causing unrealistic
@@ -142,7 +165,8 @@ def simulate_race(
     # FIX: distance-adjusted DNF multiplier
     dnf_mult = _distance_dnf_multiplier(circuit_laps)
 
-    finish_counts = {d["driver_id"]: [0] * (FIELD_SIZE + 2) for d in driver_features}
+    # BUG-03 FIX: Use dynamic field_size instead of static FIELD_SIZE constant
+    finish_counts = {d["driver_id"]: [0] * (field_size + 2) for d in driver_features}
     top3_counts   = {d["driver_id"]: 0 for d in driver_features}
     top10_counts  = {d["driver_id"]: 0 for d in driver_features}
     win_counts    = {d["driver_id"]: 0 for d in driver_features}
@@ -156,7 +180,10 @@ def simulate_race(
 
 
     for _ in range(n_runs):
-        # 1. Jitter scores with circuit-appropriate noise
+        # 1. Store original grid ranks before jitter (for SC boost calculation)
+        grid_ranks = {d["driver_id"]: i for i, d in enumerate(driver_features)}
+        
+        # 2. Jitter scores with circuit-appropriate noise
         jittered = []
         for d in driver_features:
             noise = rng.gauss(0, circuit_noise_sigma)
@@ -169,26 +196,29 @@ def simulate_race(
         # Sort by score before SC event
         jittered.sort(key=lambda x: x[1], reverse=True)
 
-        # 2. FIX: Safety car — boosts mid-field drivers (P6–P15), not leaders
-        # V1 was boosting drivers indexed 4+ by *score* (i.e., the frontrunners)
-        # The correct behaviour: SC compresses the field, giving pitting opportunities
-        # to those already behind. We boost the *lower-ranked* drivers.
+        # 3. FIX-6.1: Safety car — boosts mid-field drivers based on ORIGINAL grid position
+        # Previously applied SC boost to post-jitter rankings, which was wrong because
+        # a driver ranked P3 might jitter to P7 and incorrectly get a mid-field boost.
+        # The correct behavior: SC events help drivers who STARTED from P6-P15 on the grid.
         if rng.random() < sc_prob:
             boosted = []
             for rank, (did, score, dnf) in enumerate(jittered):
-                if 5 <= rank <= 14 and not dnf:  # P6–P15 in current order
+                original_grid_rank = grid_ranks[did]
+                # Boost drivers who started from grid positions P6-P15 (indices 5-14)
+                if 5 <= original_grid_rank <= 14 and not dnf:
                     score = score * rng.uniform(1.03, 1.10)
                 boosted.append((did, score, dnf))
             jittered = boosted
 
-        # 3. Sort final order
+        # 4. Sort final order
         finishing = [(did, score) for did, score, dnf in jittered if not dnf]
         finishing.sort(key=lambda x: x[1], reverse=True)
         dnfs = [(did,) for did, score, dnf in jittered if dnf]
 
-        # 4. Record positions
+        # 5. Record positions
         for pos, (did, _) in enumerate(finishing, start=1):
-            if pos <= FIELD_SIZE:
+            # BUG-03 FIX: Use dynamic field_size to avoid dropping finishers
+            if pos <= field_size:
                 finish_counts[did][pos] += 1
             if pos == 1:  win_counts[did]  += 1
             if pos <= 3:  top3_counts[did] += 1
@@ -202,9 +232,10 @@ def simulate_race(
     for d in driver_features:
         did = d["driver_id"]
         non_dnf = max(n_runs - dnf_counts[did], 1)
+        # BUG-03 FIX: Use dynamic field_size for expected position calculation
         exp_pos = sum(
             pos * finish_counts[did][pos]
-            for pos in range(1, FIELD_SIZE + 1)
+            for pos in range(1, field_size + 1)
         ) / non_dnf
 
         stats[did] = {
@@ -213,7 +244,7 @@ def simulate_race(
             "top10_probability":      round(top10_counts[did] / n_runs, 4),
             "dnf_probability":        round(dnf_counts[did] / n_runs, 4),
             "expected_position":      round(exp_pos, 2),
-            "position_distribution":  finish_counts[did][1:FIELD_SIZE + 1],
+            "position_distribution":  finish_counts[did][1:field_size + 1],
         }
 
     return stats
@@ -226,13 +257,32 @@ def predict_race(
     seed: Optional[int] = None,
     grid_overrides: Optional[dict] = None,
 ) -> dict:
-    """Master prediction function — returns ranked driver list with all probability outputs."""
+    """Master prediction function — returns ranked driver list with all probability outputs.
+    
+    FIX-3.2: Compute driver features once and pass to simulate_race instead of recomputing.
+    """
     from engine.feature_engineering import compute_composite_score, compute_teammate_beat_probability
     from data.driver_data import get_all_drivers as _get_all
+    
+    import time
+    t0 = time.perf_counter()
+    logger.info("prediction.start", circuit=circuit_id, n_sims=n_simulations, seed=seed)
 
-    sim_stats = simulate_race(circuit_id, rain_probability, n_simulations, seed, grid_overrides)
-    # BUG-05 FIX: Pass grid_overrides to compute_all_drivers so features match simulation
+    # FIX-3.2: Compute features ONCE and reuse for both simulation and final output
     driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
+    
+    sim_stats = simulate_race(
+        circuit_id=circuit_id,
+        rain_probability=rain_probability,
+        n_runs=n_simulations,
+        seed=seed,
+        grid_overrides=grid_overrides,
+        driver_features=driver_features,  # Pass pre-computed features
+    )
+    
+    duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+    logger.info("prediction.complete", circuit=circuit_id, duration_ms=duration_ms)
+    
     all_drivers = {d["id"]: d for d in _get_all()}
 
     predictions = []

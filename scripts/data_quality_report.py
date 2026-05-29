@@ -193,8 +193,9 @@ def check_calendar_vs_circuits() -> tuple:
     BUG-07 FIX: Cross-reference calendar circuit IDs against circuit_data.
     
     Ensures every circuit referenced in the calendar actually exists in the
-    circuit database. Prevents silent failures when predicting races with
-    missing circuit definitions.
+    circuit database AND that round numbers match between both sources.
+    Prevents silent failures when predicting races with missing or mismatched
+    circuit definitions.
     """
     from data.calendar_2026 import CALENDAR_2026
     from data.circuit_data import CIRCUITS
@@ -208,7 +209,14 @@ def check_calendar_vs_circuits() -> tuple:
             _fail(f"Round {race['round']} ({race['name']}): circuit '{circuit_id}' missing from circuit_data.py")
             issues += 1
         else:
-            passes += 1
+            # Check round number consistency
+            circuit_round = CIRCUITS[circuit_id].get("round_2026")
+            calendar_round = race["round"]
+            if circuit_round != calendar_round:
+                _warn(f"Round mismatch for {circuit_id}: calendar says R{calendar_round}, circuit_data says R{circuit_round}")
+                warnings += 1
+            else:
+                passes += 1
 
     if issues == 0:
         _ok(f"All {len(CALENDAR_2026)} calendar circuits found in circuit database")

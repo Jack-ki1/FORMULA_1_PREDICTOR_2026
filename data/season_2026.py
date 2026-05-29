@@ -119,7 +119,6 @@ DRIVER_STANDINGS_AFTER_R4: list = [
     {"position": 19, "driver": "ocon",       "points": 1},
     {"position": 20, "driver": "stroll",     "points": 0},
     {"position": 21, "driver": "alonso",     "points": 0},
-    {"position": 22, "driver": "zhou",       "points": 0},   # Reserve driver
 ]
 
 CONSTRUCTOR_STANDINGS_AFTER_R4: list = [

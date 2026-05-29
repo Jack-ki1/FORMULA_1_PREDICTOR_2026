@@ -167,5 +167,7 @@ logs/
 
 # DEPLOY-01 FIX: Remove blanket *.json exclusion - it breaks deployment of web/predictions/*.json
 # Only exclude specific output JSON files, not all JSON files
-output_test.json  # This is a 168KB test output file that should not be in version control
-data/historical/**/*.json  # Historical prediction snapshots (too large)
+# This is a 168KB test output file that should not be in version control
+output_test.json
+# Historical prediction snapshots (too large)
+data/historical/**/*.json

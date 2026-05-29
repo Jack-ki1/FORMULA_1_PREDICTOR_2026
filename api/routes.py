@@ -22,6 +22,7 @@ FIXES vs v1:
 
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
+from fastapi.concurrency import run_in_threadpool
 
 from api.schemas import (
     RacePredictionResponse, RaceMetaOut, DriverPredictionOut,
@@ -43,7 +44,26 @@ router = APIRouter()
 
 @router.get("/health", tags=["System"])
 async def health_check():
-    return {"status": "ok", "system": "F1 Prediction Engine 2026", "version": "2.0"}
+    # FIX-8.2: Enhanced health check that verifies model readiness
+    try:
+        from data.driver_data import get_all_drivers
+        from data.circuit_data import get_all_circuits
+        n_drivers = len(get_all_drivers())
+        n_circuits = len(get_all_circuits())
+        return {
+            "status": "ok",
+            "system": "F1 Prediction Engine 2026",
+            "version": "2.0",
+            "active_drivers": n_drivers,
+            "circuits_loaded": n_circuits,
+            "model_ready": n_drivers >= 20 and n_circuits >= 24,
+        }
+    except Exception as e:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "error": str(e)}
+        )
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -75,12 +95,14 @@ async def predict_race(
         raise HTTPException(status_code=404, detail=f"Circuit '{circuit_id}' not found. "
                             f"Check GET /circuits for available IDs.")
     try:
-        result = predict(PredictionRequest(
+        # FIX-3.3: Run CPU-heavy prediction in thread pool to avoid blocking event loop
+        request = PredictionRequest(
             circuit_id=circuit_id,
             rain_probability=rain_probability,
             n_simulations=n_simulations,
             seed=seed,
-        ))
+        )
+        result = await run_in_threadpool(predict, request)
         return _result_to_response(result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
@@ -98,12 +120,14 @@ async def predict_winner(
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Circuit '{circuit_id}' not found.")
     try:
-        result = predict(PredictionRequest(
+        # FIX-3.3: Run CPU-heavy prediction in thread pool
+        request = PredictionRequest(
             circuit_id=circuit_id,
             rain_probability=rain_probability,
             n_simulations=n_simulations,
             output_format="summary",
-        ))
+        )
+        result = await run_in_threadpool(predict, request)
         top5 = sorted(result["predictions"], key=lambda x: x["win_pct"], reverse=True)[:5]
         return WinnerPredictionResponse(
             circuit=circuit_id,
@@ -125,8 +149,13 @@ async def predict_dnf(
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Circuit '{circuit_id}' not found.")
     try:
-        result = predict(PredictionRequest(circuit_id=circuit_id, n_simulations=n_simulations,
-                                           output_format="summary"))
+        # FIX-3.3: Run CPU-heavy prediction in thread pool
+        request = PredictionRequest(
+            circuit_id=circuit_id,
+            n_simulations=n_simulations,
+            output_format="summary"
+        )
+        result = await run_in_threadpool(predict, request)
         dnf_list = sorted(result["predictions"], key=lambda x: x["dnf_pct"], reverse=True)
         return DNFProbabilityResponse(
             circuit=circuit_id,
@@ -145,13 +174,15 @@ async def custom_simulation(request: SimulationRequest):
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Circuit '{request.race_id}' not found.")
     try:
-        result = predict(PredictionRequest(
+        # FIX-3.3: Run CPU-heavy prediction in thread pool
+        pred_request = PredictionRequest(
             circuit_id=request.race_id,
             rain_probability=request.rain_probability,
             n_simulations=request.n_simulations or 5000,
             seed=request.seed,
             grid_overrides=request.grid_overrides or {},
-        ))
+        )
+        result = await run_in_threadpool(predict, pred_request)
         return _result_to_response(result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

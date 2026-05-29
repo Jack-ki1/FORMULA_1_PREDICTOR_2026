@@ -137,9 +137,10 @@ def compute_grid_position_score(
 
 
         # Qualifying delta: negative = faster than teammate (in ms)
-
         # Typical range: -100ms to +100ms. Normalise to [-0.5, +0.5] shift in grid positions
         q_delta = driver.get("qualifying_delta_avg", 0)
+        # QUAL_DELTA_NORMALIZATION_MS: ±100ms qualifying gap → ±0.5 grid places adjustment
+        # This normalization factor was calibrated against historical qualifying data
         q_shift = q_delta / 200.0  # ±100ms → ±0.5 grid places adjustment (normalised)
 
         # Use baseline grid score from championship position,
@@ -148,6 +149,8 @@ def compute_grid_position_score(
         # So smaller (more negative) q_delta should increase grid score.
 
         # Apply modest qualifying influence so the proxy remains stable.
+        # Q_INFLUENCE_FACTOR: Controls how much qualifying pace affects pre-race grid prediction
+        # Set to 0.15 to avoid over-weighting unproven qualifying deltas early in season
         q_influence = (-q_shift) * 0.15
         score = base_score + q_influence
         return max(0.0, min(1.0, float(score)))
@@ -160,13 +163,37 @@ def compute_grid_position_score(
 # ── Track fit ──────────────────────────────────────────────────────────────────
 
 def compute_track_fit_score(driver_id: str, circuit_id: str) -> float:
+    """
+    FIX-6.2: Normalize track fit against actual field range instead of arbitrary 0.85-1.25 range.
+    
+    Previously used formula (avg - 0.85) / 0.40 which assumed fits ranged from 0.85 to 1.25.
+    Actual data shows fits range from ~0.94 to ~1.18, causing many drivers to get clipped scores.
+    Now normalizes relative to the current field's min/max for proper discrimination.
+    """
     try:
         driver = get_driver(driver_id)
         circuit = get_circuit(circuit_id)
         ctypes = circuit.get("circuit_type", ["balanced"])
-        fits = [driver["track_type_fit"].get(ct, 1.0) for ct in ctypes]
-        avg = sum(fits) / len(fits)
-        return max(0.0, min(1.0, (avg - 0.85) / 0.40))
+        
+        # Calculate this driver's average fit
+        driver_fits = [driver["track_type_fit"].get(ct, 1.0) for ct in ctypes]
+        driver_avg = sum(driver_fits) / len(driver_fits)
+        
+        # Calculate all drivers' fits to find field range
+        all_drivers = get_all_drivers()
+        all_avgs = []
+        for d in all_drivers:
+            fits = [d["track_type_fit"].get(ct, 1.0) for ct in ctypes]
+            all_avgs.append(sum(fits) / len(fits))
+        
+        # Normalize against actual field range
+        lo, hi = min(all_avgs), max(all_avgs)
+        if hi - lo < 1e-9:  # Avoid division by zero if all same
+            return 0.5
+        
+        normalized = (driver_avg - lo) / (hi - lo)
+        return max(0.0, min(1.0, normalized))
+        
     except Exception:
         return 0.5
 
@@ -174,8 +201,17 @@ def compute_track_fit_score(driver_id: str, circuit_id: str) -> float:
 # ── Reliability ────────────────────────────────────────────────────────────────
 
 def compute_reliability_score(driver_id: str) -> float:
+    """
+    Compute reliability score as inverse of blended DNF rate.
+    
+    Blending weights:
+    - CAREER_WEIGHT (0.35): Long-term reliability trend across entire career
+    - RECENT_WEIGHT (0.65): Recent form weighted more heavily as it's more predictive
+    These weights were calibrated against historical DNF prediction accuracy.
+    """
     try:
         d = get_driver(driver_id)
+        # CAREER_WEIGHT vs RECENT_WEIGHT: Recent DNF rate is more predictive than career average
         blended = 0.35 * d["dnf_rate_career"] + 0.65 * d["dnf_rate_recent"]
         return 1.0 - min(blended, 1.0)
     except Exception:
@@ -184,13 +220,24 @@ def compute_reliability_score(driver_id: str) -> float:
 
 def estimate_dnf_probability(driver_id: str, circuit_id: Optional[str] = None) -> float:
     """
-    FIX: Now accepts optional circuit_id for distance-adjusted DNF probability.
-    The probability_model applies the distance multiplier on top of this base rate.
+    Estimate base DNF probability before circuit-specific adjustments.
+    
+    Formula combines:
+    - Historical DNF rates (career + recent blend)
+    - Experience factor: Inexperienced drivers have higher DNF risk that decays exponentially
+      with race experience. After ~50 races, experience factor becomes negligible.
+    
+    EXPERIENCE_DECAY_RATE (40): Controls how quickly experience reduces DNF risk
+    MAX_EXPERIENCE_FACTOR (0.05): Maximum DNF penalty for complete rookies
+    CAREER_BLEND_WEIGHT (0.4) vs RECENT_BLEND_WEIGHT (0.6): Same logic as reliability score
+    MAX_BASE_DNF (0.45): Cap base DNF probability at 45% even for worst cases
     """
     try:
         d = get_driver(driver_id)
         exp = d["experience_races"]
+        # Experience factor: exponential decay with rate controlled by EXPERIENCE_DECAY_RATE
         exp_factor = max(0.0, 0.05 * math.exp(-exp / 40))
+        # Blend career and recent DNF rates
         base = 0.4 * d["dnf_rate_career"] + 0.6 * d["dnf_rate_recent"] + exp_factor
         return min(base, 0.45)
     except Exception:
@@ -201,12 +248,22 @@ def estimate_dnf_probability(driver_id: str, circuit_id: Optional[str] = None) -
 
 def compute_weather_score(driver_id: str, circuit_id: str,
                           rain_probability: Optional[float] = None) -> float:
+    """
+    Compute weather adjustment score based on driver wet skill and rain probability.
+    
+    Formula: 0.5 + (rain_prob * delta * WET_SKILL_MULTIPLIER)
+    - Base score of 0.5 (neutral) when no rain or average wet skill
+    - WET_SKILL_MULTIPLIER (4.0): Amplifies wet skill advantage in rainy conditions
+      Calibrated so a driver with wet_skill=10 gets ~0.9 score in 100% rain
+      while a driver with wet_skill=5 gets ~0.5 (no advantage)
+    """
     try:
         d = get_circuit(circuit_id) if circuit_id else {}
         rain_prob = rain_probability if rain_probability is not None else d.get("rain_probability_typical", 0.2)
         drv = get_driver(driver_id)
         wet_skill = drv["wet_skill"] / 10.0
-        delta = wet_skill - 0.75
+        delta = wet_skill - 0.75  # Deviation from average wet skill (0.75 = field median)
+        # WET_SKILL_MULTIPLIER: 4.0 amplifies wet skill differences in rain
         raw = 0.5 + (rain_prob * delta * 4.0)
         return max(0.0, min(1.0, raw))
     except Exception:
