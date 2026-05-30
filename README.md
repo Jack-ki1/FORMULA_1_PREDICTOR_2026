@@ -703,7 +703,7 @@ Similarly, points probability is always ≥ podium probability.
 
 ## HTML Report
 
-<img src="report.png" alt="HTML Report" width="600"/>
+<img src="sc2.png" alt="HTML Report" width="600"/>
 ---
 
 ## 🌐 REST API Guide
