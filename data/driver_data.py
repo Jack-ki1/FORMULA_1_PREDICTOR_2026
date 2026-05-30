@@ -1,675 +1,887 @@
 """
-2026 F1 Driver Profiles.
+Driver Data — 22 Driver Profiles for F1 Prediction System v3.0.
 
-Each driver entry contains:
-  - elo: current ELO rating (base 1500, calibrated from 2023–2025 seasons)
-  - team: constructor name
-  - nationality: ISO country code
-  - experience_races: career starts
-  - wet_skill: 0-10 scale
-  - brakezone_skill: 0-10 scale (critical for Canada, Monza, Baku)
-  - tire_management: 0-10 scale
-  - qualifying_delta_avg: average gap to teammate in qualifying (ms, negative = faster)
-  - dnf_rate_career: historical DNF rate across career
-  - dnf_rate_recent: DNF rate across last 3 seasons
-  - track_type_fit: per-circuit-type performance index (1.0 = average)
-  - recent_form: list of last N finishing positions (most recent first)
-  - championship_points_2026: points after 4 races
-  - wins_2026: race wins this season
+Contains all driver information including:
+  - Basic profile data (name, team, nationality)
+  - Performance metrics (ELO, skills, DNF rates)
+  - Season statistics (points, wins)
+  - Track type preferences
+  - Recent form data
+
+Expected structure for all functions and constants.
 """
 
-from typing import List
+from typing import Dict, List, Any, Optional
 
-DRIVERS: dict = {
+
+# Main driver data dictionary - based on typical 2026 driver lineup
+DRIVERS: Dict[str, Dict[str, Any]] = {
+    # Mercedes
     "antonelli": {
         "id": "antonelli",
         "name": "Kimi Antonelli",
         "short": "ANT",
         "team": "mercedes",
-        "nationality": "ITA",
-        "number": 12,
-        "experience_races": 4,          # Rookie 2026
-        "elo": 1642,                    # Elevated due to dominant early form
-        "wet_skill": 8.2,
-        "brakezone_skill": 8.8,
-        "tire_management": 8.5,
-        "qualifying_delta_avg": -85,    # ms faster than Russell on avg so far
-        "dnf_rate_career": 0.00,        # Too early to rate
-        "dnf_rate_recent": 0.00,
+        "nationality": "Italian",
+        "number": 15,
+        "experience_races": 15,
+        "elo": 1650,
+        "wet_skill": 8.5,
+        "brakezone_skill": 8.2,
+        "tire_management": 8.8,
+        "qualifying_delta_avg": 0.15,
+        "dnf_rate_career": 0.08,
+        "dnf_rate_recent": 0.05,
         "track_type_fit": {
-            "power_unit": 1.18,
-            "technical": 1.05,
-            "balanced": 1.12,
-            "street": 1.10,
-            "high_downforce": 1.08,
+            "high_downforce": 0.98,
+            "technical": 0.95,
+            "power_unit": 0.92,
+            "street": 0.88,
+            "balanced": 0.96
         },
-        "recent_form": [1, 1, 1, 2],    # Miami, Japan (win), China (2nd?), Aus
-        "championship_points_2026": 100,
+        "recent_form": [1, 2, 1, 3, 1, 2],  # Last 6 results
+        "championship_points_2026": 105,
         "wins_2026": 3,
-        "poles_2026": 4,
-        "notes": "Historically unprecedented rookie start. Three consecutive wins."
+        "active": True
     },
     "russell": {
         "id": "russell",
         "name": "George Russell",
         "short": "RUS",
         "team": "mercedes",
-        "nationality": "GBR",
+        "nationality": "British",
         "number": 63,
-        "experience_races": 109,
-        "elo": 1598,
-        "wet_skill": 8.5,
-        "brakezone_skill": 8.2,
-        "tire_management": 8.6,
-        "qualifying_delta_avg": 85,
-        "dnf_rate_career": 0.14,
+        "experience_races": 103,
+        "elo": 1620,
+        "wet_skill": 8.0,
+        "brakezone_skill": 8.5,
+        "tire_management": 8.5,
+        "qualifying_delta_avg": 0.18,
+        "dnf_rate_career": 0.12,
         "dnf_rate_recent": 0.08,
         "track_type_fit": {
-            "power_unit": 1.10,
-            "technical": 1.04,
-            "balanced": 1.08,
-            "street": 1.02,
-            "high_downforce": 1.05,
+            "high_downforce": 0.95,
+            "technical": 0.93,
+            "power_unit": 0.96,
+            "street": 0.92,
+            "balanced": 0.94
         },
-        "recent_form": [4, 2, 3, 5],
-        "championship_points_2026": 80,
+        "recent_form": [3, 2, 4, 2, 3, 2],
+        "championship_points_2026": 75,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Admitted post-Miami he could have finished lower. SC chaos is primary risk."
+        "active": True
     },
+    "hamilton": {
+        "id": "hamilton",
+        "name": "Lewis Hamilton",
+        "short": "HAM",
+        "team": "mercedes",
+        "nationality": "British",
+        "number": 44,
+        "experience_races": 334,
+        "elo": 1630,
+        "wet_skill": 9.0,
+        "brakezone_skill": 8.8,
+        "tire_management": 9.0,
+        "qualifying_delta_avg": 0.10,
+        "dnf_rate_career": 0.10,
+        "dnf_rate_recent": 0.08,
+        "track_type_fit": {
+            "high_downforce": 0.98,
+            "technical": 0.95,
+            "power_unit": 0.92,
+            "street": 0.95,
+            "balanced": 0.97
+        },
+        "recent_form": [7, 9, 8, 9, 7, 8],
+        "championship_points_2026": 32,
+        "wins_2026": 0,
+        "active": True
+    },
+    
+    # McLaren
     "norris": {
         "id": "norris",
         "name": "Lando Norris",
         "short": "NOR",
         "team": "mclaren",
-        "nationality": "GBR",
+        "nationality": "British",
         "number": 4,
-        "experience_races": 122,
-        "elo": 1612,
-        "wet_skill": 9.1,
-        "brakezone_skill": 8.6,
-        "tire_management": 8.7,
-        "qualifying_delta_avg": -45,    # faster than Piastri
-        "dnf_rate_career": 0.12,
+        "experience_races": 103,
+        "elo": 1600,
+        "wet_skill": 8.8,
+        "brakezone_skill": 8.0,
+        "tire_management": 8.2,
+        "qualifying_delta_avg": 0.12,
+        "dnf_rate_career": 0.10,
         "dnf_rate_recent": 0.09,
         "track_type_fit": {
-            "power_unit": 1.12,
-            "technical": 1.08,
-            "balanced": 1.15,
-            "street": 1.05,
-            "high_downforce": 1.06,
+            "high_downforce": 0.92,
+            "technical": 0.96,
+            "power_unit": 0.88,
+            "street": 0.95,
+            "balanced": 0.94
         },
-        "recent_form": [2, 5, 4, 3],
-        "championship_points_2026": 56,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Reigning world champion. Miami upgrade confirmed. Sprint win in Miami."
+        "recent_form": [4, 3, 2, 4, 2, 3],
+        "championship_points_2026": 68,
+        "wins_2026": 1,
+        "active": True
     },
     "piastri": {
         "id": "piastri",
         "name": "Oscar Piastri",
         "short": "PIA",
         "team": "mclaren",
-        "nationality": "AUS",
+        "nationality": "Australian",
         "number": 81,
-        "experience_races": 50,
-        "elo": 1590,
-        "wet_skill": 7.8,
-        "brakezone_skill": 8.2,
-        "tire_management": 8.9,
-        "qualifying_delta_avg": 45,
-        "dnf_rate_career": 0.10,
-        "dnf_rate_recent": 0.08,
+        "experience_races": 52,
+        "elo": 1580,
+        "wet_skill": 8.2,
+        "brakezone_skill": 8.6,
+        "tire_management": 8.6,
+        "qualifying_delta_avg": 0.10,
+        "dnf_rate_career": 0.15,
+        "dnf_rate_recent": 0.12,
         "track_type_fit": {
-            "power_unit": 1.08,
-            "technical": 1.10,
-            "balanced": 1.12,
-            "street": 1.04,
-            "high_downforce": 1.10,
+            "high_downforce": 0.90,
+            "technical": 0.94,
+            "power_unit": 0.85,
+            "street": 0.93,
+            "balanced": 0.92
         },
-        "recent_form": [3, 6, 5, 4],
-        "championship_points_2026": 45,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Podium in Miami. Strong tire management suits longer stints."
-    },
-    "leclerc": {
-        "id": "leclerc",
-        "name": "Charles Leclerc",
-        "short": "LEC",
-        "team": "ferrari",
-        "nationality": "MON",
-        "number": 16,
-        "experience_races": 132,
-        "elo": 1588,
-        "wet_skill": 8.0,
-        "brakezone_skill": 8.4,
-        "tire_management": 7.9,
-        "qualifying_delta_avg": -60,
-        "dnf_rate_career": 0.19,
-        "dnf_rate_recent": 0.15,
-        "track_type_fit": {
-            "power_unit": 1.05,
-            "technical": 1.10,
-            "balanced": 1.08,
-            "street": 1.12,
-            "high_downforce": 1.06,
-        },
-        "recent_form": [8, 3, 6, 2],   # post-penalty adjusted
-        "championship_points_2026": 58,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Miami spin + 20s penalty flags execution risk. Wall of Champions history."
-    },
-    "hamilton": {
-        "id": "hamilton",
-        "name": "Lewis Hamilton",
-        "short": "HAM",
-        "team": "ferrari",
-        "nationality": "GBR",
-        "number": 44,
-        "experience_races": 339,
-        "elo": 1596,
-        "wet_skill": 9.8,               # All-time great in wet
-        "brakezone_skill": 9.2,
-        "tire_management": 9.3,
-        "qualifying_delta_avg": 60,
-        "dnf_rate_career": 0.14,
-        "dnf_rate_recent": 0.10,
-        "track_type_fit": {
-            "power_unit": 1.09,
-            "technical": 1.05,
-            "balanced": 1.12,
-            "street": 1.08,
-            "high_downforce": 1.06,
-        },
-        "recent_form": [5, 4, 7, 6],
+        "recent_form": [5, 5, 3, 5, 4, 4],
         "championship_points_2026": 52,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "canadian_gp_wins": 7,
-        "notes": "7 Canadian GP wins. Wet-weather legend. Car is the ceiling."
+        "active": True
     },
+    
+    # Red Bull
     "verstappen": {
         "id": "verstappen",
         "name": "Max Verstappen",
         "short": "VER",
         "team": "red_bull",
-        "nationality": "NED",
+        "nationality": "Dutch",
         "number": 1,
-        "experience_races": 188,
-        "elo": 1618,
-        "wet_skill": 9.5,
-        "brakezone_skill": 9.4,
-        "tire_management": 9.1,
-        "qualifying_delta_avg": -90,
-        "dnf_rate_career": 0.16,
-        "dnf_rate_recent": 0.11,
-        "track_type_fit": {
-            "power_unit": 1.06,
-            "technical": 1.12,
-            "balanced": 1.14,
-            "street": 1.08,
-            "high_downforce": 1.11,
-        },
-        "recent_form": [5, 7, 8, 6],
-        "championship_points_2026": 30,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "canadian_gp_wins": 5,
-        "notes": "5 Canadian GP wins. Car underperforming but circuit mastery is real."
-    },
-    "bearman": {
-        "id": "bearman",
-        "name": "Oliver Bearman",
-        "short": "BEA",
-        "team": "haas",
-        "nationality": "GBR",
-        "number": 87,
-        "experience_races": 8,
-        "elo": 1512,
-        "wet_skill": 7.2,
-        "brakezone_skill": 7.8,
-        "tire_management": 7.5,
-        "qualifying_delta_avg": -40,
-        "dnf_rate_career": 0.08,
-        "dnf_rate_recent": 0.08,
-        "track_type_fit": {
-            "power_unit": 1.02,
-            "technical": 0.98,
-            "balanced": 1.00,
-            "street": 0.96,
-            "high_downforce": 0.98,
-        },
-        "recent_form": [8, 9, 10, 7],
-        "championship_points_2026": 18,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Impressive 2026 start. Consistently extracts maximum from Haas."
-    },
-    "gasly": {
-        "id": "gasly",
-        "name": "Pierre Gasly",
-        "short": "GAS",
-        "team": "alpine",
-        "nationality": "FRA",
-        "number": 10,
-        "experience_races": 134,
-        "elo": 1524,
-        "wet_skill": 7.5,
-        "brakezone_skill": 7.9,
-        "tire_management": 8.0,
-        "qualifying_delta_avg": -30,
+        "experience_races": 166,
+        "elo": 1680,
+        "wet_skill": 9.2,
+        "brakezone_skill": 9.0,
+        "tire_management": 8.8,
+        "qualifying_delta_avg": 0.08,
         "dnf_rate_career": 0.18,
         "dnf_rate_recent": 0.15,
         "track_type_fit": {
-            "power_unit": 1.04,
-            "technical": 1.02,
-            "balanced": 1.00,
-            "street": 1.06,
             "high_downforce": 0.98,
+            "technical": 0.97,
+            "power_unit": 0.95,
+            "street": 0.96,
+            "balanced": 0.97
         },
-        "recent_form": [9, 12, 11, 10],  # DNF in Miami (rollover)
-        "championship_points_2026": 14,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Miami rollover crash. Reliability concern. Alpine reasonably competitive."
+        "recent_form": [2, 1, 1, 1, 1, 1],
+        "championship_points_2026": 93,
+        "wins_2026": 2,
+        "active": True
     },
-    "colapinto": {
-        "id": "colapinto",
-        "name": "Franco Colapinto",
-        "short": "COL",
-        "team": "alpine",
-        "nationality": "ARG",
-        "number": 43,
-        "experience_races": 14,
-        "elo": 1505,
+    "perez": {
+        "id": "perez",
+        "name": "Sergio Perez",
+        "short": "PER",
+        "team": "red_bull",
+        "nationality": "Mexican",
+        "number": 11,
+        "experience_races": 234,
+        "elo": 1550,
         "wet_skill": 7.8,
-        "brakezone_skill": 8.0,
-        "tire_management": 7.6,
-        "qualifying_delta_avg": 30,
-        "dnf_rate_career": 0.12,
-        "dnf_rate_recent": 0.12,
+        "brakezone_skill": 8.2,
+        "tire_management": 8.8,
+        "qualifying_delta_avg": 0.25,
+        "dnf_rate_career": 0.22,
+        "dnf_rate_recent": 0.18,
         "track_type_fit": {
-            "power_unit": 1.00,
-            "technical": 1.04,
-            "balanced": 0.98,
-            "street": 1.08,
-            "high_downforce": 1.00,
+            "high_downforce": 0.90,
+            "technical": 0.88,
+            "power_unit": 0.85,
+            "street": 0.87,
+            "balanced": 0.89
         },
-        "recent_form": [8, 11, 13, 12],
-        "championship_points_2026": 11,
+        "recent_form": [6, 7, 5, 3, 5, 4],
+        "championship_points_2026": 45,
+        "wins_2026": 1,
+        "active": True
+    },
+    
+    # Ferrari
+    "leclerc": {
+        "id": "leclerc",
+        "name": "Charles Leclerc",
+        "short": "LEC",
+        "team": "ferrari",
+        "nationality": "Monegasque",
+        "number": 16,
+        "experience_races": 125,
+        "elo": 1590,
+        "wet_skill": 8.5,
+        "brakezone_skill": 8.8,
+        "tire_management": 8.0,
+        "qualifying_delta_avg": 0.09,
+        "dnf_rate_career": 0.25,
+        "dnf_rate_recent": 0.20,
+        "track_type_fit": {
+            "high_downforce": 0.96,
+            "technical": 0.95,
+            "power_unit": 0.88,
+            "street": 0.92,
+            "balanced": 0.94
+        },
+        "recent_form": [7, 4, 6, 6, 3, 2],
+        "championship_points_2026": 57,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Strong Miami P8. Street-circuit instincts apply at Gilles-Villeneuve."
+        "active": True
     },
     "sainz": {
         "id": "sainz",
         "name": "Carlos Sainz",
         "short": "SAI",
         "team": "williams",
-        "nationality": "ESP",
+        "nationality": "Spanish",
         "number": 55,
-        "experience_races": 189,
-        "elo": 1552,
-        "wet_skill": 8.2,
-        "brakezone_skill": 8.1,
-        "tire_management": 8.8,
-        "qualifying_delta_avg": -50,
-        "dnf_rate_career": 0.12,
-        "dnf_rate_recent": 0.10,
-        "track_type_fit": {
-            "power_unit": 1.04,
-            "technical": 1.06,
-            "balanced": 1.08,
-            "street": 1.05,
-            "high_downforce": 1.06,
-        },
-        "recent_form": [9, 13, 14, 15],
-        "championship_points_2026": 4,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Experienced, strategic operator. Williams car lacks top-6 pace."
-    },
-    "lawson": {
-        "id": "lawson",
-        "name": "Liam Lawson",
-        "short": "LAW",
-        "team": "racing_bulls",
-        "nationality": "NZL",
-        "number": 30,
-        "experience_races": 22,
-        "elo": 1498,
-        "wet_skill": 7.4,
-        "brakezone_skill": 7.5,
-        "tire_management": 7.6,
-        "qualifying_delta_avg": -25,
+        "experience_races": 180,
+        "elo": 1570,
+        "wet_skill": 8.0,
+        "brakezone_skill": 8.4,
+        "tire_management": 8.6,
+        "qualifying_delta_avg": 0.18,
         "dnf_rate_career": 0.18,
-        "dnf_rate_recent": 0.18,
+        "dnf_rate_recent": 0.14,
         "track_type_fit": {
-            "power_unit": 0.98,
-            "technical": 1.00,
-            "balanced": 0.98,
-            "street": 0.96,
-            "high_downforce": 0.98,
+            "high_downforce": 0.92,
+            "technical": 0.90,
+            "power_unit": 0.85,
+            "street": 0.90,
+            "balanced": 0.91
         },
-        "recent_form": [12, 14, 12, 11],  # DNF in Miami
-        "championship_points_2026": 10,
+        "recent_form": [8, 6, 4, 7, 6, 5],
+        "championship_points_2026": 48,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Triggered Miami incident. Under pressure at Wall of Champions circuit."
+        "active": True
     },
+    
+    # Alpine
     "albon": {
         "id": "albon",
         "name": "Alex Albon",
         "short": "ALB",
         "team": "williams",
-        "nationality": "THA",
+        "nationality": "Thai-British",
         "number": 23,
-        "experience_races": 88,
-        "elo": 1504,
-        "wet_skill": 7.9,
-        "brakezone_skill": 7.6,
-        "tire_management": 8.0,
-        "qualifying_delta_avg": 50,
-        "dnf_rate_career": 0.14,
-        "dnf_rate_recent": 0.10,
+        "experience_races": 76,
+        "elo": 1520,
+        "wet_skill": 8.0,
+        "brakezone_skill": 7.8,
+        "tire_management": 8.4,
+        "qualifying_delta_avg": 0.22,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.16,
         "track_type_fit": {
-            "power_unit": 0.99,
-            "technical": 1.02,
-            "balanced": 1.00,
-            "street": 0.98,
-            "high_downforce": 1.00,
+            "high_downforce": 0.88,
+            "technical": 0.85,
+            "power_unit": 0.82,
+            "street": 0.86,
+            "balanced": 0.87
         },
-        "recent_form": [10, 15, 16, 14],
-        "championship_points_2026": 1,
+        "recent_form": [10, 9, 8, 9, 8, 7],
+        "championship_points_2026": 3,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "First point of season in Miami P10. Williams still underpowered."
-    },
-    "hadjar": {
-        "id": "hadjar",
-        "name": "Isack Hadjar",
-        "short": "HAD",
-        "team": "red_bull",
-        "nationality": "FRA",
-        "number": 6,
-        "experience_races": 4,
-        "elo": 1488,
-        "wet_skill": 7.0,
-        "brakezone_skill": 7.4,
-        "tire_management": 7.5,
-        "qualifying_delta_avg": 90,
-        "dnf_rate_career": 0.25,
-        "dnf_rate_recent": 0.25,
-        "track_type_fit": {
-            "power_unit": 0.96,
-            "technical": 0.98,
-            "balanced": 0.97,
-            "street": 0.94,
-            "high_downforce": 0.98,
-        },
-        "recent_form": [14, 16, 15, 13],
-        "championship_points_2026": 4,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Rookie. Red Bull machinery disadvantage compounds learning curve."
-    },
-    "lindblad": {
-        "id": "lindblad",
-        "name": "Arvid Lindblad",
-        "short": "LIN",
-        "team": "racing_bulls",
-        "nationality": "SWE",
-        "number": 7,
-        "experience_races": 4,
-        "elo": 1485,
-        "wet_skill": 6.8,
-        "brakezone_skill": 7.0,
-        "tire_management": 7.2,
-        "qualifying_delta_avg": 25,
-        "dnf_rate_career": 0.25,
-        "dnf_rate_recent": 0.25,
-        "track_type_fit": {
-            "power_unit": 0.96,
-            "technical": 0.96,
-            "balanced": 0.96,
-            "street": 0.94,
-            "high_downforce": 0.96,
-        },
-        "recent_form": [15, 17, 17, 16],
-        "championship_points_2026": 4,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Miami DNF. Rookie learning curve at unforgiving Wall of Champions circuit."
-    },
-    "bortoleto": {
-        "id": "bortoleto",
-        "name": "Gabriel Bortoleto",
-        "short": "BOR",
-        "team": "audi",
-        "nationality": "BRA",
-        "number": 5,
-        "experience_races": 4,
-        "elo": 1490,
-        "wet_skill": 7.1,
-        "brakezone_skill": 7.3,
-        "tire_management": 7.4,
-        "qualifying_delta_avg": -20,
-        "dnf_rate_career": 0.20,
-        "dnf_rate_recent": 0.20,
-        "track_type_fit": {
-            "power_unit": 0.94,
-            "technical": 0.96,
-            "balanced": 0.95,
-            "street": 0.94,
-            "high_downforce": 0.95,
-        },
-        "recent_form": [16, 18, 18, 17],
-        "championship_points_2026": 2,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Rookie with promise. Audi car reliability and pace still developing."
+        "active": True
     },
     "ocon": {
         "id": "ocon",
         "name": "Esteban Ocon",
         "short": "OCO",
         "team": "haas",
-        "nationality": "FRA",
+        "nationality": "French",
         "number": 31,
-        "experience_races": 148,
-        "elo": 1499,
-        "wet_skill": 8.0,
-        "brakezone_skill": 7.8,
+        "experience_races": 136,
+        "elo": 1500,
+        "wet_skill": 7.8,
+        "brakezone_skill": 8.0,
         "tire_management": 8.2,
-        "qualifying_delta_avg": 40,
-        "dnf_rate_career": 0.16,
-        "dnf_rate_recent": 0.14,
+        "qualifying_delta_avg": 0.20,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.15,
         "track_type_fit": {
-            "power_unit": 0.98,
-            "technical": 1.02,
-            "balanced": 0.99,
-            "street": 1.00,
-            "high_downforce": 1.01,
+            "high_downforce": 0.90,
+            "technical": 0.88,
+            "power_unit": 0.85,
+            "street": 0.87,
+            "balanced": 0.89
         },
-        "recent_form": [17, 14, 16, 18],
+        "recent_form": [10, 11, 10, 11, 9, 10],
+        "championship_points_2026": 18,
+        "wins_2026": 0,
+        "active": True
+    },
+    
+    # Williams
+    "bottas": {
+        "id": "bottas",
+        "name": "Valtteri Bottas",
+        "short": "BOT",
+        "team": "kick_sauber",
+        "nationality": "Finnish",
+        "number": 77,
+        "experience_races": 200,
+        "elo": 1530,
+        "wet_skill": 7.8,
+        "brakezone_skill": 8.0,
+        "tire_management": 8.5,
+        "qualifying_delta_avg": 0.20,
+        "dnf_rate_career": 0.15,
+        "dnf_rate_recent": 0.12,
+        "track_type_fit": {
+            "high_downforce": 0.90,
+            "technical": 0.88,
+            "power_unit": 0.85,
+            "street": 0.87,
+            "balanced": 0.89
+        },
+        "recent_form": [9, 8, 7, 8, 7, 6],
         "championship_points_2026": 1,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Experienced but Haas performance gap to Bearman suggests car-specific issues."
+        "active": True
+    },
+    "devries": {
+        "id": "devries",
+        "name": "Nyck De Vries",
+        "short": "DEV",
+        "team": "kick_sauber",
+        "nationality": "Dutch",
+        "number": 21,
+        "experience_races": 42,
+        "elo": 1450,
+        "wet_skill": 7.0,
+        "brakezone_skill": 7.5,
+        "tire_management": 7.5,
+        "qualifying_delta_avg": 0.35,
+        "dnf_rate_career": 0.25,
+        "dnf_rate_recent": 0.22,
+        "track_type_fit": {
+            "high_downforce": 0.82,
+            "technical": 0.80,
+            "power_unit": 0.75,
+            "street": 0.80,
+            "balanced": 0.81
+        },
+        "recent_form": [14, 13, 12, 13, 12, 11],
+        "championship_points_2026": 2,
+        "wins_2026": 0,
+        "active": True
+    },
+    
+    # Aston Martin
+    "alonso": {
+        "id": "alonso",
+        "name": "Fernando Alonso",
+        "short": "ALO",
+        "team": "aston_martin",
+        "nationality": "Spanish",
+        "number": 14,
+        "experience_races": 397,
+        "elo": 1560,
+        "wet_skill": 8.2,
+        "brakezone_skill": 8.6,
+        "tire_management": 8.5,
+        "qualifying_delta_avg": 0.15,
+        "dnf_rate_career": 0.15,
+        "dnf_rate_recent": 0.12,
+        "track_type_fit": {
+            "high_downforce": 0.95,
+            "technical": 0.93,
+            "power_unit": 0.90,
+            "street": 0.92,
+            "balanced": 0.94
+        },
+        "recent_form": [9, 8, 9, 10, 8, 9],
+        "championship_points_2026": 26,
+        "wins_2026": 0,
+        "active": True
     },
     "stroll": {
         "id": "stroll",
         "name": "Lance Stroll",
         "short": "STR",
         "team": "aston_martin",
-        "nationality": "CAN",
+        "nationality": "Canadian",
         "number": 18,
-        "experience_races": 155,
-        "elo": 1478,
+        "experience_races": 136,
+        "elo": 1470,
+        "wet_skill": 7.2,
+        "brakezone_skill": 7.8,
+        "tire_management": 8.0,
+        "qualifying_delta_avg": 0.25,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.15,
+        "track_type_fit": {
+            "high_downforce": 0.88,
+            "technical": 0.85,
+            "power_unit": 0.82,
+            "street": 0.85,
+            "balanced": 0.86
+        },
+        "recent_form": [13, 12, 11, 12, 11, 10],
+        "championship_points_2026": 11,
+        "wins_2026": 0,
+        "active": True
+    },
+    
+    # Haas
+    "magnussen": {
+        "id": "magnussen",
+        "name": "Kevin Magnussen",
+        "short": "MAG",
+        "team": "kick_sauber",
+        "nationality": "Danish",
+        "number": 20,
+        "experience_races": 164,
+        "elo": 1460,
         "wet_skill": 7.5,
-        "brakezone_skill": 7.4,
+        "brakezone_skill": 7.2,
         "tire_management": 7.8,
-        "qualifying_delta_avg": 80,
-        "dnf_rate_career": 0.20,
-        "dnf_rate_recent": 0.18,
+        "qualifying_delta_avg": 0.30,
+        "dnf_rate_career": 0.28,
+        "dnf_rate_recent": 0.25,
         "track_type_fit": {
-            "power_unit": 0.96,
-            "technical": 0.98,
-            "balanced": 0.96,
-            "street": 1.02,
-            "high_downforce": 0.96,
+            "high_downforce": 0.80,
+            "technical": 0.78,
+            "power_unit": 0.75,
+            "street": 0.80,
+            "balanced": 0.79
         },
-        "recent_form": [18, 19, 19, 19],
-        "championship_points_2026": 0,
+        "recent_form": [15, 14, 13, 14, 13, 12],
+        "championship_points_2026": 2,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "0 points all season. Home crowd at Montreal could motivate but car won't."
+        "active": True
     },
-    "alonso": {
-        "id": "alonso",
-        "name": "Fernando Alonso",
-        "short": "ALO",
-        "team": "aston_martin",
-        "nationality": "ESP",
-        "number": 14,
-        "experience_races": 381,
-        "elo": 1522,
-        "wet_skill": 9.6,
-        "brakezone_skill": 9.0,
-        "tire_management": 9.2,
-        "qualifying_delta_avg": -80,
-        "dnf_rate_career": 0.15,
-        "dnf_rate_recent": 0.14,
-        "track_type_fit": {
-            "power_unit": 1.02,
-            "technical": 1.08,
-            "balanced": 1.06,
-            "street": 1.04,
-            "high_downforce": 1.06,
-        },
-        "recent_form": [19, 20, 20, 20],
-        "championship_points_2026": 0,
-        "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "0 points after 4 races. Aston Martin structural issues. ELO > car pace."
-    },
-    "perez": {
-        "id": "perez",
-        "name": "Sergio Perez",
-        "short": "PER",
-        "team": "cadillac",
-        "nationality": "MEX",
-        "number": 11,
-        "experience_races": 281,
-        "elo": 1575,
+    "hulkenberg": {
+        "id": "hulkenberg",
+        "name": "Nico Hulkenberg",
+        "short": "HUL",
+        "team": "haas",
+        "nationality": "German",
+        "number": 27,
+        "experience_races": 212,
+        "elo": 1490,
         "wet_skill": 7.8,
         "brakezone_skill": 8.2,
-        "tire_management": 8.8,
-        "qualifying_delta_avg": -15,    # Generally competitive with teammates
-        "dnf_rate_career": 0.12,
-        "dnf_rate_recent": 0.09,
+        "tire_management": 8.2,
+        "qualifying_delta_avg": 0.22,
+        "dnf_rate_career": 0.20,
+        "dnf_rate_recent": 0.17,
         "track_type_fit": {
-            "power_unit": 1.05,
-            "technical": 1.08,
-            "balanced": 1.07,
-            "street": 1.12,
-            "high_downforce": 1.09,
+            "high_downforce": 0.85,
+            "technical": 0.83,
+            "power_unit": 0.80,
+            "street": 0.84,
+            "balanced": 0.84
         },
-        "recent_form": [5, 6, 4, 7],    # Recent form based on comeback season
-        "championship_points_2026": 25,
+        "recent_form": [16, 15, 14, 15, 14, 13],
+        "championship_points_2026": 8,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Tactical master returning after 2025 sabbatical. Known for strong race management."
+        "active": True
     },
-    "bottas": {
-        "id": "bottas",
-        "name": "Valtteri Bottas",
-        "short": "BOT",
-        "team": "cadillac",
-        "nationality": "FIN",
-        "number": 77,
-        "experience_races": 246,
-        "elo": 1568,
+    
+    # AlphaTauri/RB
+    "gasly": {
+        "id": "gasly",
+        "name": "Pierre Gasly",
+        "short": "GAS",
+        "team": "alpine",
+        "nationality": "French",
+        "number": 10,
+        "experience_races": 142,
+        "elo": 1510,
+        "wet_skill": 8.0,
+        "brakezone_skill": 8.2,
+        "tire_management": 8.4,
+        "qualifying_delta_avg": 0.20,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.14,
+        "track_type_fit": {
+            "high_downforce": 0.90,
+            "technical": 0.88,
+            "power_unit": 0.85,
+            "street": 0.88,
+            "balanced": 0.89
+        },
+        "recent_form": [7, 8, 5, 6, 7, 6],
+        "championship_points_2026": 4,
+        "wins_2026": 0,
+        "active": True
+    },
+    "tsunoda": {
+        "id": "tsunoda",
+        "name": "Yuki Tsunoda",
+        "short": "TSU",
+        "team": "rb",
+        "nationality": "Japanese",
+        "number": 30,
+        "experience_races": 66,
+        "elo": 1480,
         "wet_skill": 7.5,
         "brakezone_skill": 8.0,
-        "tire_management": 8.6,
-        "qualifying_delta_avg": -5,     # Consistent performer vs teammates
-        "dnf_rate_career": 0.08,
-        "dnf_rate_recent": 0.07,
+        "tire_management": 7.8,
+        "qualifying_delta_avg": 0.28,
+        "dnf_rate_career": 0.22,
+        "dnf_rate_recent": 0.19,
         "track_type_fit": {
-            "power_unit": 1.02,
-            "technical": 1.04,
-            "balanced": 1.05,
-            "street": 1.03,
-            "high_downforce": 1.01,
+            "high_downforce": 0.85,
+            "technical": 0.82,
+            "power_unit": 0.78,
+            "street": 0.83,
+            "balanced": 0.84
         },
-        "recent_form": [8, 7, 9, 6],    # Recent form based on comeback season
-        "championship_points_2026": 18,
+        "recent_form": [12, 11, 10, 11, 10, 9],
+        "championship_points_2026": 12,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "notes": "Steady performer returning after 2025 sabbatical. Provides stable feedback for new team."
+        "active": True
+    },
+    
+    # Kick Sauber
+    "bottas_kick": {  # Alternate name to avoid conflict
+        "id": "bottas_kick",
+        "name": "Valtteri Bottas",
+        "short": "BOT",
+        "team": "kick_sauber",
+        "nationality": "Finnish",
+        "number": 77,
+        "experience_races": 200,
+        "elo": 1500,
+        "wet_skill": 7.5,
+        "brakezone_skill": 7.8,
+        "tire_management": 8.0,
+        "qualifying_delta_avg": 0.25,
+        "dnf_rate_career": 0.16,
+        "dnf_rate_recent": 0.13,
+        "track_type_fit": {
+            "high_downforce": 0.85,
+            "technical": 0.82,
+            "power_unit": 0.80,
+            "street": 0.83,
+            "balanced": 0.84
+        },
+        "recent_form": [17, 16, 15, 16, 15, 14],
+        "championship_points_2026": 6,
+        "wins_2026": 0,
+        "active": True
     },
     "zhou": {
         "id": "zhou",
         "name": "Zhou Guanyu",
         "short": "ZHO",
-        "team": "cadillac",
-        "nationality": "CHN",
+        "team": "kick_sauber",
+        "nationality": "Chinese",
         "number": 24,
         "experience_races": 52,
+        "elo": 1440,
+        "wet_skill": 6.8,
+        "brakezone_skill": 7.0,
+        "tire_management": 7.2,
+        "qualifying_delta_avg": 0.38,
+        "dnf_rate_career": 0.22,
+        "dnf_rate_recent": 0.19,
+        "track_type_fit": {
+            "high_downforce": 0.80,
+            "technical": 0.78,
+            "power_unit": 0.75,
+            "street": 0.78,
+            "balanced": 0.78
+        },
+        "recent_form": [18, 16, 15, 16, 15, 14],
+        "championship_points_2026": 0,
+        "wins_2026": 0,
+        "active": False  # Marked as inactive as per bug fix
+    },
+    
+    # Andretti Cadillac (new team for 2026)
+    "herta": {
+        "id": "herta",
+        "name": "Colton Herta",
+        "short": "HER",
+        "team": "cadillac",
+        "nationality": "American",
+        "number": 21,
+        "experience_races": 65,
+        "elo": 1480,
+        "wet_skill": 7.2,
+        "brakezone_skill": 7.8,
+        "tire_management": 7.5,
+        "qualifying_delta_avg": 0.30,
+        "dnf_rate_career": 0.20,
+        "dnf_rate_recent": 0.18,
+        "track_type_fit": {
+            "high_downforce": 0.82,
+            "technical": 0.80,
+            "power_unit": 0.78,
+            "street": 0.85,
+            "balanced": 0.82
+        },
+        "recent_form": [15, 14, 13, 14, 13, 12],
+        "championship_points_2026": 0,
+        "wins_2026": 0,
+        "active": True
+    },
+    "palou": {
+        "id": "palou",
+        "name": "Alex Palou",
+        "short": "PAL",
+        "team": "cadillac",
+        "nationality": "Spanish",
+        "number": 7,
+        "experience_races": 52,
+        "elo": 1460,
+        "wet_skill": 7.0,
+        "brakezone_skill": 7.5,
+        "tire_management": 7.8,
+        "qualifying_delta_avg": 0.32,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.16,
+        "track_type_fit": {
+            "high_downforce": 0.80,
+            "technical": 0.78,
+            "power_unit": 0.75,
+            "street": 0.82,
+            "balanced": 0.80
+        },
+        "recent_form": [16, 15, 14, 15, 14, 13],
+        "championship_points_2026": 0,
+        "wins_2026": 0,
+        "active": True
+    },
+    "lawson": {
+        "id": "lawson",
+        "name": "Liam Lawson",
+        "short": "LAW",
+        "team": "rb",
+        "nationality": "New Zealander",
+        "number": 3,
+        "experience_races": 2,
+        "elo": 1420,
+        "wet_skill": 7.0,
+        "brakezone_skill": 7.2,
+        "tire_management": 7.0,
+        "qualifying_delta_avg": 0.40,
+        "dnf_rate_career": 0.25,
+        "dnf_rate_recent": 0.22,
+        "track_type_fit": {
+            "high_downforce": 0.78,
+            "technical": 0.75,
+            "power_unit": 0.72,
+            "street": 0.76,
+            "balanced": 0.76
+        },
+        "recent_form": [19, 18, 17, 18, 17, 16],
+        "championship_points_2026": 0,
+        "wins_2026": 0,
+        "active": True
+    },
+    
+    # NEW DRIVERS ADDED FROM CANADIAN GRAND PRIX RESULTS
+    "hadjar": {
+        "id": "hadjar",
+        "name": "Isack Hadjar",
+        "short": "HAD",
+        "team": "red_bull",
+        "nationality": "French",
+        "number": 6,
+        "experience_races": 1,
         "elo": 1450,
         "wet_skill": 7.2,
         "brakezone_skill": 7.5,
-        "tire_management": 7.8,
-        "qualifying_delta_avg": 15,     # vs teammate benchmark
-        "dnf_rate_career": 0.15,
-        "dnf_rate_recent": 0.12,
+        "tire_management": 7.3,
+        "qualifying_delta_avg": 0.35,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.15,
         "track_type_fit": {
-            "power_unit": 0.98,
-            "technical": 0.95,
-            "balanced": 1.00,
-            "street": 1.02,
-            "high_downforce": 0.97,
+            "high_downforce": 0.85,
+            "technical": 0.82,
+            "power_unit": 0.80,
+            "street": 0.83,
+            "balanced": 0.84
         },
-        "recent_form": [16, 15, 14, 17],
+        "recent_form": [0, 0, 0, 0, 0, 5],  # First race was position 5
+        "championship_points_2026": 4,
+        "wins_2026": 0,
+        "active": True
+    },
+    "colapinto": {
+        "id": "colapinto",
+        "name": "Franco Colapinto",
+        "short": "COL",
+        "team": "alpine",
+        "nationality": "Argentine",
+        "number": 43,
+        "experience_races": 5,
+        "elo": 1430,
+        "wet_skill": 7.0,
+        "brakezone_skill": 7.3,
+        "tire_management": 7.2,
+        "qualifying_delta_avg": 0.38,
+        "dnf_rate_career": 0.20,
+        "dnf_rate_recent": 0.18,
+        "track_type_fit": {
+            "high_downforce": 0.82,
+            "technical": 0.80,
+            "power_unit": 0.78,
+            "street": 0.81,
+            "balanced": 0.81
+        },
+        "recent_form": [0, 0, 0, 0, 0, 6],  # First race was position 6
+        "championship_points_2026": 3,
+        "wins_2026": 0,
+        "active": True
+    },
+    "bearman": {
+        "id": "bearman",
+        "name": "Oliver Bearman",
+        "short": "BEA",
+        "team": "haas",
+        "nationality": "British",
+        "number": 87,
+        "experience_races": 3,
+        "elo": 1440,
+        "wet_skill": 7.1,
+        "brakezone_skill": 7.4,
+        "tire_management": 7.3,
+        "qualifying_delta_avg": 0.36,
+        "dnf_rate_career": 0.19,
+        "dnf_rate_recent": 0.17,
+        "track_type_fit": {
+            "high_downforce": 0.83,
+            "technical": 0.81,
+            "power_unit": 0.79,
+            "street": 0.82,
+            "balanced": 0.82
+        },
+        "recent_form": [0, 0, 0, 0, 0, 10],  # First race was position 10
+        "championship_points_2026": 1,
+        "wins_2026": 0,
+        "active": True
+    },
+    "bortoleto": {
+        "id": "bortoleto",
+        "name": "Gabriel Bortoleto",
+        "short": "BOR",
+        "team": "audi",
+        "nationality": "Brazilian",
+        "number": 5,
+        "experience_races": 2,
+        "elo": 1410,
+        "wet_skill": 6.9,
+        "brakezone_skill": 7.1,
+        "tire_management": 7.0,
+        "qualifying_delta_avg": 0.40,
+        "dnf_rate_career": 0.22,
+        "dnf_rate_recent": 0.20,
+        "track_type_fit": {
+            "high_downforce": 0.80,
+            "technical": 0.78,
+            "power_unit": 0.76,
+            "street": 0.79,
+            "balanced": 0.79
+        },
+        "recent_form": [0, 0, 0, 0, 0, 13],
         "championship_points_2026": 0,
         "wins_2026": 0,
-        "poles_2026": 0,
-        "active": False,  # BUG-06 FIX: Mark as reserve driver, not active race driver
-        "notes": "Reserve driver for Cadillac. Brings valuable experience as former full-time F1 driver."
+        "active": True
     },
-
+    "lindblad": {
+        "id": "lindblad",
+        "name": "Arvid Lindblad",
+        "short": "LIN",
+        "team": "rb",
+        "nationality": "Swedish",
+        "number": 41,
+        "experience_races": 1,
+        "elo": 1400,
+        "wet_skill": 6.8,
+        "brakezone_skill": 7.0,
+        "tire_management": 6.9,
+        "qualifying_delta_avg": 0.42,
+        "dnf_rate_career": 0.25,
+        "dnf_rate_recent": 0.22,
+        "track_type_fit": {
+            "high_downforce": 0.78,
+            "technical": 0.76,
+            "power_unit": 0.74,
+            "street": 0.77,
+            "balanced": 0.77
+        },
+        "recent_form": [0, 0, 0, 0, 0, 22],  # DNS - Did Not Start
+        "championship_points_2026": 0,
+        "wins_2026": 0,
+        "active": True
+    }
 }
 
 
-# Additional helper functions for driver data
-def get_driver(driver_id: str) -> dict:
-    """Return a specific driver by ID."""
-    return DRIVERS.get(driver_id)
+def get_driver(driver_id: str) -> Dict[str, Any]:
+    """Get a specific driver by ID."""
+    if driver_id not in DRIVERS:
+        raise KeyError(f"Driver '{driver_id}' not found")
+    return DRIVERS[driver_id]
 
-def get_all_drivers() -> list:
+
+def get_all_drivers() -> List[Dict[str, Any]]:
+    """Get all driver profiles."""
+    return [driver for driver in DRIVERS.values() if driver.get("active", True)]
+
+
+def get_drivers_for_team(team_id: str) -> List[Dict[str, Any]]:
+    """Get all drivers for a specific team."""
+    return [driver for driver in get_all_drivers() if driver["team"] == team_id]
+
+
+def calculate_circuit_performance_modifier(driver_id: str, circuit_id: str) -> float:
     """
-    BUG-06 FIX: Return all ACTIVE drivers only. Filters out reserve/inactive drivers.
+    Calculate circuit-specific performance modifier for a driver.
+    Based on historical performance at the circuit.
+    """
+    # This is a simplified version - in reality would use DRIVER_TRAITS_DB
+    base_modifier = 1.0
     
-    Drivers can be marked as inactive by setting "active": False in their profile.
-    This prevents reserve drivers from being included in predictions and teammate logic.
-    """
-    return [d for d in DRIVERS.values() if d.get("active", True)]
-
-def get_drivers_for_team(team_name: str) -> list:
-    """
-    BUG-06 FIX: Return all ACTIVE drivers for a given team.
+    # Different circuits favor different driving styles
+    circuit_favorable_types = {
+        "monaco": ["technical", "street"],
+        "silverstone": ["high_downforce", "balanced"],
+        "spa": ["power_unit", "balanced"],
+        "monza": ["power_unit"],
+        "baku": ["high_downforce", "street"]
+    }
     
-    Ensures teams have exactly 2 active race drivers, excluding reserves.
-    """
-    return [d for d in DRIVERS.values() if d['team'] == team_name and d.get("active", True)]
+    if circuit_id in circuit_favorable_types:
+        favorable_types = circuit_favorable_types[circuit_id]
+        driver = get_driver(driver_id)
+        track_fit = driver.get("track_type_fit", {})
+        
+        # Find the best matching type
+        max_fit = 0.9  # Default neutral
+        for fit_type in favorable_types:
+            if fit_type in track_fit:
+                max_fit = max(max_fit, track_fit[fit_type])
+        
+        # Apply small adjustment based on fit
+        base_modifier = max_fit
+    
+    return base_modifier
 
-def get_driver_by_id(driver_id: str):
-    """Return a specific driver by ID (alias for get_driver)."""
-    return DRIVERS.get(driver_id)
 
-def get_all_teams() -> set:
-    """Return all unique team names."""
-    return {driver['team'] for driver in DRIVERS.values()}
+# ── EXPORT ──────────────────────────────────────────────────────────────────────
+
+__all__ = [
+    "DRIVERS", 
+    "get_driver", 
+    "get_all_drivers", 
+    "get_drivers_for_team", 
+    "calculate_circuit_performance_modifier"
+]

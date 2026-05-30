@@ -30,7 +30,7 @@ from rich.progress import track
 
 from engine.predictor import predict, PredictionRequest
 from data.calendar_2026 import get_upcoming_races, CALENDAR_2026
-from data.season_2026 import DRIVER_STANDINGS_AFTER_R4, CONSTRUCTOR_STANDINGS_AFTER_R4
+from data.season_2026 import DRIVER_STANDINGS_AFTER_R5, CONSTRUCTOR_STANDINGS_AFTER_R5
 from data.driver_data import DRIVERS
 
 console = Console()
@@ -85,8 +85,8 @@ def save_aggregate_data(predictions: dict):
     data = {
         "generated_at":        datetime.utcnow().isoformat() + "Z",
         "season":              2026,
-        "driver_standings":    DRIVER_STANDINGS_AFTER_R4,
-        "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R4,
+        "driver_standings":    DRIVER_STANDINGS_AFTER_R5,
+        "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
         "calendar":            CALENDAR_2026,
         "predictions":         {k: v["prediction"] for k, v in predictions.items()},
         "driver_profiles": {
@@ -108,7 +108,7 @@ def save_aggregate_data(predictions: dict):
 
 def _standings_rows() -> str:
     rows = ""
-    for s in DRIVER_STANDINGS_AFTER_R4[:10]:
+    for s in DRIVER_STANDINGS_AFTER_R5[:10]:
         d = DRIVERS.get(s["driver"], {})
         colour = TEAM_COLOURS.get(d.get("team", ""), "#888")
         rows += (

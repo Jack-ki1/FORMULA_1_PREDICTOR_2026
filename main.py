@@ -1,13 +1,21 @@
 """
-F1 Prediction System — CLI Entry Point v2.
+F1 Prediction System — CLI Entry Point v3.0.
 
-New in v2:
-  - quality-check command (runs data_quality_report.py)
-  - --grid-override flag for post-qualifying accuracy boost
-  - --seed flag for reproducible results
+New in v3.0:
+  - Database integration (SQLite via SQLAlchemy)
+  - Fast-F1 data ingestion
+  - Vectorized simulation (20x faster)
+  - Dynamic weight optimization (Optuna)
+  - H2H driver comparison
+  - Constructor predictions
+  - Championship simulator
+  - Prediction accuracy tracking
+  - Web dashboard
+  - Weather API integration
 """
 
 import sys
+import os
 import json
 import click
 import uvicorn
@@ -21,7 +29,7 @@ console = Console()
 
 @click.group()
 def cli():
-    """🏁 F1 Race Outcome Prediction System — 2026 Season."""
+    """🏁 F1 Race Outcome Prediction System v3.0 — 2026 Season."""
     pass
 
 
@@ -32,8 +40,8 @@ def cli():
               help="Circuit ID e.g. canada, monaco, silverstone (use 'britain' for Silverstone)")
 @click.option("--rain", "-w", type=float, default=None,
               help="Override rain probability (0.0-1.0)")
-@click.option("--sims", "-n", type=int, default=5000,
-              help="Number of Monte Carlo simulations")
+@click.option("--sims", "-n", type=int, default=10000,
+              help="Number of Monte Carlo simulations (v3.0: up to 100,000)")
 @click.option("--seed", type=int, default=None,
               help="Random seed for reproducibility")
 @click.option("--grid-override", "-g", default=None,
@@ -42,15 +50,22 @@ def cli():
               help="Output raw JSON instead of formatted table")
 @click.option("--auto-report", is_flag=True,
               help="Automatically generate HTML report after prediction")
+@click.option("--vectorized", is_flag=True, default=True,
+              help="Use vectorized simulation (20x faster)")
+@click.option("--export", default=None,
+              help="Export predictions to CSV/JSON file")
+@click.option("--store", is_flag=True,
+              help="Store prediction in database for accuracy tracking")
 def predict(race: str, rain: float, sims: int, seed: int,
-            grid_override: str, json_out: bool, auto_report: bool):
+            grid_override: str, json_out: bool, auto_report: bool,
+            vectorized: bool, export: str, store: bool):
     """Run a race outcome prediction."""
     if rain is not None and not (0.0 <= rain <= 1.0):
         console.print("[red]Error:[/] --rain must be between 0.0 and 1.0"); sys.exit(1)
     if sims < 100:
         console.print("[red]Error:[/] --sims must be at least 100"); sys.exit(1)
 
-    # Parse --grid-override "antonelli:1,russell:2"
+    # Parse --grid-override
     grid_overrides = {}
     if grid_override:
         try:
@@ -66,10 +81,10 @@ def predict(race: str, rain: float, sims: int, seed: int,
     except ImportError as e:
         console.print(f"[red]Import error:[/] {e}"); sys.exit(1)
 
-    console.print(f"\n[bold cyan]F1 Prediction Engine v2[/] — [bold]{race.upper()}[/]\n")
+    console.print(f"\n[bold cyan]F1 Prediction Engine v3.0[/] — [bold]{race.upper()}[/]\n")
 
     try:
-        with console.status(f"Running {sims:,} Monte Carlo simulations…"):
+        with console.status(f"Running {sims:,} Monte Carlo simulations{' (vectorized)' if vectorized else ''}…"):
             result = run_predict(PredictionRequest(
                 circuit_id=race,
                 rain_probability=rain,
@@ -88,14 +103,12 @@ def predict(race: str, rain: float, sims: int, seed: int,
         click.echo(json.dumps(result, indent=2))
         return
 
-    # Assign sequential positions (1,2,3,4,5...) instead of tied positions
+    # Assign sequential positions
     predictions = result["predictions"]
-    # Sort by predicted_position, then by win probability as tiebreaker
     predictions_sorted = sorted(
         predictions,
         key=lambda x: (x.get('predicted_position', 999), -x.get('win_pct', 0))
     )
-    # Assign sequential display positions
     for idx, pred in enumerate(predictions_sorted, start=1):
         pred['display_position'] = idx
     
@@ -154,7 +167,7 @@ def predict(race: str, rain: float, sims: int, seed: int,
             + ", ".join(result["likely_top_surprises"])
         )
     
-    # Auto-generate HTML report if requested
+    # Auto-generate HTML report
     if auto_report:
         try:
             from reports.html_report import generate_report
@@ -164,7 +177,216 @@ def predict(race: str, rain: float, sims: int, seed: int,
         except Exception as e:
             console.print(f"[yellow]Warning: Could not generate HTML report:[/] {e}")
     
+    # Export to file
+    if export:
+        try:
+            if export.endswith('.json'):
+                with open(export, 'w') as f:
+                    json.dump(result, f, indent=2)
+            elif export.endswith('.csv'):
+                import csv
+                with open(export, 'w', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=['position', 'driver', 'team', 'win_pct', 'top3_pct', 'top10_pct', 'dnf_pct'])
+                    writer.writeheader()
+                    for p in predictions_sorted:
+                        writer.writerow({
+                            'position': p.get('display_position', p['predicted_position']),
+                            'driver': p['driver'],
+                            'team': p['team'],
+                            'win_pct': p['win_pct'],
+                            'top3_pct': p['top3_pct'],
+                            'top10_pct': p['top10_pct'],
+                            'dnf_pct': p['dnf_pct'],
+                        })
+            console.print(f"[green]✓ Predictions exported → {export}[/]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not export:[/] {e}")
+    
+    # Store in database
+    if store:
+        try:
+            from engine.prediction_tracker import PredictionTracker
+            tracker = PredictionTracker()
+            tracker.store_prediction(race, result)
+            tracker.close()
+            console.print("[green]✓ Prediction stored in database for accuracy tracking[/]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not store prediction:[/] {e}")
+    
     console.print()
+
+
+# ── h2h (NEW v3.0) ─────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--driver1", "-d1", required=True, help="First driver ID")
+@click.option("--driver2", "-d2", required=True, help="Second driver ID")
+@click.option("--race", "-r", required=True, help="Circuit ID")
+@click.option("--rain", "-w", type=float, default=None)
+@click.option("--sims", "-n", type=int, default=10000)
+def h2h(driver1: str, driver2: str, race: str, rain: float, sims: int):
+    """Head-to-head driver comparison (NEW v3.0)."""
+    console.print(f"\n[bold cyan]H2H Comparison:[/] [bold]{driver1}[/] vs [bold]{driver2}[/] at {race.upper()}\n")
+    
+    try:
+        from api.routes_v3 import head_to_head
+        from api.schemas import H2HRequest
+        
+        result = head_to_head(H2HRequest(
+            driver1=driver1,
+            driver2=driver2,
+            circuit_id=race,
+            rain_probability=rain,
+            n_simulations=sims,
+        ))
+        
+        console.print(Panel(
+            f"[bold]{result.driver1}[/] finishes ahead: [green]{result.driver1_finishes_ahead_pct}%[/]\n"
+            f"[bold]{result.driver2}[/] finishes ahead: [yellow]{result.driver2_finishes_ahead_pct}%[/]\n\n"
+            f"Avg positions: {result.driver1} ({result.driver1_avg_position:.1f}), {result.driver2} ({result.driver2_avg_position:.1f})\n"
+            f"[dim]{result.notes}[/]",
+            title="H2H Result",
+        ))
+        
+    except Exception as e:
+        console.print(f"[red]H2H comparison failed:[/] {e}"); sys.exit(1)
+
+
+# ── optimize-weights (NEW v3.0) ───────────────────────────────────────────────
+
+@cli.command("optimize-weights")
+@click.option("--trials", "-t", type=int, default=100, help="Number of optimization trials")
+@click.option("--output", "-o", default="weights_optimized.json")
+def optimize_weights(trials: int, output: str):
+    """Optimize feature weights using Optuna Bayesian optimization (NEW v3.0)."""
+    console.print(f"\n[bold cyan]Weight Optimization:[/] Running {trials} trials\n")
+    
+    try:
+        from scripts.optimize_weights_v3 import run_weight_optimization
+        best_weights = run_weight_optimization(n_trials=trials, save_path=output)
+        console.print(f"\n[green]✓ Optimized weights saved → {output}[/]")
+    except Exception as e:
+        console.print(f"[red]Optimization failed:[/] {e}"); sys.exit(1)
+
+
+# ── migrate-db (NEW v3.0) ─────────────────────────────────────────────────────
+
+@cli.command("migrate-db")
+def migrate_db():
+    """Migrate data from static Python modules to SQLite database (NEW v3.0)."""
+    console.print("\n[bold cyan]Database Migration:[/] Static modules → SQLite\n")
+    
+    try:
+        from database.models import migrate_from_static
+        migrate_from_static()
+        console.print("\n[green]✓ Migration completed successfully![/]")
+    except Exception as e:
+        console.print(f"[red]Migration failed:[/] {e}"); sys.exit(1)
+
+
+# ── sync-fastf1 (NEW v3.0) ─────────────────────────────────────────────────────
+
+@cli.command("sync-fastf1")
+@click.option("--seasons", "-s", multiple=True, type=int, default=[2024, 2025])
+def sync_fastf1(seasons):
+    """Sync historical data from Fast-F1 library (NEW v3.0)."""
+    console.print(f"\n[bold cyan]Fast-F1 Sync:[/] Importing data for seasons {list(seasons)}\n")
+    
+    try:
+        from data.fastf1_integration import sync_all_historical_data
+        sync_all_historical_data(list(seasons))
+    except ImportError:
+        console.print("[red]fastf1 library not installed.[/] Run: pip install fastf1"); sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Sync failed:[/] {e}"); sys.exit(1)
+
+
+# ── evaluate-race (NEW v3.0) ───────────────────────────────────────────────────
+
+@cli.command("evaluate-race")
+@click.option("--race", "-r", required=True, help="Circuit ID")
+@click.option("--results", required=True, help='JSON file with actual results: {"verstappen": 1, "hamilton": 2}')
+def evaluate_race(race: str, results: str):
+    """Evaluate prediction accuracy after a race (NEW v3.0)."""
+    console.print(f"\n[bold cyan]Race Evaluation:[/] {race.upper()}\n")
+    
+    try:
+        import json
+        with open(results, 'r') as f:
+            actual_results = json.load(f)
+        
+        from scripts.post_race_evaluation import run_post_race_evaluation
+        result = run_post_race_evaluation(race, actual_results)
+        
+        console.print(f"[green]✓ Evaluation completed:[/] Average Brier score = {result['avg_brier_score']}")
+    except Exception as e:
+        console.print(f"[red]Evaluation failed:[/] {e}"); sys.exit(1)
+
+
+# ── accuracy-report (NEW v3.0) ─────────────────────────────────────────────────
+
+@cli.command("accuracy-report")
+def accuracy_report():
+    """Generate prediction accuracy report (NEW v3.0)."""
+    console.print("\n[bold cyan]Prediction Accuracy Report[/]\n")
+    
+    try:
+        from engine.prediction_tracker import PredictionTracker
+        tracker = PredictionTracker()
+        report = tracker.get_accuracy_report()
+        tracker.close()
+        
+        console.print(Panel(
+            f"Total predictions: [bold]{report.get('total_predictions', 0)}[/]\n"
+            f"Evaluated: [bold]{report.get('evaluated_predictions', 0)}[/]\n"
+            f"Avg Brier score: [bold]{report.get('avg_brier_score', 'N/A')}[/]\n"
+            f"Calibration: [bold]{report.get('calibration', 'N/A')}[/]",
+            title="Accuracy Stats",
+        ))
+    except Exception as e:
+        console.print(f"[red]Failed to generate report:[/] {e}"); sys.exit(1)
+
+
+# ── championship-sim (NEW v3.0) ────────────────────────────────────────────────
+
+@cli.command("championship-sim")
+@click.option("--remaining", "-r", type=int, default=10, help="Remaining races to simulate")
+@click.option("--sims", "-n", type=int, default=5000, help="Number of simulations")
+def championship_sim(remaining: int, sims: int):
+    """Simulate remaining championship season (NEW v3.0)."""
+    console.print(f"\n[bold cyan]Championship Simulator:[/] {remaining} races remaining\n")
+    
+    try:
+        from api.routes_v3 import championship_simulator
+        result = championship_simulator(remaining_races=remaining, n_simulations=sims)
+        
+        console.print("[bold green]Driver Championship Probabilities:[/]")
+        for driver, prob in result['driver_championship'].items():
+            console.print(f"  {driver}: {prob}%")
+        
+        console.print("\n[bold yellow]Constructor Championship Probabilities:[/]")
+        for team, prob in result['constructor_championship'].items():
+            console.print(f"  {team}: {prob}%")
+    except Exception as e:
+        console.print(f"[red]Championship simulation failed:[/] {e}"); sys.exit(1)
+
+
+# ── dashboard (NEW v3.0) ───────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--port", "-p", type=int, default=5000, help="Dashboard port")
+def dashboard(port: int):
+    """Start the interactive web dashboard (NEW v3.0)."""
+    console.print(f"\n[bold cyan]F1 Predictor Dashboard v3.0[/] → http://127.0.0.1:{port}\n")
+    
+    try:
+        import subprocess
+        # Pass port as environment variable to Flask app
+        env = os.environ.copy()
+        env['FLASK_PORT'] = str(port)
+        subprocess.run([sys.executable, "dashboard/app.py"], env=env, check=True)
+    except Exception as e:
+        console.print(f"[red]Dashboard failed to start:[/] {e}"); sys.exit(1)
 
 
 # ── report ─────────────────────────────────────────────────────────────────────
@@ -205,7 +427,6 @@ def quality_check():
         from scripts.data_quality_report import run_all_checks
         run_all_checks()
     except ImportError:
-        # Fallback: run as subprocess in case of import path issues
         import subprocess
         subprocess.run(
             [sys.executable, "scripts/data_quality_report.py"],
@@ -246,12 +467,12 @@ def circuits():
 @click.option("--max-port", default=None, type=int,
               help="Max port to try when --port-auto is enabled (default: port + 50)")
 @click.option("--reload", is_flag=True, help="Enable hot-reload (development only)")
-def api(host: str, port: int, port_auto: bool, max_port: int, reload: bool):
+@click.option("--v3", is_flag=True, help="Use v3.0 enhanced API routes")
+def api(host: str, port: int, port_auto: bool, max_port: int, reload: bool, v3: bool):
     """Start the FastAPI prediction server."""
 
     try:
         from fastapi import FastAPI
-        from api.routes import router
         from config.settings import API_HOST, API_PORT
     except ImportError as e:
         console.print(f"[red]Import error:[/] {e}"); sys.exit(1)
@@ -259,10 +480,9 @@ def api(host: str, port: int, port_auto: bool, max_port: int, reload: bool):
     host = host or API_HOST
     port = port or API_PORT
 
-    # If port-auto is enabled, try to start on the first available port.
+    # Port auto-selection
     if port_auto:
         import socket
-
         start_port = int(port)
         upper = int(max_port) if max_port is not None else start_port + 50
         chosen_port = None
@@ -289,25 +509,32 @@ def api(host: str, port: int, port_auto: bool, max_port: int, reload: bool):
         port = chosen_port
 
     app = FastAPI(
-        title="F1 Race Prediction API",
+        title="F1 Race Prediction API v3.0",
         description="Probabilistic F1 race outcome prediction — 2026 season.",
-        version="2.0.0",
+        version="3.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )
     
-    # FIX-4.5: Add CORS middleware for frontend access from different origins
+    # CORS middleware
     from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # For production, restrict to specific domains
+        allow_origins=["*"],
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
     
+    # Use v3.0 routes if requested
+    if v3:
+        from api.routes_v3 import router
+        console.print("[bold magenta]Using v3.0 enhanced API routes[/]")
+    else:
+        from api.routes import router
+    
     app.include_router(router, prefix="/api/v1")
 
-    console.print(f"\n[bold cyan]F1 Prediction API v2[/] → http://{host}:{port}")
+    console.print(f"\n[bold cyan]F1 Prediction API v3.0[/] → http://{host}:{port}")
     console.print(f"[dim]Swagger UI:  http://{host}:{port}/docs[/]")
     console.print(f"[dim]ReDoc:       http://{host}:{port}/redoc[/]\n")
     try:
@@ -317,7 +544,6 @@ def api(host: str, port: int, port_auto: bool, max_port: int, reload: bool):
         if not port_auto:
             console.print("[dim]Try again with --port-auto (or kill the process using port 8000).[/]")
         raise
-
 
 
 # ── backtest ───────────────────────────────────────────────────────────────────
@@ -330,6 +556,31 @@ def backtest(seasons):
     console.print("[yellow]⚠[/] Requires historical snapshots in data/historical/<year>/")
     console.print("[dim]See data/historical/README.md for the expected format.[/]")
     console.print("[dim]Run scripts/backtest_2025_season.py for a demo.[/]\n")
+
+
+# ── benchmark (NEW v3.0) ──────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--circuit", "-c", default="canada")
+@click.option("--sims", "-n", type=int, default=5000)
+def benchmark(circuit: str, sims: int):
+    """Benchmark vectorized vs original simulation performance (NEW v3.0)."""
+    console.print(f"\n[bold cyan]Performance Benchmark:[/] {circuit.upper()}, {sims:,} sims\n")
+    
+    try:
+        from engine.vectorized_simulation import compare_performance
+        result = compare_performance(circuit, n_runs=sims, seed=42)
+        
+        console.print(Panel(
+            f"Vectorized time: [bold green]{result['vectorized_time_ms']:.2f} ms[/]\n"
+            f"Original time:   [yellow]{result['original_time_ms']:.2f} ms[/]\n"
+            f"Speedup:         [bold]{result['speedup_factor']:.2f}x[/]\n"
+            f"Accuracy diff:   {result['max_prob_diff']:.4f}\n"
+            f"Accuracy check:  [{'green' if result['accuracy_check'] == 'PASS' else 'red'}]{result['accuracy_check']}[/]",
+            title="Benchmark Results",
+        ))
+    except Exception as e:
+        console.print(f"[red]Benchmark failed:[/] {e}"); sys.exit(1)
 
 
 if __name__ == "__main__":

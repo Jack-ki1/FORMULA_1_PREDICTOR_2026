@@ -36,6 +36,7 @@ class DriverPrediction:
 
     def to_dict(self) -> dict:
         return {
+            "driver_id":         self.driver_id,  # Add driver_id for database storage
             "driver_name":       self.driver_name,  # QUALITY-10 FIX: Use driver_name consistently
             "driver":            self.driver_name,  # Keep 'driver' for backward compatibility
             "team":              self.team,

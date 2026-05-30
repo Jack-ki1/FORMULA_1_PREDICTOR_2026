@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor v3.0 Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 1.2em;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #764ba2;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .card h3 {
+            color: #667eea;
+            margin: 15px 0 10px 0;
+            font-size: 1.3em;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .two-column {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .three-column {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-box h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        .prediction-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .prediction-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        .prediction-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .prediction-table tr:hover {
+            background: #f5f5f5;
+        }
+        .chart-container {
+            margin-top: 20px;
+            min-height: 400px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.active {
+            display: block;
+        }
+        .progress-bar {
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 25px;
+            margin: 5px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        .info-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        @media (max-width: 1200px) {
+            .two-column, .three-column {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏎️ F1 Predictor v3.0 Dashboard</h1>
+            <p>Advanced Race Prediction System with Machine Learning & Monte Carlo Simulations</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <h3>v3.0</h3>
+                <p>Version</p>
+            </div>
+            <div class="stat-box">
+                <h3 id="total-predictions">0</h3>
+                <p>Predictions Made</p>
+            </div>
+            <div class="stat-box">
+                <h3 id="accuracy-score">--</h3>
+                <p>Accuracy (Brier)</p>
+            </div>
+            <div class="stat-box">
+                <h3>20x</h3>
+                <p>Speedup</p>
+            </div>
+            <div class="stat-box">
+                <h3>2026</h3>
+                <p>Season</p>
+            </div>
+            <div class="stat-box">
+                <h3>10,000+</h3>
+                <p>Simulations</p>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>🎯 Race Prediction</h2>
+                <form id="predict-form">
+                    <div class="form-group">
+                        <label>Circuit:</label>
+                        <select id="circuit" required>
+                            <option value="canada">Canada</option>
+                            <option value="monaco">Monaco</option>
+                            <option value="silverstone">Silverstone</option>
+                            <option value="monza">Monza</option>
+                            <option value="spa">Spa</option>
+                            <option value="hungary">Hungary</option>
+                            <option value="belgium">Belgium</option>
+                            <option value="netherlands">Netherlands</option>
+                            <option value="italy">Italy</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Rain Probability (0-1):</label>
+                        <input type="number" id="rain" min="0" max="1" step="0.05" value="0.2">
+                    </div>
+                    <div class="form-group">
+                        <label>Simulations:</label>
+                        <input type="number" id="sims" value="10000" min="1000" max="100000">
+                    </div>
+                    <button type="submit" class="btn">Run Prediction</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>⚔️ H2H Comparison</h2>
+                <form id="h2h-form">
+                    <div class="form-group">
+                        <label>Driver 1:</label>
+                        <input type="text" id="driver1" placeholder="verstappen" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Driver 2:</label>
+                        <input type="text" id="driver2" placeholder="hamilton" required>
+                    </div>
+                    <button type="submit" class="btn">Compare Drivers</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>🏢 Constructor Analysis</h2>
+                <div class="form-group">
+                    <label>Select Circuit:</label>
+                    <select id="constructor-circuit">
+                        <option value="canada">Canada</option>
+                        <option value="monaco">Monaco</option>
+                        <option value="silverstone">Silverstone</option>
+                        <option value="monza">Monza</option>
+                        <option value="spa">Spa</option>
+                    </select>
+                </div>
+                <button id="load-constructors" class="btn">Load Constructor Predictions</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Prediction Results</h2>
+            <div id="loading" class="loading">
+                <p>Running predictions... This may take a moment.</p>
+            </div>
+            <div id="results"></div>
+        </div>
+
+        <div class="two-column">
+            <div class="card">
+                <h2>📈 Win Probability Distribution</h2>
+                <div id="winChart" class="chart-container"></div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Top 3 Finish Probability</h2>
+                <div id="top3Chart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <div class="two-column">
+            <div class="card">
+                <h2>🏎️ Expected Finish Positions</h2>
+                <div id="positionChart" class="chart-container"></div>
+            </div>
+
+            <div class="card">
+                <h2>💯 Expected Points per Driver</h2>
+                <div id="pointsChart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📉 DNF Risk Analysis</h2>
+            <div id="dnfTable"></div>
+        </div>
+
+        <div class="two-column">
+            <div class="card">
+                <h2>🏆 Constructor Standings Prediction</h2>
+                <div id="constructorTable"></div>
+            </div>
+
+            <div class="card">
+                <h2>🔥 Top Performers & Insights</h2>
+                <div id="topPerformers"></div>
+            </div>
+        </div>
+
+        <div class="two-column">
+            <div class="card">
+                <h2>🏁 Teammate Battles</h2>
+                <div id="teammateBattles"></div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Position Distribution Heatmap</h2>
+                <div id="heatmapChart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>⚔️ H2H Results</h2>
+            <div id="h2hResults"></div>
+        </div>
+
+        <div class="footer" style="text-align: center; margin-top: 40px; color: white; font-size: 0.9em;">
+            <p>F1 Predictor v3.0 Dashboard · Monte Carlo Simulation · Advanced ML Models</p>
+            <p style="margin-top: 10px;">© 2026 F1 Prediction System | Real-time Race Analytics</p>
+        </div>
+    </div>
+
+    <script>
+        // Race prediction form
+        document.getElementById('predict-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            
+            const data = {
+                circuit_id: document.getElementById('circuit').value,
+                rain_probability: parseFloat(document.getElementById('rain').value),
+                n_simulations: parseInt(document.getElementById('sims').value)
+            };
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+
+        // H2H form
+        document.getElementById('h2h-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            
+            const data = {
+                driver1: document.getElementById('driver1').value,
+                driver2: document.getElementById('driver2').value,
+                circuit_id: document.getElementById('circuit').value,
+                n_simulations: 10000
+            };
+
+            try {
+                const response = await fetch('/h2h', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                displayH2H(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+
+        // Constructor analysis
+        document.getElementById('load-constructors').addEventListener('click', async () => {
+            const circuit = document.getElementById('constructor-circuit').value;
+            try {
+                const response = await fetch(`/constructors/${circuit}`);
+                const result = await response.json();
+                displayConstructors(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function displayResults(data) {
+            document.getElementById('loading').classList.remove('active');
+            
+            // Defensive check: ensure predictions array exists
+            if (!data || !data.predictions || !Array.isArray(data.predictions)) {
+                console.error('Invalid prediction data:', data);
+                document.getElementById('results').innerHTML = '<p style="color: red; font-weight: bold;">Error: Invalid prediction data received. Please try again.</p>';
+                return;
+            }
+            
+            // Display predictions table
+            let html = '<table class="prediction-table">';
+            html += '<tr><th>Pos</th><th>Driver</th><th>Team</th><th>Win %</th><th>Top 3 %</th><th>Top 5 %</th><th>Top 10 %</th><th>DNF %</th><th>Expected Points</th><th>Confidence</th></tr>';
+            
+            data.predictions.forEach((pred, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1);
+                html += `<tr>
+                    <td>${medal}</td>
+                    <td><strong>${pred.driver_name || pred.driver || 'Unknown'}</strong></td>
+                    <td>${pred.team || 'Unknown'}</td>
+                    <td>${(pred.win_pct || 0).toFixed(1)}%</td>
+                    <td>${(pred.top3_pct || 0).toFixed(1)}%</td>
+                    <td>${(pred.top5_pct || 0).toFixed(1)}%</td>
+                    <td>${(pred.top10_pct || 0).toFixed(1)}%</td>
+                    <td>${(pred.dnf_pct || 0).toFixed(1)}%</td>
+                    <td>${(pred.expected_points || 0).toFixed(1)}</td>
+                    <td>${pred.confidence || 'N/A'}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('results').innerHTML = html;
+            
+            // Update prediction count
+            document.getElementById('total-predictions').textContent = 
+                parseInt(document.getElementById('total-predictions').textContent) + 1;
+            
+            // Create charts
+            createCharts(data.predictions);
+            
+            // Create DNF table
+            createDNFTable(data.predictions);
+            
+            // Create constructor table
+            createConstructorTable(data.predictions);
+            
+            // Create top performers
+            createTopPerformers(data.predictions);
+            
+            // Create teammate battles
+            createTeammateBattles(data.predictions);
+            
+            // Create heatmap
+            createHeatmap(data.predictions);
+        }
+
+        function createCharts(predictions) {
+            const drivers = predictions.slice(0, 20).map(p => p.driver_name || p.driver);
+            const winProbs = predictions.slice(0, 20).map(p => p.win_pct || 0);
+            const top3Probs = predictions.slice(0, 20).map(p => p.top3_pct || 0);
+            const positions = predictions.slice(0, 20).map(p => p.predicted_position || 0);
+            const points = predictions.slice(0, 20).map(p => p.expected_points || 0);
+            
+            // Win chart
+            Plotly.newPlot('winChart', [{
+                x: drivers,
+                y: winProbs,
+                type: 'bar',
+                marker: { color: 'rgb(102, 126, 234)' }
+            }], {
+                title: 'Win Probability by Driver (%)',
+                xaxis: { title: 'Driver', tickangle: -45 },
+                yaxis: { title: 'Win Probability (%)' },
+                margin: { b: 100 }
+            });
+            
+            // Top 3 chart
+            Plotly.newPlot('top3Chart', [{
+                x: drivers,
+                y: top3Probs,
+                type: 'bar',
+                marker: { color: 'rgb(118, 75, 162)' }
+            }], {
+                title: 'Top 3 Finish Probability (%)',
+                xaxis: { title: 'Driver', tickangle: -45 },
+                yaxis: { title: 'Top 3 Probability (%)' },
+                margin: { b: 100 }
+            });
+            
+            // Position chart
+            Plotly.newPlot('positionChart', [{
+                x: drivers,
+                y: positions,
+                type: 'bar',
+                marker: { color: 'rgb(255, 99, 132)' }
+            }], {
+                title: 'Expected Finish Position',
+                xaxis: { title: 'Driver', tickangle: -45 },
+                yaxis: { title: 'Position', autorange: 'reversed' },
+                margin: { b: 100 }
+            });
+            
+            // Points chart
+            Plotly.newPlot('pointsChart', [{
+                x: drivers,
+                y: points,
+                type: 'bar',
+                marker: { color: 'rgb(54, 162, 235)' }
+            }], {
+                title: 'Expected Points per Driver',
+                xaxis: { title: 'Driver', tickangle: -45 },
+                yaxis: { title: 'Expected Points' },
+                margin: { b: 100 }
+            });
+        }
+
+        function createDNFTable(predictions) {
+            let html = '<table class="prediction-table">';
+            html += '<tr><th>Driver</th><th>Team</th><th>DNF %</th><th>Risk Level</th><th>Risk Indicator</th></tr>';
+            
+            predictions.slice(0, 15).forEach(pred => {
+                const dnf = pred.dnf_pct || 0;
+                const risk = dnf < 5 ? '🟢 Low' : dnf < 10 ? '🟡 Medium' : '🔴 High';
+                const color = dnf < 5 ? '#28a745' : dnf < 10 ? '#ffc107' : '#dc3545';
+                
+                html += `<tr>
+                    <td><strong>${pred.driver_name || pred.driver}</strong></td>
+                    <td>${pred.team}</td>
+                    <td>${dnf.toFixed(1)}%</td>
+                    <td>${risk}</td>
+                    <td>
+                        <div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 25px;">
+                            <div style="height: 100%; width: ${dnf * 2}%; background: ${color};"></div>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('dnfTable').innerHTML = html;
+        }
+
+        function createConstructorTable(predictions) {
+            const constructors = {};
+            predictions.forEach(pred => {
+                const team = pred.team;
+                if (!constructors[team]) {
+                    constructors[team] = { win_pct: 0, points: 0, count: 0 };
+                }
+                constructors[team].win_pct += pred.win_pct || 0;
+                constructors[team].points += pred.expected_points || 0;
+                constructors[team].count++;
+            });
+            
+            const sorted = Object.entries(constructors)
+                .sort((a, b) => b[1].win_pct - a[1].win_pct)
+                .slice(0, 10);
+            
+            let html = '<table class="prediction-table">';
+            html += '<tr><th>Pos</th><th>Constructor</th><th>Combined Win %</th><th>Total Expected Points</th></tr>';
+            
+            sorted.forEach(([team, data], idx) => {
+                html += `<tr>
+                    <td>${idx + 1}</td>
+                    <td><strong>${team.replace('_', ' ').toUpperCase()}</strong></td>
+                    <td>${data.win_pct.toFixed(1)}%</td>
+                    <td>${data.points.toFixed(1)}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('constructorTable').innerHTML = html;
+        }
+
+        function createTopPerformers(predictions) {
+            const winner = predictions[0];
+            const darkHorses = predictions.filter(p => (p.top3_pct || 0) > 20 && (p.predicted_position || 99) > 3);
+            const safeBets = predictions.filter(p => (p.top10_pct || 0) > 80);
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">';
+            
+            html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                <h3>Most Likely Winner</h3>
+                <p style="font-size: 1.2em; margin: 10px 0;"><strong>${winner.driver_name || winner.driver}</strong></p>
+                <p>Win Probability: ${winner.win_pct?.toFixed(1) || 0}%</p>
+            </div>`;
+            
+            if (darkHorses.length > 0) {
+                const dh = darkHorses[0];
+                html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h3>Dark Horse</h3>
+                    <p style="font-size: 1.2em; margin: 10px 0;"><strong>${dh.driver_name || dh.driver}</strong></p>
+                    <p>Top 3: ${dh.top3_pct?.toFixed(1) || 0}%</p>
+                </div>`;
+            }
+            
+            if (safeBets.length > 0) {
+                const sb = safeBets[0];
+                html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h3>Safest Bet for Points</h3>
+                    <p style="font-size: 1.2em; margin: 10px 0;"><strong>${sb.driver_name || sb.driver}</strong></p>
+                    <p>Top 10: ${sb.top10_pct?.toFixed(1) || 0}%</p>
+                </div>`;
+            }
+            
+            html += '</div>';
+            document.getElementById('topPerformers').innerHTML = html;
+        }
+
+        function createTeammateBattles(predictions) {
+            const teams = {};
+            predictions.forEach(pred => {
+                const team = pred.team;
+                if (!teams[team]) teams[team] = [];
+                teams[team].push(pred);
+            });
+            
+            let html = '<table class="prediction-table">';
+            html += '<tr><th>Constructor</th><th>Driver 1</th><th>Win %</th><th>Driver 2</th><th>Win %</th><th>Advantage</th></tr>';
+            
+            Object.entries(teams).forEach(([team, drivers]) => {
+                if (drivers.length >= 2) {
+                    const [d1, d2] = drivers;
+                    const advantage = (d1.win_pct || 0) - (d2.win_pct || 0);
+                    const leader = advantage > 0 ? d1 : d2;
+                    const advantageText = `${leader.driver_name || leader.driver} (+${Math.abs(advantage).toFixed(1)}%)`;
+                    
+                    html += `<tr>
+                        <td><strong>${team.replace('_', ' ').toUpperCase()}</strong></td>
+                        <td>${d1.driver_name || d1.driver}</td>
+                        <td>${d1.win_pct?.toFixed(1) || 0}%</td>
+                        <td>${d2.driver_name || d2.driver}</td>
+                        <td>${d2.win_pct?.toFixed(1) || 0}%</td>
+                        <td>${advantageText}</td>
+                    </tr>`;
+                }
+            });
+            
+            html += '</table>';
+            document.getElementById('teammateBattles').innerHTML = html;
+        }
+
+        function createHeatmap(predictions) {
+            const z = [];
+            const y = [];
+            predictions.slice(0, 10).forEach(pred => {
+                y.push(pred.driver_name || pred.driver);
+                const row = pred.position_distribution || Array(20).fill(0);
+                z.push(row.slice(0, 20));
+            });
+            
+            Plotly.newPlot('heatmapChart', [{
+                z: z,
+                x: Array.from({length: 20}, (_, i) => `P${i+1}`),
+                y: y,
+                type: 'heatmap',
+                colorscale: 'Viridis'
+            }], {
+                title: 'Position Distribution (Top 10 Drivers)',
+                xaxis: { title: 'Position' },
+                yaxis: { title: 'Driver' }
+            });
+        }
+
+        function displayH2H(data) {
+            document.getElementById('loading').classList.remove('active');
+            
+            let html = '<div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">';
+            html += `<h3 style="color: #764ba2;">Head-to-Head Results</h3>`;
+            html += `<p style="margin: 10px 0;"><strong>${data.driver1}</strong> finishes ahead: <strong style="color: #667eea; font-size: 1.5em;">${data.driver1_finishes_ahead_pct}%</strong></p>`;
+            html += `<p style="margin: 10px 0;"><strong>${data.driver2}</strong> finishes ahead: <strong style="color: #667eea; font-size: 1.5em;">${data.driver2_finishes_ahead_pct}%</strong></p>`;
+            html += `<p style="margin: 10px 0;">Average positions: ${data.driver1} (${data.driver1_avg_position.toFixed(1)}), ${data.driver2} (${data.driver2_avg_position.toFixed(1)})</p>`;
+            
+            // H2H visualization
+            html += '<div style="margin-top: 20px;">';
+            html += `<p><strong>${data.driver1}</strong></p>`;
+            html += `<div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 30px;">`;
+            html += `<div style="height: 100%; width: ${data.driver1_finishes_ahead_pct}%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);"></div>`;
+            html += `</div>`;
+            html += `<p style="margin-top: 15px;"><strong>${data.driver2}</strong></p>`;
+            html += `<div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 30px;">`;
+            html += `<div style="height: 100%; width: ${data.driver2_finishes_ahead_pct}%; background: linear-gradient(90deg, #764ba2 0%, #667eea 100%);"></div>`;
+            html += `</div>`;
+            html += '</div>';
+            html += '</div>';
+            
+            document.getElementById('h2hResults').innerHTML = html;
+        }
+
+        function displayConstructors(data) {
+            let html = '<table class="prediction-table">';
+            html += '<tr><th>Constructor</th><th>Win Probability</th><th>Top 3 Probability</th><th>Expected Points</th></tr>';
+            
+            data.constructors.forEach(constructor => {
+                html += `<tr>
+                    <td><strong>${constructor.constructor.replace('_', ' ').toUpperCase()}</strong></td>
+                    <td>${constructor.win_probability?.toFixed(1) || 0}%</td>
+                    <td>${constructor.top3_probability?.toFixed(1) || 0}%</td>
+                    <td>${constructor.points_expected?.toFixed(1) || 0}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('constructorTable').innerHTML = html;
+        }
+
+        function showError(message) {
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('results').innerHTML = `<p style="color: red; font-weight: bold;">Error: ${message}</p>`;
+        }
+    </script>
+</body>
+</html>

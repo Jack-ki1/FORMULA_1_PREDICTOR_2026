@@ -225,7 +225,7 @@ def check_calendar_vs_circuits() -> tuple:
 
 
 def check_season_data() -> tuple:
-    from data.season_2026 import SEASON_RESULTS_2026, DRIVER_STANDINGS_AFTER_R4
+    from data.season_2026 import SEASON_RESULTS_2026, DRIVER_STANDINGS_AFTER_R5
     from data.driver_data import DRIVERS
     issues, warnings, passes = 0, 0, 0
 
@@ -267,7 +267,7 @@ def check_season_data() -> tuple:
         passes += 1
 
     # Standings consistency
-    total_pts = sum(s["points"] for s in DRIVER_STANDINGS_AFTER_R4)
+    total_pts = sum(s["points"] for s in DRIVER_STANDINGS_AFTER_R5)
     if total_pts == 0:
         _warn("Championship standings sum to 0 — has season data been loaded?")
         warnings += 1
@@ -275,7 +275,7 @@ def check_season_data() -> tuple:
         passes += 1
 
     # Check all standings drivers exist
-    for s in DRIVER_STANDINGS_AFTER_R4:
+    for s in DRIVER_STANDINGS_AFTER_R5:
         if s["driver"] not in known_drivers:
             _warn(f"Standings: '{s['driver']}' not found in driver_data"); warnings += 1
 

@@ -1,60 +1,31 @@
 """
-Pydantic schemas for the F1 Prediction API.
+Pydantic Schemas for F1 Prediction API v3.0.
 
-BUG FIX (v2.1): Removed duplicate class definitions that caused unpredictable runtime behavior.
-Python silently used the last definition, creating schema contract mismatches.
+Request and response models for all API endpoints.
 """
 
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict
 
 
-# ── Request schemas ────────────────────────────────────────────────────────────
+# ── Prediction Request/Response ────────────────────────────────────────────────
 
-class PredictRequest(BaseModel):
-    circuit_id: str = Field(..., example="canada")
-    rain_probability: Optional[float] = Field(None, ge=0.0, le=1.0)
-    n_simulations: int = Field(5000, ge=100, le=50000)
-
-    @field_validator("circuit_id")
-    @classmethod
-    def circuit_id_lowercase(cls, v: str) -> str:
-        return v.lower().strip()
+class PredictionRequest(BaseModel):
+    circuit_id: str
+    rain_probability: Optional[float] = Field(None, ge=0.0, le=1.0, description="Override rain probability (0.0-1.0)")
+    n_simulations: int = Field(10000, ge=100, le=500000, description="Number of Monte Carlo simulations")
+    seed: Optional[int] = Field(None, description="Random seed for reproducibility")
+    grid_overrides: Optional[Dict[str, int]] = Field(None, description="Override grid positions: {driver_id: position}")
 
 
-class SimulationRequest(BaseModel):
-    """POST /simulate — custom simulation with override parameters."""
-    race_id: str = Field(..., example="canada")
-    rain_probability: Optional[float] = Field(None, ge=0.0, le=1.0)
-    n_simulations: Optional[int] = Field(5000, ge=100, le=50000)
-    seed: Optional[int] = Field(None, description="Seed for deterministic results")
-    grid_overrides: Optional[Dict[str, int]] = Field(
-        None,
-        description="driver_id → grid_position overrides, e.g. {\"verstappen\": 8}",
-        example={"verstappen": 8}
-    )
+class PredictionResponse(BaseModel):
+    meta: Dict
+    predictions: List[Dict]
+    podium_predictions: List[str]
+    likely_top_surprises: Optional[List[str]] = None
 
 
-# ── Per-driver prediction output ───────────────────────────────────────────────
-
-class DriverPredictionOut(BaseModel):
-    """One driver's prediction — used in all prediction responses."""
-    driver: str
-    team: str
-    predicted_position: int
-    win_pct: float = Field(ge=0.0, le=100.0)
-    top3_pct: float = Field(ge=0.0, le=100.0)
-    top10_pct: float = Field(ge=0.0, le=100.0)
-    dnf_pct: float = Field(ge=0.0, le=100.0)
-    teammate_beat_pct: float = Field(ge=0.0, le=100.0)
-    confidence: str
-
-
-# Keep old name as alias for backward compat
-DriverPredictionResponse = DriverPredictionOut
-
-
-# ── Race metadata ──────────────────────────────────────────────────────────────
+# ── Race Meta ──────────────────────────────────────────────────────────────────
 
 class RaceMetaOut(BaseModel):
     circuit: str
@@ -63,55 +34,76 @@ class RaceMetaOut(BaseModel):
     sprint_weekend: bool
     safety_car_probability: float
     rain_probability: float
-    n_simulations: int
     overall_model_confidence: float
+    n_simulations: int
 
 
-# ── Full prediction responses ──────────────────────────────────────────────────
+class DriverPredictionOut(BaseModel):
+    driver: str
+    team: str
+    predicted_position: int
+    win_pct: float
+    top3_pct: float
+    top10_pct: float
+    dnf_pct: float
+    teammate_beat_pct: float
+    confidence: str
+
+
+# ── Full Race Prediction Response ──────────────────────────────────────────────
 
 class RacePredictionResponse(BaseModel):
-    """Full race prediction — GET /predict/{circuit_id}"""
     meta: RaceMetaOut
     predictions: List[DriverPredictionOut]
     podium_predictions: List[str]
-    likely_top_surprises: List[str]
+    likely_top_surprises: Optional[List[str]] = None
 
 
-class PredictResponse(RacePredictionResponse):
-    """Alias kept for backward compatibility."""
-    pass
-
+# ── Winner Prediction ──────────────────────────────────────────────────────────
 
 class WinnerPredictionResponse(BaseModel):
-    """Win probabilities only — GET /predict/{circuit_id}/winner"""
-    circuit: str
-    top_5_win_probabilities: List[Dict[str, Any]]
+    winners: List[Dict[str, float]]
 
+
+# ── DNF Probability ────────────────────────────────────────────────────────────
 
 class DNFProbabilityResponse(BaseModel):
-    """DNF risk per driver — GET /predict/{circuit_id}/dnf"""
-    circuit: str
-    dnf_risk: List[Dict[str, Any]]
+    dnf_probabilities: List[Dict]
+
+
+# ── Head-to-Head Comparison ────────────────────────────────────────────────────
+
+class H2HComparisonResponse(BaseModel):
+    driver1: str
+    driver2: str
+    driver1_finishes_ahead_pct: float
+    driver2_finishes_ahead_pct: float
+    driver1_avg_position: float
+    driver2_avg_position: float
+    notes: str
 
 
 # ── Standings ──────────────────────────────────────────────────────────────────
 
 class StandingsEntry(BaseModel):
-    position: int
     driver: str
-    points: int
+    position: int
+    points: float
+    wins: int
+    podiums: int
 
 
 class ConstructorStandingsEntry(BaseModel):
+    constructor: str
     position: int
-    team: str
-    points: int
+    points: float
+    wins: int
+    podiums: int
 
 
 class StandingsResponse(BaseModel):
-    """Combined standings — GET /standings"""
-    drivers: List[StandingsEntry]
-    constructors: List[ConstructorStandingsEntry]
+    driver_standings: List[StandingsEntry]
+    constructor_standings: List[ConstructorStandingsEntry]
 
 
 # ── Circuits ───────────────────────────────────────────────────────────────────
@@ -119,26 +111,70 @@ class StandingsResponse(BaseModel):
 class CircuitSummary(BaseModel):
     id: str
     name: str
+    round: int
+    date: str
+    sprint: bool
+    safety_car_probability: float
+
+
+class CircuitResponse(BaseModel):
+    id: str
+    name: str
     city: str
     country: str
-    circuit_type: List[str]
+    lap_record: str
+    number_of_laps: int
+    lap_distance: float
+    race_distance: float
+    circuit_type: str
+    overtaking_difficulty: float
     safety_car_probability: float
-    overtaking_difficulty: int
-    power_unit_demand: float
-    brake_demand: float
-    sprint_weekend: bool
-    race_date: str
-
-
-class CircuitResponse(CircuitSummary):
-    """Detailed circuit — GET /circuits/{id}"""
-    lap_count: int
-    lap_distance_km: float
-    total_distance_km: float
-    rain_probability_typical: float
-    drs_zones: int
 
 
 class CircuitListResponse(BaseModel):
-    """Circuit list — GET /circuits"""
     circuits: List[CircuitSummary]
+
+
+# ── Custom Simulation ──────────────────────────────────────────────────────────
+
+class SimulationRequest(BaseModel):
+    circuit_id: str
+    rain_probability: Optional[float] = None
+    n_simulations: int = 10000
+    seed: Optional[int] = None
+    grid_overrides: Optional[Dict[str, int]] = None
+
+
+# ── Championship Simulator ─────────────────────────────────────────────────────
+
+class ChampionshipSimResponse(BaseModel):
+    driver_championship: Dict[str, float]
+    constructor_championship: Dict[str, float]
+    remaining_races: int
+    n_simulations: int
+
+
+# ── Constructor Predictions ────────────────────────────────────────────────────
+
+class ConstructorPredictionResponse(BaseModel):
+    constructors: List[Dict]
+    meta: Dict
+
+
+# ── Accuracy Stats ─────────────────────────────────────────────────────────────
+
+class AccuracyStatsResponse(BaseModel):
+    total_predictions: int
+    evaluated_predictions: int
+    avg_brier_score: Optional[float] = None
+    calibration: Optional[str] = None
+
+
+# ── H2H Request (for routes_v3) ────────────────────────────────────────────────
+
+class H2HRequest(BaseModel):
+    driver1: str
+    driver2: str
+    circuit_id: str
+    rain_probability: Optional[float] = None
+    n_simulations: int = 10000
