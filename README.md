@@ -696,6 +696,14 @@ Similarly, points probability is always ≥ podium probability.
 - Mid-field teams: 10-15%
 - New/unreliable teams: 20-30%
 
+
+## Dashboard
+
+<img src="sc1.png" alt="Dashboard" width="600"/>
+
+## HTML Report
+
+<img src="report.png" alt="HTML Report" width="600"/>
 ---
 
 ## 🌐 REST API Guide
