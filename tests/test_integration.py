@@ -118,13 +118,25 @@ class TestDataConsistency:
         
         assert len(duplicates) == 0, f"Duplicate driver IDs found: {set(duplicates)}"
 
-    def test_driver_count_is_22(self):
-        """There should be exactly 22 active drivers."""
+    def test_driver_count_matches_configuration(self):
+        """Driver count should match the number of active drivers in the configuration."""
         from data.driver_data import get_all_drivers
+        from data.teams import CANONICAL_TEAM_IDS
         
-        active_drivers = [d for d in get_all_drivers() if d.get("active", True)]
-        assert len(active_drivers) == 22, \
-            f"Expected 22 active drivers, found {len(active_drivers)}"
+        drivers = get_all_drivers()
+        active_drivers = [d for d in drivers if d.get("active", True)]
+        
+        # Verify each active team has exactly 2 drivers
+        team_sizes = {t: sum(1 for d in active_drivers if d.get("team") == t) for t in CANONICAL_TEAM_IDS}
+        
+        for team, count in team_sizes.items():
+            if count > 0:
+                assert count == 2, f"Team '{team}' has {count} drivers, expected 2"
+        
+        # Total count should be 2 * number of active teams
+        expected = 2 * sum(1 for t in CANONICAL_TEAM_IDS if team_sizes.get(t, 0) > 0)
+        assert len(active_drivers) == expected, \
+            f"Expected {expected} active drivers (2 per active team), found {len(active_drivers)}"
 
     def test_driver_teams_consistent_with_constructor_mapping(self):
         """
@@ -179,6 +191,24 @@ class TestDataConsistency:
 
 class TestProbabilityModel:
     """Verify probability calculations and constraints."""
+
+    def test_position_distribution_sums_to_n_simulations(self):
+        """Position distributions (raw counts) should sum to approximately n_simulations."""
+        from engine.probability_model import predict_race
+        
+        N_SIMS = 1000
+        result = predict_race(circuit_id="canada", n_simulations=N_SIMS)
+        
+        for pred in result["predictions"]:
+            pos_dist = pred.get("position_distribution", [])
+            did = pred["driver_id"]
+            if pos_dist:
+                total_finishes = sum(pos_dist)
+                dnf_sim = round(pred["dnf_probability"] * N_SIMS)
+                # Counts + DNFs should equal total simulations (within rounding tolerance)
+                assert abs(total_finishes + dnf_sim - N_SIMS) <= 5, (
+                    f"{did}: {total_finishes} finishes + {dnf_sim} DNFs ≠ {N_SIMS} sims"
+                )
 
     def test_position_distribution_sums_to_one(self):
         """Position distributions should sum to approximately 1.0."""

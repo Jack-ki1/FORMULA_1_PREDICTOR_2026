@@ -64,15 +64,41 @@ def predict(race: str, rain: float, sims: int, seed: int,
     if sims < 100:
         console.print("[red]Error:[/] --sims must be at least 100"); sys.exit(1)
 
-    # Parse --grid-override
+    # Parse --grid-override with validation (SECURITY FIX)
     grid_overrides = {}
     if grid_override:
         try:
+            from data.driver_data import DRIVERS
+            
+            MAX_DRIVERS = len(DRIVERS)
+            
             for part in grid_override.split(","):
-                driver_id, pos = part.strip().split(":")
-                grid_overrides[driver_id.strip()] = int(pos)
-        except ValueError:
-            console.print('[red]Error:[/] --grid-override format: "driver_id:pos,driver_id:pos"')
+                part = part.strip()
+                if not part:
+                    continue
+                if ":" not in part:
+                    console.print(f'[red]Error:[/] Invalid grid override format: \'{part}\'. Expected \'driver_id:position\'.')
+                    sys.exit(1)
+                
+                driver_id, pos_str = part.split(":", 1)
+                driver_id = driver_id.strip().lower()
+                
+                if driver_id not in DRIVERS:
+                    console.print(f'[red]Error:[/] Unknown driver: \'{driver_id}\'')
+                    sys.exit(1)
+                
+                pos = int(pos_str.strip())
+                if not (1 <= pos <= MAX_DRIVERS):
+                    console.print(f'[red]Error:[/] Grid position {pos} out of range [1, {MAX_DRIVERS}]')
+                    sys.exit(1)
+                
+                if pos in grid_overrides.values():
+                    console.print(f'[red]Error:[/] Duplicate grid position {pos}')
+                    sys.exit(1)
+                
+                grid_overrides[driver_id] = pos
+        except ValueError as e:
+            console.print(f'[red]Error:[/] {e}')
             sys.exit(1)
 
     try:

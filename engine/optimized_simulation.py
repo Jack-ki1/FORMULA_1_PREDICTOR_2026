@@ -266,6 +266,11 @@ def _aggregate_results(results: List[dict], total_runs: int) -> dict:
         all_driver_ids.update(result["stats"].keys())
     
     aggregated_stats = {}
+    
+    # Calculate runs per worker for weighted position averaging
+    runs_per_worker = [total_runs // len(results)] * len(results)
+    runs_per_worker[-1] += total_runs % len(results)
+    
     for did in all_driver_ids:
         # Sum counts across all workers
         total_wins = sum(r["stats"].get(did, {}).get("win_count", 0) for r in results)
@@ -273,16 +278,17 @@ def _aggregate_results(results: List[dict], total_runs: int) -> dict:
         total_top10 = sum(r["stats"].get(did, {}).get("top10_count", 0) for r in results)
         total_dnfs = sum(r["stats"].get(did, {}).get("dnf_count", 0) for r in results)
         
-        # Calculate expected position (weighted average)
-        exp_positions = []
-        weights = []
-        for r in results:
-            if did in r["stats"]:
-                n_sim = sum(r["stats"][did].get("win_count", 0) for _ in [1])  # Placeholder
-                exp_positions.append(r["stats"][did]["expected_position"])
-                weights.append(n_sim)
-        
-        avg_exp_pos = np.average(exp_positions, weights=weights) if exp_positions else 10.0
+        # Calculate expected position (weighted average by runs per worker)
+        weighted_pos = sum(
+            r["stats"][did]["expected_position"] * n
+            for r, n in zip(results, runs_per_worker)
+            if did in r["stats"]
+        )
+        total_weight = sum(
+            n for r, n in zip(results, runs_per_worker)
+            if did in r["stats"]
+        )
+        avg_exp_pos = weighted_pos / max(total_weight, 1)
         
         aggregated_stats[did] = {
             "win_probability": round(total_wins / total_runs, 4),
@@ -290,7 +296,6 @@ def _aggregate_results(results: List[dict], total_runs: int) -> dict:
             "top10_probability": round(total_top10 / total_runs, 4),
             "dnf_probability": round(total_dnfs / total_runs, 4),
             "expected_position": round(avg_exp_pos, 2),
-            "position_std": 0.0,  # Would need more complex aggregation
             "win_count": total_wins,
             "top3_count": total_top3,
             "top10_count": total_top10,

@@ -250,8 +250,9 @@ def get_db():
 def migrate_from_static():
     """
     Migrate data from static Python modules to database.
-    Run once during initial setup.
+    Idempotent: can be run multiple times without errors.
     """
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
     from data.driver_data import get_all_drivers as static_drivers
     from data.circuit_data import get_all_circuits as static_circuits
     from data.season_2026 import DRIVER_STANDINGS_AFTER_R5, CONSTRUCTOR_STANDINGS_AFTER_R5
@@ -260,40 +261,55 @@ def migrate_from_static():
     db = SessionLocal()
     
     try:
-        # Migrate circuits
+        # Migrate circuits (idempotent with upsert)
         for circuit in static_circuits():
-            # Map circuit data fields to database model fields
-            db_circuit = Circuit(
+            stmt = sqlite_insert(Circuit).values(
                 id=circuit.get("id"),
                 name=circuit.get("name"),
                 city=circuit.get("city"),
                 country=circuit.get("country"),
                 lap_count=circuit.get("lap_count"),
-                circuit_length_km=circuit.get("lap_distance_km"),  # Map lap_distance_km to circuit_length_km
+                circuit_length_km=circuit.get("lap_distance_km"),
                 safety_car_probability=circuit.get("safety_car_probability", 0.5),
                 rain_probability_typical=circuit.get("rain_probability_typical", 0.2),
-                overtaking_difficulty=float(circuit.get("overtaking_difficulty", 5)) / 10.0,  # Normalize 0-10 to 0-1
+                overtaking_difficulty=float(circuit.get("overtaking_difficulty", 5)) / 10.0,
                 drs_zones=circuit.get("drs_zones", 2),
                 circuit_type=circuit.get("circuit_type", []),
                 round_2026=circuit.get("round_2026"),
                 race_date=circuit.get("race_date"),
                 sprint_weekend=circuit.get("sprint_weekend", False),
+                updated_at=datetime.utcnow(),
+            ).on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "name": circuit.get("name"),
+                    "city": circuit.get("city"),
+                    "country": circuit.get("country"),
+                    "updated_at": datetime.utcnow(),
+                }
             )
-            db.add(db_circuit)
+            db.execute(stmt)
         
-        # Migrate constructors
+        # Migrate constructors (idempotent with upsert)
         constructor_ids = set()
         for driver in static_drivers():
             if driver.get("team") and driver["team"] not in constructor_ids:
                 constructor_ids.add(driver["team"])
         
         for const_id in constructor_ids:
-            constructor = Constructor(id=const_id, name=const_id.replace("_", " ").title())
-            db.add(constructor)
+            stmt = sqlite_insert(Constructor).values(
+                id=const_id,
+                name=const_id.replace("_", " ").title(),
+                updated_at=datetime.utcnow(),
+            ).on_conflict_do_update(
+                index_elements=["id"],
+                set_={"name": const_id.replace("_", " ").title(), "updated_at": datetime.utcnow()}
+            )
+            db.execute(stmt)
         
-        # Migrate drivers
+        # Migrate drivers (idempotent with upsert)
         for driver in static_drivers():
-            db_driver = Driver(
+            stmt = sqlite_insert(Driver).values(
                 id=driver["id"],
                 name=driver["name"],
                 number=driver.get("number"),
@@ -307,14 +323,24 @@ def migrate_from_static():
                 championship_points_2026=driver.get("championship_points_2026", 0.0),
                 active=driver.get("active", True),
                 track_type_fit=driver.get("track_type_fit", {}),
+                updated_at=datetime.utcnow(),
+            ).on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "name": driver["name"],
+                    "elo_rating": driver.get("elo", 1500.0),
+                    "updated_at": datetime.utcnow(),
+                }
             )
-            db.add(db_driver)
+            db.execute(stmt)
         
         db.commit()
+        logger.info("✓ Migration completed successfully (idempotent).")
         print("✓ Migration completed successfully!")
         
     except Exception as e:
         db.rollback()
+        logger.error(f"✗ Migration failed: {e}")
         print(f"✗ Migration failed: {e}")
         raise
     finally:

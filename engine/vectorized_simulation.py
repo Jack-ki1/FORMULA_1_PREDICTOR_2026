@@ -83,25 +83,25 @@ def simulate_race_vectorized(
     # Generate DNF rolls for all drivers across all simulations
     dnf_rolled = rng.random((n_runs, n_drivers)) < dnf_probabilities
     
-    # Apply safety car boost (vectorized)
-    if rng.random() < sc_prob:
-        # Get grid ranks for SC boost calculation
-        grid_ranks = np.argsort(-composite_scores)
-        
-        # Create boost mask: boost drivers ranked P6-P15 (indices 5-14)
-        boost_mask = np.zeros(n_drivers, dtype=bool)
-        boost_mask[5:15] = True
-        
-        # Generate random boost factors
-        boost_factors = rng.uniform(1.03, 1.10, size=n_drivers)
-        
-        # Apply boost: multiply scores for mid-field drivers
-        boost_matrix = np.where(boost_mask, boost_factors, 1.0)
-        jittered_scores = np.where(
-            np.tile(boost_mask, (n_runs, 1)) & ~dnf_rolled,
-            jittered_scores * boost_matrix,
-            jittered_scores
-        )
+    # Apply safety car boost (vectorized) - FIX: per-simulation SC events, not batch-level
+    # Generate SC occurrence for each simulation independently
+    sc_occurs = rng.random(n_runs) < sc_prob  # shape (n_runs,)
+    
+    # Grid rank from pre-noise composite scores (stable across simulations)
+    grid_ranks = np.argsort(-composite_scores)  # shape (n_drivers,)
+    midfield = np.zeros(n_drivers, dtype=bool)
+    midfield[grid_ranks[5:15]] = True  # original grid positions 6-15
+    
+    # Generate boost factors: shape (n_runs, n_drivers)
+    boosts = rng.uniform(1.03, 1.10, size=(n_runs, n_drivers))
+    
+    # Apply boost: SC occurred AND driver is midfield AND not DNF
+    apply_boost = (
+        sc_occurs[:, np.newaxis]  # (n_runs, 1)
+        & midfield[np.newaxis, :]  # (1, n_drivers)
+        & ~dnf_rolled  # (n_runs, n_drivers)
+    )
+    jittered_scores = np.where(apply_boost, jittered_scores * boosts, jittered_scores)
     
     # Mask DNF drivers with -infinity so they sort to the end
     jittered_scores[dnf_rolled] = -np.inf

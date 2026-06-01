@@ -8,7 +8,8 @@ FastF1 Integration: Can now load results from FastF1 instead of hardcoded values
 """
 
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, DefaultDict
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -136,54 +137,6 @@ SEASON_RESULTS_2026: List[Dict[str, Any]] = [
     }
 ]
 
-# Calculate points for drivers after R1-R3 (before Antonelli joined)
-POINTS_R1_R3 = {
-    "russell": 25 + 7 + 15,    # R1:25, R2:7, R3:15 = 47
-    "verstappen": 6 + 8 + 25,  # R1:6, R2:8, R3:25 = 39
-    "leclerc": 15 + 6 + 18,    # R1:15, R2:6, R3:18 = 39
-    "norris": 18 + 5 + 12,     # R1:18, R2:5, R3:12 = 35
-    "hamilton": 12 + 4 + 4,    # R1:12, R2:4, R3:4 = 20
-    "piastri": 10 + 3 + 6,     # R1:10, R2:3, R3:6 = 19
-    "sainz": 8 + 0 + 8,        # R1:8, R2:0, R3:8 = 16
-    "perez": 4 + 2 + 10,       # R1:4, R2:2, R3:10 = 16
-    "alonso": 2 + 1 + 2,       # R1:2, R2:1, R3:2 = 5
-    "stroll": 1 + 0 + 0,       # R1:1, R2:0, R3:0 = 1
-    "ocon": 0 + 0 + 1,         # R1:0, R2:0, R3:1 = 1
-}
-
-# Calculate points for drivers after R4 and R5
-POINTS_R4_R5 = {}
-
-for race in SEASON_RESULTS_2026[3:]:  # R4 and R5 only
-    for result in race["results"]:
-        driver = result["driver"]
-        points = result["points"]
-        if driver in POINTS_R4_R5:
-            POINTS_R4_R5[driver] += points
-        else:
-            POINTS_R4_R5[driver] = points
-
-# Combine points from all races
-FINAL_POINTS = POINTS_R1_R3.copy()
-
-# Add points from R4 and R5 for existing drivers
-for driver, points in POINTS_R4_R5.items():
-    if driver in FINAL_POINTS:
-        FINAL_POINTS[driver] += points
-    else:
-        FINAL_POINTS[driver] = points
-
-# Sort drivers by points to create standings
-sorted_drivers = sorted(FINAL_POINTS.items(), key=lambda x: x[1], reverse=True)
-DRIVER_STANDINGS_AFTER_R5 = []
-for i, (driver, points) in enumerate(sorted_drivers):
-    wins = 0
-    # Count wins from all races
-    for race in SEASON_RESULTS_2026:
-        if race["results"][0]["driver"] == driver:
-            wins += 1
-    DRIVER_STANDINGS_AFTER_R5.append({"position": i+1, "driver": driver, "points": points, "wins": wins})
-
 
 # Define constructor mapping for all drivers
 CONSTRUCTOR_MAPPING = {
@@ -212,21 +165,58 @@ CONSTRUCTOR_MAPPING = {
 }
 
 
-# Calculate constructor points
-constructor_points = {}
-for driver, points in FINAL_POINTS.items():
-    team = CONSTRUCTOR_MAPPING.get(driver)
-    if team:
-        if team not in constructor_points:
-            constructor_points[team] = 0
-        constructor_points[team] += points
+def compute_standings_from_results(
+    results: list,
+    constructor_mapping: dict,
+) -> tuple:
+    """
+    Single source of truth: derive standings from race results.
+    
+    Args:
+        results: List of race result dictionaries
+        constructor_mapping: Dict mapping driver_id to constructor_id
+    
+    Returns:
+        Tuple of (driver_standings, constructor_standings)
+    """
+    POINTS = {1: 25, 2: 18, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 2, 10: 1}
+    SPRINT = {1: 8, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1}
 
-# Sort constructors by points
-sorted_constructors = sorted(constructor_points.items(), key=lambda x: x[1], reverse=True)
-CONSTRUCTOR_STANDINGS_AFTER_R5 = [
-    {"position": i+1, "team": team, "points": points}
-    for i, (team, points) in enumerate(sorted_constructors)
-]
+    driver_pts: DefaultDict[str, float] = defaultdict(float)
+    driver_wins: DefaultDict[str, int] = defaultdict(int)
+    constructor_pts: DefaultDict[str, float] = defaultdict(float)
+
+    for race in results:
+        pts_map = SPRINT if race.get("sprint") else POINTS
+        for r in race["results"]:
+            driver = r["driver"]
+            pos = r["position"]
+            pts = pts_map.get(pos, 0)
+            
+            driver_pts[driver] += pts
+            constructor_pts[constructor_mapping.get(driver, "unknown")] += pts
+            if pos == 1:
+                driver_wins[driver] += 1
+
+    driver_standings = [
+        {"position": i + 1, "driver": d, "points": p, "wins": driver_wins[d]}
+        for i, (d, p) in enumerate(
+            sorted(driver_pts.items(), key=lambda x: x[1], reverse=True)
+        )
+    ]
+    constructor_standings = [
+        {"position": i + 1, "team": t, "points": p}
+        for i, (t, p) in enumerate(
+            sorted(constructor_pts.items(), key=lambda x: x[1], reverse=True)
+        )
+    ]
+    return driver_standings, constructor_standings
+
+
+# Derive standings from results - single source of truth
+DRIVER_STANDINGS_AFTER_R5, CONSTRUCTOR_STANDINGS_AFTER_R5 = (
+    compute_standings_from_results(SEASON_RESULTS_2026, CONSTRUCTOR_MAPPING)
+)
 
 
 # Stable aliases for use in API and other modules (QUALITY-02)

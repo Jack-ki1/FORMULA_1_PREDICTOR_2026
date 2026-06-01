@@ -55,6 +55,24 @@ HIGH_CONFIDENCE_THRESHOLD = 0.25  # Win prob above this = high confidence
 MEDIUM_CONFIDENCE_THRESHOLD = 0.10  # Win prob above this = medium confidence
 
 
+# Constructor Strength Ratings
+# ARCHITECTURE FIX: Moved from engine/feature_engineering.py to central config
+# Values derived from 2026 season performance data, scaled to [0.10, 0.96]
+CONSTRUCTOR_STRENGTH: Dict[str, float] = {
+    "mercedes":     0.96,   # Dominant: Antonelli 105pts + Russell 75pts = 180pts
+    "red_bull":     0.85,   # FIXED: Was 0.60 - Verstappen P2 with 93pts, Perez 45pts = 138pts
+    "mclaren":      0.82,   # Strong: Norris + Piastri consistent podiums
+    "ferrari":      0.78,   # Competitive: Leclerc multiple podiums
+    "williams":     0.45,   # FIXED: Was 0.28 - Sainz + Colapinto scoring regularly
+    "alpine":       0.42,   # Mid-field: Gasly + Ocon occasional points
+    "haas":         0.38,   # Lower mid-field: Bearman showing promise
+    "rb":           0.35,   # Lower mid-field: Lawson + Hadjar developing
+    "audi":         0.22,   # New team: Hulkenberg + Bortoleto learning
+    "aston_martin": 0.15,   # Struggling: Alonso + Stroll off pace
+    "cadillac":     0.10,   # New team: Perez + Bottas adapting
+}
+
+
 # Validation function
 def validate_settings() -> Dict[str, Any]:
     """
@@ -116,6 +134,7 @@ settings = Settings()
 
 __all__ = [
     "FEATURE_WEIGHTS",
+    "CONSTRUCTOR_STRENGTH",
     "RECENCY_DECAY",
     "RECENCY_WINDOW",
     "DEFAULT_N_SIMULATIONS",

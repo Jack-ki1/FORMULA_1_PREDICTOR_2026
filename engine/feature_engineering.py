@@ -21,7 +21,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from config.settings import FEATURE_WEIGHTS, RECENCY_DECAY, RECENCY_WINDOW
+from config.settings import CONSTRUCTOR_STRENGTH, FEATURE_WEIGHTS, RECENCY_DECAY, RECENCY_WINDOW
 from data.driver_data import get_driver, get_all_drivers, get_drivers_for_team, calculate_circuit_performance_modifier
 from data.circuit_data import get_circuit, circuit_favors_team
 from data.season_2026 import get_driver_last_n_results, DRIVER_STANDINGS_AFTER_R5
@@ -58,22 +58,32 @@ def compute_elo_score(driver_id: str) -> float:
     
     IMPROVEMENT 3.4: ELO scores are now dampened toward 0.5 for inexperienced
     drivers (experience_races < 30) to reflect higher uncertainty.
+    
+    BUG FIX: Normalizes ELO within the ELO system's own rating population to avoid
+    cross-contamination between MultiDimensionalELO and DRIVERS dict scales.
     """
     try:
         # Try to use multi-dimensional ELO system first (FEATURE-9)
         try:
             from engine.multi_dimensional_elo import get_elo_system
             elo_system = get_elo_system()
-            raw_elo = elo_system.get_elo_score(driver_id, dimension="race", normalized=False)
+            # Get raw rating from the ELO system itself
+            raw_elo = elo_system.drivers.get(driver_id, {}).get("race", {}).get("rating", 1500.0)
+            
+            # Normalize within the ELO system's own rating population
+            all_race_ratings = [
+                data.get("race", {}).get("rating", 1500.0)
+                for data in elo_system.drivers.values()
+            ]
+            lo, hi = min(all_race_ratings), max(all_race_ratings)
+            normalized_elo = (raw_elo - lo) / (hi - lo + 1e-9)
         except ImportError:
             logger.debug("Multi-dimensional ELO not available, using basic ELO")
             # Fallback to basic ELO from driver data
+            field = get_all_drivers()
+            lo, hi = min(d["elo"] for d in field), max(d["elo"] for d in field)
             raw_elo = get_driver(driver_id)["elo"]
-        
-        # Normalize ELO to [0, 1] range
-        field = get_all_drivers()
-        lo, hi = min(d["elo"] for d in field), max(d["elo"] for d in field)
-        normalized_elo = (raw_elo - lo) / (hi - lo + 1e-9)
+            normalized_elo = (raw_elo - lo) / (hi - lo + 1e-9)
         
         # Apply confidence weighting for inexperienced drivers
         driver = get_driver(driver_id)
@@ -90,25 +100,8 @@ def compute_elo_score(driver_id: str) -> float:
 
 # ── Constructor strength ───────────────────────────────────────────────────────
 
-# FIXED: Constructor strength values now align with 2026 season performance data.
-# Previously, Red Bull was at 0.60 despite Verstappen being P2 with 93 points.
-# Values derived from CONSTRUCTOR_STANDINGS_AFTER_R5 with scaling to [0.10, 0.96].
-_CONSTRUCTOR_STRENGTH: dict = {
-    "mercedes":     0.96,   # Dominant: Antonelli 105pts + Russell 75pts = 180pts
-    "red_bull":     0.85,   # FIXED: Was 0.60 - Verstappen P2 with 93pts, Perez 45pts = 138pts
-    "mclaren":      0.82,   # Strong: Norris + Piastri consistent podiums
-    "ferrari":      0.78,   # Competitive: Leclerc multiple podiums
-    "williams":     0.45,   # FIXED: Was 0.28 - Sainz + Colapinto scoring regularly
-    "alpine":       0.42,   # Midfield: Ocon + Gasly points finishes
-    "haas":         0.38,   # Midfield: Bearman + Hulkenberg
-    "racing_bulls": 0.35,   # FIXED: Was "rb" - Lawson + Lindblad
-    "audi":         0.22,   # Lower midfield
-    "aston_martin": 0.15,   # Struggling: Alonso + Stroll
-    "cadillac":     0.10,   # New team, developing
-}
-
 def compute_constructor_strength(team_id: str, circuit_id: str) -> float:
-    base = _CONSTRUCTOR_STRENGTH.get(team_id, 0.25)
+    base = CONSTRUCTOR_STRENGTH.get(team_id, 0.25)
     try:
         mult = circuit_favors_team(circuit_id, team_id)
     except Exception:

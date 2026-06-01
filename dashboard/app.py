@@ -11,6 +11,8 @@ Features:
 
 from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import requests
 import json
 import logging
@@ -24,7 +26,23 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-CORS(app)
+
+# SECURITY FIX: Restrict CORS to known origins
+CORS(app, resources={
+    r"/api/*": {
+        "origins": os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5000").split(","),
+        "methods": ["GET", "POST"],
+        "allow_headers": ["Content-Type", "X-API-Key"],
+    }
+})
+
+# SECURITY FIX: Add rate limiting to prevent flooding
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",  # swap to redis:// in production
+)
 
 # Configuration
 API_BASE_URL = "http://127.0.0.1:8000/api/v1"
@@ -51,6 +69,7 @@ def index():
 
 
 @app.route('/predict', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def predict_page():
     """Race prediction page."""
     if request.method == 'POST':

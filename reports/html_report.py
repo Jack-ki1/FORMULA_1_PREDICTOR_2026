@@ -314,11 +314,15 @@ def _build_html_report(
                 <p>Model Confidence</p>
             </div>
             <div class="info-box">
+                <h3>{circuit.get('circuit_type', ['N/A'])[0] if circuit.get('circuit_type') else 'N/A'}</h3>
+                <p>Circuit Type</p>
+            </div>
+            <div class="info-box">
                 <h3>{circuit.get('lap_record', 'N/A')}</h3>
                 <p>Lap Record</p>
             </div>
             <div class="info-box">
-                <h3>{circuit.get('track_length', 'N/A')} km</h3>
+                <h3>{circuit.get('lap_distance_km', 'N/A')} km</h3>
                 <p>Track Length</p>
             </div>
         </div>
