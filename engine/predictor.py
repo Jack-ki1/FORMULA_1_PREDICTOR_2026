@@ -5,6 +5,9 @@ Supports grid_overrides dict for post-qualifying accuracy boost.
 
 from dataclasses import dataclass, field
 from typing import Optional, Dict
+import hashlib
+import json
+import time
 
 from data.circuit_data import get_circuit
 from engine.probability_model import predict_race
@@ -18,6 +21,24 @@ class PredictionRequest:
     seed: Optional[int] = None
     output_format: str = "full"
     grid_overrides: Dict[str, int] = field(default_factory=dict)
+
+
+# PREDICTION CACHING (P1 Priority - Performance Optimization)
+_cache: Dict[str, dict] = {}
+_cache_ttl: Dict[str, float] = {}
+CACHE_TTL_SECONDS = 300  # 5 minutes cache validity
+
+
+def _cache_key(request: PredictionRequest) -> str:
+    """Generate deterministic cache key from prediction request parameters."""
+    payload = {
+        "circuit": request.circuit_id,
+        "rain": round(request.rain_probability or 0, 2),
+        "sims": request.n_simulations,
+        "seed": request.seed,
+        "grid": sorted(request.grid_overrides.items()),
+    }
+    return hashlib.md5(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
 @dataclass
@@ -101,6 +122,15 @@ def _normalize_win_probabilities(predictions: list) -> list:
 
 
 def predict(request: PredictionRequest) -> dict:
+    """Main prediction function with caching to avoid redundant Monte Carlo simulations."""
+    # Check cache first
+    key = _cache_key(request)
+    now = time.monotonic()
+    
+    if key in _cache and now - _cache_ttl[key] < CACHE_TTL_SECONDS:
+        return _cache[key]
+    
+    # Cache miss or expired - run prediction
     circuit = get_circuit(request.circuit_id)
     sc_prob   = circuit.get("safety_car_probability", 0.5)
     rain_prob = request.rain_probability or circuit.get("rain_probability_typical", 0.2)
@@ -164,7 +194,7 @@ def predict(request: PredictionRequest) -> dict:
         d["position_distribution"] = raw_p.get("position_distribution", [0] * 20)
         output_predictions.append(d)
 
-    return {
+    result = {
         "meta": {
             "circuit":                  circuit["name"],
             "city":                     circuit["city"],
@@ -180,3 +210,9 @@ def predict(request: PredictionRequest) -> dict:
         "likely_top_surprises": [p.driver_name for p in top_surprise],
         "raw":                  raw if request.output_format == "full" else None,
     }
+    
+    # Store in cache
+    _cache[key] = result
+    _cache_ttl[key] = now
+    
+    return result

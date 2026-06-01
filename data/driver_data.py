@@ -183,11 +183,38 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "wins_2026": 2,
         "active": True
     },
+    "hadjar": {
+        "id": "hadjar",
+        "name": "Isack Hadjar",
+        "short": "HAD",
+        "team": "red_bull",
+        "nationality": "French",
+        "number": 6,
+        "experience_races": 1,
+        "elo": 1450,
+        "wet_skill": 7.2,
+        "brakezone_skill": 7.5,
+        "tire_management": 7.3,
+        "qualifying_delta_avg": 0.35,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.15,
+        "track_type_fit": {
+            "high_downforce": 0.85,
+            "technical": 0.82,
+            "power_unit": 0.80,
+            "street": 0.83,
+            "balanced": 0.84
+        },
+        "recent_form": [0, 0, 0, 0, 0, 5],
+        "championship_points_2026": 4,
+        "wins_2026": 0,
+        "active": True
+    },
     "perez": {
         "id": "perez",
         "name": "Sergio Perez",
         "short": "PER",
-        "team": "red_bull",
+        "team": "cadillac",
         "nationality": "Mexican",
         "number": 11,
         "experience_races": 234,
@@ -267,7 +294,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "active": True
     },
     
-    # Alpine
+    # Williams
     "albon": {
         "id": "albon",
         "name": "Alex Albon",
@@ -295,6 +322,91 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "wins_2026": 0,
         "active": True
     },
+    "bottas": {
+        "id": "bottas",
+        "name": "Valtteri Bottas",
+        "short": "BOT",
+        "team": "cadillac",
+        "nationality": "Finnish",
+        "number": 77,
+        "experience_races": 200,
+        "elo": 1530,
+        "wet_skill": 7.8,
+        "brakezone_skill": 8.0,
+        "tire_management": 8.5,
+        "qualifying_delta_avg": 0.20,
+        "dnf_rate_career": 0.15,
+        "dnf_rate_recent": 0.12,
+        "track_type_fit": {
+            "high_downforce": 0.90,
+            "technical": 0.88,
+            "power_unit": 0.85,
+            "street": 0.87,
+            "balanced": 0.89
+        },
+        "recent_form": [9, 8, 7, 8, 7, 6],
+        "championship_points_2026": 1,
+        "wins_2026": 0,
+        "active": True
+    },
+    
+    # Alpine
+    "gasly": {
+        "id": "gasly",
+        "name": "Pierre Gasly",
+        "short": "GAS",
+        "team": "alpine",
+        "nationality": "French",
+        "number": 10,
+        "experience_races": 142,
+        "elo": 1510,
+        "wet_skill": 8.0,
+        "brakezone_skill": 8.2,
+        "tire_management": 8.4,
+        "qualifying_delta_avg": 0.20,
+        "dnf_rate_career": 0.18,
+        "dnf_rate_recent": 0.14,
+        "track_type_fit": {
+            "high_downforce": 0.90,
+            "technical": 0.88,
+            "power_unit": 0.85,
+            "street": 0.88,
+            "balanced": 0.89
+        },
+        "recent_form": [7, 8, 5, 6, 7, 6],
+        "championship_points_2026": 4,
+        "wins_2026": 0,
+        "active": True
+    },
+    "colapinto": {
+        "id": "colapinto",
+        "name": "Franco Colapinto",
+        "short": "COL",
+        "team": "alpine",
+        "nationality": "Argentine",
+        "number": 43,
+        "experience_races": 5,
+        "elo": 1430,
+        "wet_skill": 7.0,
+        "brakezone_skill": 7.3,
+        "tire_management": 7.2,
+        "qualifying_delta_avg": 0.38,
+        "dnf_rate_career": 0.20,
+        "dnf_rate_recent": 0.18,
+        "track_type_fit": {
+            "high_downforce": 0.82,
+            "technical": 0.80,
+            "power_unit": 0.78,
+            "street": 0.81,
+            "balanced": 0.81
+        },
+        "recent_form": [0, 0, 0, 0, 0, 6],
+        "championship_points_2026": 3,
+        "wins_2026": 0,
+        "active": True
+    },
+    
+    # Haas
     "ocon": {
         "id": "ocon",
         "name": "Esteban Ocon",
@@ -322,59 +434,30 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "wins_2026": 0,
         "active": True
     },
-    
-    # Williams
-    "bottas": {
-        "id": "bottas",
-        "name": "Valtteri Bottas",
-        "short": "BOT",
-        "team": "kick_sauber",
-        "nationality": "Finnish",
-        "number": 77,
-        "experience_races": 200,
-        "elo": 1530,
-        "wet_skill": 7.8,
-        "brakezone_skill": 8.0,
-        "tire_management": 8.5,
-        "qualifying_delta_avg": 0.20,
-        "dnf_rate_career": 0.15,
-        "dnf_rate_recent": 0.12,
+    "bearman": {
+        "id": "bearman",
+        "name": "Oliver Bearman",
+        "short": "BEA",
+        "team": "haas",
+        "nationality": "British",
+        "number": 87,
+        "experience_races": 3,
+        "elo": 1440,
+        "wet_skill": 7.1,
+        "brakezone_skill": 7.4,
+        "tire_management": 7.3,
+        "qualifying_delta_avg": 0.36,
+        "dnf_rate_career": 0.19,
+        "dnf_rate_recent": 0.17,
         "track_type_fit": {
-            "high_downforce": 0.90,
-            "technical": 0.88,
-            "power_unit": 0.85,
-            "street": 0.87,
-            "balanced": 0.89
+            "high_downforce": 0.83,
+            "technical": 0.81,
+            "power_unit": 0.79,
+            "street": 0.82,
+            "balanced": 0.82
         },
-        "recent_form": [9, 8, 7, 8, 7, 6],
+        "recent_form": [0, 0, 0, 0, 0, 10],
         "championship_points_2026": 1,
-        "wins_2026": 0,
-        "active": True
-    },
-    "devries": {
-        "id": "devries",
-        "name": "Nyck De Vries",
-        "short": "DEV",
-        "team": "kick_sauber",
-        "nationality": "Dutch",
-        "number": 21,
-        "experience_races": 42,
-        "elo": 1450,
-        "wet_skill": 7.0,
-        "brakezone_skill": 7.5,
-        "tire_management": 7.5,
-        "qualifying_delta_avg": 0.35,
-        "dnf_rate_career": 0.25,
-        "dnf_rate_recent": 0.22,
-        "track_type_fit": {
-            "high_downforce": 0.82,
-            "technical": 0.80,
-            "power_unit": 0.75,
-            "street": 0.80,
-            "balanced": 0.81
-        },
-        "recent_form": [14, 13, 12, 13, 12, 11],
-        "championship_points_2026": 2,
         "wins_2026": 0,
         "active": True
     },
@@ -435,39 +518,12 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "active": True
     },
     
-    # Haas
-    "magnussen": {
-        "id": "magnussen",
-        "name": "Kevin Magnussen",
-        "short": "MAG",
-        "team": "kick_sauber",
-        "nationality": "Danish",
-        "number": 20,
-        "experience_races": 164,
-        "elo": 1460,
-        "wet_skill": 7.5,
-        "brakezone_skill": 7.2,
-        "tire_management": 7.8,
-        "qualifying_delta_avg": 0.30,
-        "dnf_rate_career": 0.28,
-        "dnf_rate_recent": 0.25,
-        "track_type_fit": {
-            "high_downforce": 0.80,
-            "technical": 0.78,
-            "power_unit": 0.75,
-            "street": 0.80,
-            "balanced": 0.79
-        },
-        "recent_form": [15, 14, 13, 14, 13, 12],
-        "championship_points_2026": 2,
-        "wins_2026": 0,
-        "active": True
-    },
+    # Audi
     "hulkenberg": {
         "id": "hulkenberg",
         "name": "Nico Hulkenberg",
         "short": "HUL",
-        "team": "haas",
+        "team": "audi",
         "nationality": "German",
         "number": 27,
         "experience_races": 155,
@@ -487,256 +543,6 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         },
         "recent_form": [12, 11, 10, 11, 10, 9],
         "championship_points_2026": 12,
-        "wins_2026": 0,
-        "active": True
-    },
-    
-    # AlphaTauri/RB
-    "gasly": {
-        "id": "gasly",
-        "name": "Pierre Gasly",
-        "short": "GAS",
-        "team": "alpine",
-        "nationality": "French",
-        "number": 10,
-        "experience_races": 142,
-        "elo": 1510,
-        "wet_skill": 8.0,
-        "brakezone_skill": 8.2,
-        "tire_management": 8.4,
-        "qualifying_delta_avg": 0.20,
-        "dnf_rate_career": 0.18,
-        "dnf_rate_recent": 0.14,
-        "track_type_fit": {
-            "high_downforce": 0.90,
-            "technical": 0.88,
-            "power_unit": 0.85,
-            "street": 0.88,
-            "balanced": 0.89
-        },
-        "recent_form": [7, 8, 5, 6, 7, 6],
-        "championship_points_2026": 4,
-        "wins_2026": 0,
-        "active": True
-    },
-    "tsunoda": {
-        "id": "tsunoda",
-        "name": "Yuki Tsunoda",
-        "short": "TSU",
-        "team": "rb",
-        "nationality": "Japanese",
-        "number": 30,
-        "experience_races": 66,
-        "elo": 1480,
-        "wet_skill": 7.5,
-        "brakezone_skill": 8.0,
-        "tire_management": 7.8,
-        "qualifying_delta_avg": 0.28,
-        "dnf_rate_career": 0.22,
-        "dnf_rate_recent": 0.19,
-        "track_type_fit": {
-            "high_downforce": 0.85,
-            "technical": 0.82,
-            "power_unit": 0.78,
-            "street": 0.83,
-            "balanced": 0.84
-        },
-        "recent_form": [12, 11, 10, 11, 10, 9],
-        "championship_points_2026": 12,
-        "wins_2026": 0,
-        "active": True
-    },
-    
-    "zhou": {
-        "id": "zhou",
-        "name": "Zhou Guanyu",
-        "short": "ZHO",
-        "team": "kick_sauber",
-        "nationality": "Chinese",
-        "number": 24,
-        "experience_races": 52,
-        "elo": 1440,
-        "wet_skill": 6.8,
-        "brakezone_skill": 7.0,
-        "tire_management": 7.2,
-        "qualifying_delta_avg": 0.38,
-        "dnf_rate_career": 0.22,
-        "dnf_rate_recent": 0.19,
-        "track_type_fit": {
-            "high_downforce": 0.80,
-            "technical": 0.78,
-            "power_unit": 0.75,
-            "street": 0.78,
-            "balanced": 0.78
-        },
-        "recent_form": [18, 16, 15, 16, 15, 14],
-        "championship_points_2026": 0,
-        "wins_2026": 0,
-        "active": False  # Marked as inactive as per bug fix
-    },
-    
-    # Andretti Cadillac (new team for 2026)
-    "herta": {
-        "id": "herta",
-        "name": "Colton Herta",
-        "short": "HER",
-        "team": "cadillac",
-        "nationality": "American",
-        "number": 21,
-        "experience_races": 65,
-        "elo": 1480,
-        "wet_skill": 7.2,
-        "brakezone_skill": 7.8,
-        "tire_management": 7.5,
-        "qualifying_delta_avg": 0.30,
-        "dnf_rate_career": 0.20,
-        "dnf_rate_recent": 0.18,
-        "track_type_fit": {
-            "high_downforce": 0.82,
-            "technical": 0.80,
-            "power_unit": 0.78,
-            "street": 0.85,
-            "balanced": 0.82
-        },
-        "recent_form": [15, 14, 13, 14, 13, 12],
-        "championship_points_2026": 0,
-        "wins_2026": 0,
-        "active": True
-    },
-    "palou": {
-        "id": "palou",
-        "name": "Alex Palou",
-        "short": "PAL",
-        "team": "cadillac",
-        "nationality": "Spanish",
-        "number": 7,
-        "experience_races": 52,
-        "elo": 1460,
-        "wet_skill": 7.0,
-        "brakezone_skill": 7.5,
-        "tire_management": 7.8,
-        "qualifying_delta_avg": 0.32,
-        "dnf_rate_career": 0.18,
-        "dnf_rate_recent": 0.16,
-        "track_type_fit": {
-            "high_downforce": 0.80,
-            "technical": 0.78,
-            "power_unit": 0.75,
-            "street": 0.82,
-            "balanced": 0.80
-        },
-        "recent_form": [16, 15, 14, 15, 14, 13],
-        "championship_points_2026": 0,
-        "wins_2026": 0,
-        "active": True
-    },
-    "lawson": {
-        "id": "lawson",
-        "name": "Liam Lawson",
-        "short": "LAW",
-        "team": "rb",
-        "nationality": "New Zealander",
-        "number": 3,
-        "experience_races": 2,
-        "elo": 1420,
-        "wet_skill": 7.0,
-        "brakezone_skill": 7.2,
-        "tire_management": 7.0,
-        "qualifying_delta_avg": 0.40,
-        "dnf_rate_career": 0.25,
-        "dnf_rate_recent": 0.22,
-        "track_type_fit": {
-            "high_downforce": 0.78,
-            "technical": 0.75,
-            "power_unit": 0.72,
-            "street": 0.76,
-            "balanced": 0.76
-        },
-        "recent_form": [19, 18, 17, 18, 17, 16],
-        "championship_points_2026": 0,
-        "wins_2026": 0,
-        "active": True
-    },
-    
-    # NEW DRIVERS ADDED FROM CANADIAN GRAND PRIX RESULTS
-    "hadjar": {
-        "id": "hadjar",
-        "name": "Isack Hadjar",
-        "short": "HAD",
-        "team": "red_bull",
-        "nationality": "French",
-        "number": 6,
-        "experience_races": 1,
-        "elo": 1450,
-        "wet_skill": 7.2,
-        "brakezone_skill": 7.5,
-        "tire_management": 7.3,
-        "qualifying_delta_avg": 0.35,
-        "dnf_rate_career": 0.18,
-        "dnf_rate_recent": 0.15,
-        "track_type_fit": {
-            "high_downforce": 0.85,
-            "technical": 0.82,
-            "power_unit": 0.80,
-            "street": 0.83,
-            "balanced": 0.84
-        },
-        "recent_form": [0, 0, 0, 0, 0, 5],  # First race was position 5
-        "championship_points_2026": 4,
-        "wins_2026": 0,
-        "active": True
-    },
-    "colapinto": {
-        "id": "colapinto",
-        "name": "Franco Colapinto",
-        "short": "COL",
-        "team": "alpine",
-        "nationality": "Argentine",
-        "number": 43,
-        "experience_races": 5,
-        "elo": 1430,
-        "wet_skill": 7.0,
-        "brakezone_skill": 7.3,
-        "tire_management": 7.2,
-        "qualifying_delta_avg": 0.38,
-        "dnf_rate_career": 0.20,
-        "dnf_rate_recent": 0.18,
-        "track_type_fit": {
-            "high_downforce": 0.82,
-            "technical": 0.80,
-            "power_unit": 0.78,
-            "street": 0.81,
-            "balanced": 0.81
-        },
-        "recent_form": [0, 0, 0, 0, 0, 6],  # First race was position 6
-        "championship_points_2026": 3,
-        "wins_2026": 0,
-        "active": True
-    },
-    "bearman": {
-        "id": "bearman",
-        "name": "Oliver Bearman",
-        "short": "BEA",
-        "team": "haas",
-        "nationality": "British",
-        "number": 87,
-        "experience_races": 3,
-        "elo": 1440,
-        "wet_skill": 7.1,
-        "brakezone_skill": 7.4,
-        "tire_management": 7.3,
-        "qualifying_delta_avg": 0.36,
-        "dnf_rate_career": 0.19,
-        "dnf_rate_recent": 0.17,
-        "track_type_fit": {
-            "high_downforce": 0.83,
-            "technical": 0.81,
-            "power_unit": 0.79,
-            "street": 0.82,
-            "balanced": 0.82
-        },
-        "recent_form": [0, 0, 0, 0, 0, 10],  # First race was position 10
-        "championship_points_2026": 1,
         "wins_2026": 0,
         "active": True
     },
@@ -767,6 +573,35 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "wins_2026": 0,
         "active": True
     },
+    
+    # Racing Bulls
+    "lawson": {
+        "id": "lawson",
+        "name": "Liam Lawson",
+        "short": "LAW",
+        "team": "rb",
+        "nationality": "New Zealander",
+        "number": 3,
+        "experience_races": 2,
+        "elo": 1420,
+        "wet_skill": 7.0,
+        "brakezone_skill": 7.2,
+        "tire_management": 7.0,
+        "qualifying_delta_avg": 0.40,
+        "dnf_rate_career": 0.25,
+        "dnf_rate_recent": 0.22,
+        "track_type_fit": {
+            "high_downforce": 0.78,
+            "technical": 0.75,
+            "power_unit": 0.72,
+            "street": 0.76,
+            "balanced": 0.76
+        },
+        "recent_form": [19, 18, 17, 18, 17, 16],
+        "championship_points_2026": 0,
+        "wins_2026": 0,
+        "active": True
+    },
     "lindblad": {
         "id": "lindblad",
         "name": "Arvid Lindblad",
@@ -789,13 +624,12 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
             "street": 0.77,
             "balanced": 0.77
         },
-        "recent_form": [0, 0, 0, 0, 0, 22],  # DNS - Did Not Start
+        "recent_form": [0, 0, 0, 0, 0, 22],
         "championship_points_2026": 0,
         "wins_2026": 0,
         "active": True
     }
 }
-
 
 def get_driver(driver_id: str) -> Dict[str, Any]:
     """Get a specific driver by ID."""

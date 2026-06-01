@@ -62,7 +62,11 @@ def _get_field_size() -> int:
 
 # NOTE: FIELD_SIZE is computed once at module import time. If you add/remove drivers
 # during runtime, restart the process. For dynamic field size, see simulate_race().
-FIELD_SIZE = _get_field_size()
+def get_field_size() -> int:
+    """Always computed from live active-driver list."""
+    return len(get_all_drivers())
+
+FIELD_SIZE = get_field_size()  # Computed at import time for backward compatibility
 BASE_RACE_LAPS = 60   # Normalisation baseline for DNF distance scaling
 
 

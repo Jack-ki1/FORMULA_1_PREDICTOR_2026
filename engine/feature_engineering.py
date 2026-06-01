@@ -27,7 +27,7 @@ from data.circuit_data import get_circuit, circuit_favors_team
 from data.season_2026 import get_driver_last_n_results, DRIVER_STANDINGS_AFTER_R5
 
 N_DRIVERS = 22
-DNF_POSITION_PENALTY = N_DRIVERS + 5  # 25 — worse than last finisher
+DNF_POSITION_PENALTY = N_DRIVERS + 5  # 27 — beyond last-place finish
 
 
 # ── ELO ────────────────────────────────────────────────────────────────────────

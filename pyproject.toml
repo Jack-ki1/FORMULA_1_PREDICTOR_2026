@@ -1,0 +1,16 @@
+[project]
+name = "f1-predictor"
+version = "3.0.0"
+requires-python = ">=3.10"
+dependencies = []  # keep requirements.txt for pip; this is for tooling
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

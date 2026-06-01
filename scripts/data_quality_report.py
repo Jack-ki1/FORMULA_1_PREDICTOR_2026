@@ -321,8 +321,6 @@ def check_engine_imports() -> tuple:
         ("engine.probability_model",     "predict_race"),
         ("engine.predictor",             "predict"),
         ("engine.calibration",           "brier_score"),
-        ("api.schemas",                  "RacePredictionResponse"),
-        ("api.routes",                   "router"),
     ]
 
     for module_path, attr in modules:

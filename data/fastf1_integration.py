@@ -485,8 +485,6 @@ __all__ = [
     "compare_drivers_telemetry",          # NEW
     "load_entire_season",                 # NEW
     "extract_ml_features",                # NEW
-    "get_historical_circuit_stats",
-    "sync_all_historical_data",
 ]
 
 if __name__ == "__main__":

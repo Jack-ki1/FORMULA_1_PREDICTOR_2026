@@ -20,21 +20,16 @@ def run_post_race_evaluation(race: str, actual_results: Dict[str, int]) -> Dict[
     Returns:
         Dictionary containing evaluation metrics
     """
-    # TODO: Implement actual evaluation logic
-    # This is a placeholder implementation
+    from engine.prediction_tracker import PredictionTracker
     
     print(f"Evaluating race: {race}")
     print(f"Actual results: {actual_results}")
     
-    # Placeholder metrics calculation
-    avg_brier_score = 0.25  # Placeholder value
-    
-    return {
-        "race": race,
-        "actual_results": actual_results,
-        "avg_brier_score": avg_brier_score,
-        "status": "evaluation_completed"
-    }
+    tracker = PredictionTracker()
+    try:
+        return tracker.evaluate_race(race, actual_results)
+    finally:
+        tracker.close()
 
 
 if __name__ == "__main__":

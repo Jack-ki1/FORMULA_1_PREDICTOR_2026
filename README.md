@@ -676,13 +676,9 @@ Similarly, points probability is always ≥ podium probability.
 - New/unreliable teams: 20-30%
 
 
-## Dashboard
-
-<img src="sc1.png" alt="Dashboard" width="600"/>
-
 ## HTML Report
 
-<img src="sc2.png" alt="HTML Report" width="600"/>
+<img src="sc1.png" alt="HTML Report" width="600"/>
 ---
 
 ## 🌐 Web Dashboard Features (NEW in v3.0)

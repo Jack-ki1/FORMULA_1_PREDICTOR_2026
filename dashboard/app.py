@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import sys
+from functools import wraps
 
 # Add project root to Python path so we can import engine, data, etc.
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,6 +29,17 @@ CORS(app)
 # Configuration
 API_BASE_URL = "http://127.0.0.1:8000/api/v1"
 logger = logging.getLogger(__name__)
+API_KEY = os.environ.get("F1_API_KEY")  # Optional API key for authentication
+
+
+def require_api_key(f):
+    """Decorator to require API key authentication on routes."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if API_KEY and request.headers.get("X-API-Key") != API_KEY:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -42,15 +54,33 @@ def index():
 def predict_page():
     """Race prediction page."""
     if request.method == 'POST':
-        data = request.json
+        data = request.json or {}
         try:
+            # Input validation
+            circuit_id = data.get('circuit_id')
+            if not circuit_id:
+                return jsonify({"error": "circuit_id is required"}), 422
+            
+            from data.circuit_data import CIRCUITS
+            if circuit_id not in CIRCUITS:
+                return jsonify({"error": f"Unknown circuit: {circuit_id!r}"}), 422
+            
+            rain_probability = data.get('rain_probability')
+            if rain_probability is not None:
+                if not (0.0 <= rain_probability <= 1.0):
+                    return jsonify({"error": "rain_probability must be in [0, 1]"}), 422
+            
+            n_simulations = data.get('n_simulations', 5000)
+            if not isinstance(n_simulations, int) or n_simulations < 100 or n_simulations > 50000:
+                n_simulations = max(100, min(int(n_simulations), 50000))  # Clamp to valid range
+            
             # Call prediction engine directly instead of proxying to API
             from engine.predictor import predict, PredictionRequest
             
             request_obj = PredictionRequest(
-                circuit_id=data.get('circuit_id'),
-                rain_probability=data.get('rain_probability'),
-                n_simulations=data.get('n_simulations', 5000),
+                circuit_id=circuit_id,
+                rain_probability=rain_probability,
+                n_simulations=n_simulations,
             )
             
             result = predict(request_obj)
@@ -310,9 +340,11 @@ def health():
 
 
 if __name__ == '__main__':
+    import os
     logging.basicConfig(level=logging.INFO)
     port = int(os.environ.get('FLASK_PORT', 5000))
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     print("Starting F1 Predictor Dashboard v3.0")
     print(f"Dashboard: http://127.0.0.1:{port}")
     print("API: Direct integration (no external API server needed)")
-    app.run(debug=True, port=port)
+    app.run(debug=debug, port=port)
