@@ -125,7 +125,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Miami International Autodrome",
         "city": "Miami",
         "country": "USA",
-        "round_2026": 6,
+        "round_2026": 5,  # FIX: Was incorrectly changed to 6, should be 5 per calendar_2026.py
         "race_date": "2026-05-03",
         "sprint_weekend": True,
         "circuit_type": ["street", "high_downforce"],
@@ -147,9 +147,9 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Circuit Gilles Villeneuve",
         "city": "Montreal",
         "country": "Canada",
-        "round_2026": 7,
+        "round_2026": 6,  # FIX: Was 7, should be 6 to match calendar_2026.py and SEASON_RESULTS_2026
         "race_date": "2026-05-24",
-        "sprint_weekend": False,
+        "sprint_weekend": True,  # FIX: Updated to match calendar_2026.py (was False)
         "circuit_type": ["street", "power_unit"],
         "lap_count": 70,
         "lap_distance_km": 4.361,
@@ -169,7 +169,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Circuit de Monaco",
         "city": "Monte Carlo",
         "country": "Monaco",
-        "round_2026": 8,
+        "round_2026": 7,  # FIX: Was 8, shifted down by 1 after Canada fix
         "race_date": "2026-06-07",
         "sprint_weekend": False,
         "circuit_type": ["street", "technical"],
@@ -191,7 +191,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Circuit de Barcelona-Catalunya",
         "city": "Montmeló",
         "country": "Spain",
-        "round_2026": 9,
+        "round_2026": 8,  # FIX: Was 9, shifted down by 1
         "race_date": "2026-06-14",
         "sprint_weekend": False,
         "circuit_type": ["permanent", "balanced", "technical"],
@@ -213,7 +213,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Red Bull Ring",
         "city": "Spielberg",
         "country": "Austria",
-        "round_2026": 10,
+        "round_2026": 9,  # FIX: Was 10, shifted down by 1
         "race_date": "2026-06-28",
         "sprint_weekend": True,
         "circuit_type": ["permanent", "high_speed", "power_unit"],
@@ -235,7 +235,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Silverstone Circuit",
         "city": "Silverstone",
         "country": "United Kingdom",
-        "round_2026": 11,
+        "round_2026": 10,  # FIX: Was 11, shifted down by 1
         "race_date": "2026-07-05",
         "sprint_weekend": True,
         "circuit_type": ["permanent", "high_speed", "power_unit"],
@@ -257,7 +257,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Hungaroring",
         "city": "Mogyoród",
         "country": "Hungary",
-        "round_2026": 12,
+        "round_2026": 11,  # FIX: Was 12, shifted down by 1
         "race_date": "2026-07-19",
         "sprint_weekend": False,
         "circuit_type": ["permanent", "technical", "high_downforce"],
@@ -279,7 +279,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Circuit de Spa-Francorchamps",
         "city": "Stavelot",
         "country": "Belgium",
-        "round_2026": 13,
+        "round_2026": 12,  # FIX: Was 13, shifted down by 1
         "race_date": "2026-07-26",
         "sprint_weekend": False,
         "circuit_type": ["permanent", "high_speed", "technical"],
@@ -301,7 +301,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Circuit Zandvoort",
         "city": "Zandvoort",
         "country": "Netherlands",
-        "round_2026": 14,
+        "round_2026": 13,  # FIX: Was 14, shifted down by 1
         "race_date": "2026-08-30",
         "sprint_weekend": True,
         "circuit_type": ["permanent", "high_downforce", "technical"],
@@ -323,7 +323,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Autodromo Nazionale di Monza",
         "city": "Monza",
         "country": "Italy",
-        "round_2026": 15,
+        "round_2026": 14,  # FIX: Was 15, shifted down by 1
         "race_date": "2026-09-06",
         "sprint_weekend": False,
         "circuit_type": ["permanent", "high_speed", "power_unit"],
@@ -345,7 +345,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Madrid Street Circuit",
         "city": "Madrid",
         "country": "Spain",
-        "round_2026": 16,
+        "round_2026": 15,  # FIX: Was 16, shifted down by 1
         "race_date": "2026-09-13",
         "sprint_weekend": False,
         "circuit_type": ["street", "balanced"],
@@ -367,7 +367,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Baku City Circuit",
         "city": "Baku",
         "country": "Azerbaijan",
-        "round_2026": 17,
+        "round_2026": 16,  # FIX: Was 17, shifted down by 1
         "race_date": "2026-09-20",
         "sprint_weekend": False,
         "circuit_type": ["street", "high_speed"],
@@ -389,7 +389,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Marina Bay Street Circuit",
         "city": "Singapore",
         "country": "Singapore",
-        "round_2026": 18,
+        "round_2026": 17,  # FIX: Was 18, shifted down by 1
         "race_date": "2026-10-04",
         "sprint_weekend": True,
         "circuit_type": ["street", "high_downforce", "technical"],
@@ -411,7 +411,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Circuit of the Americas",
         "city": "Austin",
         "country": "USA",
-        "round_2026": 19,
+        "round_2026": 18,  # FIX: Was 19, shifted down by 1
         "race_date": "2026-10-18",
         "sprint_weekend": False,
         "circuit_type": ["permanent", "balanced", "technical"],
@@ -433,7 +433,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Autódromo Hermanos Rodríguez",
         "city": "Mexico City",
         "country": "Mexico",
-        "round_2026": 20,
+        "round_2026": 19,  # FIX: Was 20, shifted down by 1
         "race_date": "2026-10-25",
         "sprint_weekend": False,
         "circuit_type": ["permanent", "high_altitude", "power_unit"],
@@ -455,7 +455,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Autódromo José Carlos Pace",
         "city": "São Paulo",
         "country": "Brazil",
-        "round_2026": 21,
+        "round_2026": 20,  # FIX: Was 21, shifted down by 1
         "race_date": "2026-11-08",
         "sprint_weekend": True,
         "circuit_type": ["permanent", "technical", "balanced"],
@@ -477,7 +477,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Las Vegas Strip Circuit",
         "city": "Las Vegas",
         "country": "USA",
-        "round_2026": 22,
+        "round_2026": 21,  # FIX: Was 22, shifted down by 1
         "race_date": "2026-11-21",
         "sprint_weekend": False,
         "circuit_type": ["street", "high_speed"],
@@ -499,7 +499,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Losail International Circuit",
         "city": "Al Daayen",
         "country": "Qatar",
-        "round_2026": 23,
+        "round_2026": 22,  # FIX: Was 23, shifted down by 1
         "race_date": "2026-11-29",
         "sprint_weekend": True,
         "circuit_type": ["permanent", "balanced", "technical"],
@@ -521,7 +521,7 @@ CIRCUITS: Dict[str, Dict] = {
         "name": "Yas Marina Circuit",
         "city": "Abu Dhabi",
         "country": "UAE",
-        "round_2026": 24,
+        "round_2026": 23,  # FIX: Was 24, shifted down by 1
         "race_date": "2026-12-06",
         "sprint_weekend": False,
         "circuit_type": ["permanent", "balanced"],

@@ -1,9 +1,9 @@
-# 🏁 F1MLpredictions2026 v3.0 (Validated)
-### A Probabilistic Formula One Race Outcome Prediction System with ML & Database Integration
+# 🏁 F1MLpredictions2026 v3.1 (Audit-Validated)
+### A Probabilistic Formula One Race Outcome Prediction System
 
-> **Built for:** Data scientists, F1 fans, developers, and anyone curious about how probability, machine learning, and data science can predict the unpredictable world of Formula 1 racing.
+> **Built for:** Data scientists, F1 fans, developers, and anyone curious about how probability, Monte Carlo simulation, and data science can predict the unpredictable world of Formula 1 racing.
 
-> **Version 3.0 Highlights:** SQLite database integration, Fast-F1 data sync, web dashboard, vectorized Monte Carlo simulations (20x faster), Optuna weight optimization, H2H driver comparison, constructor predictions, championship simulator, and real-time weather API integration.
+> **Version 3.1 Highlights:** Audit-validated codebase with all critical bugs fixed, FastAPI-based dashboard (replaces Flask), response caching, constructor predictions, experience-based ELO dampening, monotonic probability constraints, comprehensive integration tests, and transparent methodology documentation. All 9 integration tests passing.
 
 ---
 
@@ -11,25 +11,27 @@
 
 1. [What Is This Project?](#-what-is-this-project)
 2. [Who Is This For?](#-who-is-this-for)
-3. [What's New in v3.0?](#-whats-new-in-v30)
-4. [How Does It Work? (Plain English)](#-how-does-it-work-plain-english)
-5. [Understanding Probabilities vs. Certainties](#-understanding-probabilities-vs-certainties)
-6. [Quick Start Guide](#-quick-start-guide)
-7. [Installation (Step by Step)](#-installation-step-by-step)
-8. [How to Use It](#-how-to-use-it)
-9. [Web Dashboard](#-web-dashboard)
-10. [REST API Guide](#-rest-api-guide)
-11. [Available Circuits (2026 Season)](#-available-circuits-2026-season)
-12. [Project Structure Explained](#-project-structure-explained)
-13. [Database & Data Management](#-database--data-management)
-14. [Model Accuracy & Calibration](#-model-accuracy--calibration)
-15. [Performance Optimization](#-performance-optimization)
-16. [Troubleshooting](#-troubleshooting)
-17. [2026 Season Context](#-2026-season-context)
-18. [Technology Stack](#-technology-stack)
-19. [Glossary for Beginners](#-glossary-for-beginners)
-20. [Contributing](#-contributing)
-21. [License](#-license)
+3. [What's New in v3.1?](#-whats-new-in-v31-audit-validated-release)
+4. [What's New in v3.0?](#-whats-new-in-v30)
+5. [How Does It Work? (Plain English)](#-how-does-it-work-plain-english)
+6. [Understanding Probabilities vs. Certainties](#-understanding-probabilities-vs-certainties)
+7. [Quick Start Guide](#-quick-start-guide)
+8. [Installation (Step by Step)](#-installation-step-by-step)
+9. [How to Use It](#-how-to-use-it)
+10. [REST API Guide](#-rest-api-guide-v31)
+11. [Web Dashboard](#-web-dashboard-v31---fastapi)
+12. [Available Circuits (2026 Season)](#-available-circuits-2026-season)
+13. [Project Structure Explained](#-project-structure-explained)
+14. [Database & Data Management](#-database--data-management)
+15. [Model Accuracy & Calibration](#-model-accuracy--calibration)
+16. [Performance Optimization](#-performance-optimization)
+17. [Testing & Validation](#-testing--validation-new-in-v31)
+18. [Troubleshooting](#-troubleshooting)
+19. [2026 Season Context](#-2026-season-context)
+20. [Technology Stack](#-technology-stack-v31)
+21. [Glossary for Beginners](#-glossary-for-beginners)
+22. [Contributing](#-contributing)
+23. [License](#-license)
 
 ---
 
@@ -103,6 +105,44 @@ This approach is:
 
 ---
 
+## ✨ What's New in v3.1? (Audit-Validated Release)
+
+Version 3.1 represents a comprehensive audit remediation with all critical bugs fixed, data integrity validated, and production-ready improvements:
+
+### 🔧 Critical Fixes (All Resolved)
+- ✅ **5 Critical Bugs Fixed**: TypeError crashes, logger imports, schema mismatches, session management
+- ✅ **5 Data Integrity Issues Fixed**: Driver team consistency, constructor strengths, duplicate entries, round numbering, stale form data
+- ✅ **9 Integration Tests Passing**: All tests validate bug fixes and prevent regressions
+
+### 🚀 Performance & Quality Improvements
+- ✅ **Response Caching**: TTL-based caching for prediction endpoints (5-minute cache)
+- ✅ **Top5 Endpoint**: Minimal payload endpoint for dashboard optimization
+- ✅ **Constructor Predictions**: Team-level win/podium probabilities at `/predict/{circuit}/constructors`
+- ✅ **Experience-Based ELO Dampening**: Rookies' ELO scores dampened toward neutral based on race experience
+- ✅ **Monotonic Probability Constraints**: Enforced win_pct ≤ top3_pct ≤ top10_pct hierarchy
+- ✅ **Win Probability Normalization**: All win probabilities sum to 100%
+- ✅ **Structured Logging**: Timing logs for feature computation performance monitoring
+
+### 🎨 Dashboard Modernization (Section 5.1)
+- ✅ **FastAPI Dashboard**: Replaced Flask with FastAPI + Jinja2 templates
+- ✅ **Dynamic Circuit Selector**: AJAX-powered dropdown loads circuits dynamically (Section 5.3)
+- ✅ **Loading States**: Visual feedback during prediction computation (Section 5.4)
+- ✅ **Error Handling**: Graceful error messages with user-friendly display
+- **Start with**: `py main.py dashboard --port 8080`
+
+### 📊 Infrastructure Improvements
+- ✅ **Clean Dependencies**: Removed 6 unused packages (pymc, arviz, redis, xgboost, lightgbm, pyarrow)
+- ✅ **Makefile**: Standardized development workflow (`make install`, `make test`, `make serve`)
+- ✅ **.env.example**: Documented all environment variables
+- ✅ **Feature Caching**: Pre-computed driver features cached per circuit (Section 7.5)
+
+### 📝 Documentation Transparency
+- ✅ **Honest Methodology**: README clarifies system is Monte Carlo + hand-tuned weights
+- ✅ **ML Claims Clarified**: Multi-dimensional ELO, Platt calibration, Optuna limitations documented
+- ✅ **Audit Summary**: Complete AUDIT_REMEDIATION_SUMMARY.md with all changes tracked
+
+---
+
 ## ✨ What's New in v3.0?
 
 Version 3.0 represents a major architectural overhaul with significant new capabilities:
@@ -121,14 +161,14 @@ Version 3.0 represents a major architectural overhaul with significant new capab
 - Lap times, telemetry, weather data integration
 - Command: `py main.py sync-fastf1 --seasons 2024 2025`
 
-#### 3. **Interactive Web Dashboard**
-- Beautiful Flask-based web interface at http://127.0.0.1:5000
-- Real-time prediction visualization with Plotly charts
+#### 3. **Interactive Web Dashboard** (v3.0: Flask | v3.1: FastAPI)
+- Beautiful web interface (now FastAPI-based at http://127.0.0.1:8080)
+- Real-time prediction visualization with dynamic loading
 - H2H driver comparison tool
 - Constructor championship predictions
 - Championship simulator for remaining races
 - Historical accuracy tracking dashboard
-- No separate API server needed - direct integration!
+- Single unified FastAPI server - no separate Flask needed!
 
 #### 4. **Vectorized Monte Carlo Simulations**
 - NumPy vectorization makes simulations **20x faster**
@@ -136,10 +176,11 @@ Version 3.0 represents a major architectural overhaul with significant new capab
 - Process all 20+ drivers simultaneously
 - Previously: ~2 seconds for 5,000 sims → Now: ~0.05 seconds
 
-#### 5. **Optuna Weight Optimization**
-- Bayesian optimization automatically finds optimal feature weights
-- Replaces hardcoded FEATURE_WEIGHTS in config/settings.py
-- Runs cross-validation across multiple circuits
+#### 5. **Optuna Weight Optimization** ⚠️ PLANNED, NOT FULLY IMPLEMENTED
+- Bayesian optimization framework for finding optimal feature weights
+- **Current status**: Optimizes against proxy metrics (composite scores), not actual race outcomes
+- **Limitation**: The optimizer uses driver features as "ground truth" rather than real race results
+- **Future work**: Rewrite objective function to use SEASON_RESULTS_2026 as validation set
 - Command: `py main.py optimize-weights --trials 100`
 - Typically takes 5-15 minutes for full optimization
 
@@ -399,12 +440,19 @@ py main.py migrate-db
 py main.py predict --race canada --sims 1000
 ```
 
-### Step 6: Launch the Dashboard
+### Step 6: Launch the Dashboard (v3.1 - FastAPI)
 ```bat
-py main.py dashboard
+py main.py dashboard --port 8080
 ```
 
-Open your browser to: **http://127.0.0.1:5000**
+Open your browser to: **http://127.0.0.1:8080**
+
+**Features:**
+- Dynamic circuit selector with AJAX loading
+- Real-time prediction display with loading states
+- H2H driver comparison
+- Constructor championship predictions
+- Responsive design for mobile/desktop
 
 ---
 
@@ -706,46 +754,58 @@ Similarly, points probability is always ≥ podium probability.
 <img src="sc2.png" alt="HTML Report" width="600"/>
 ---
 
-## 🌐 REST API Guide
+## 🌐 REST API Guide (v3.1)
 
 ### Available Endpoints
 
-#### Endpoints (v2 routes: `api/routes.py`)
+#### Core Prediction Endpoints (`/api/v1`)
 
-Base prefix: `/api/v1`
+- `GET /health` - Health check
+- `GET /circuits` - List all circuits
+- `GET /circuits/{circuit_id}` - Circuit details
+- `GET /drivers` - List all drivers
+- `GET /drivers/{driver_id}` - Driver details
+- `GET /standings/drivers` - Driver championship standings
+- `GET /standings/constructors` - Constructor championship standings
 
-- `GET /health`
-- `GET /circuits`
-- `GET /circuits/{circuit_id}`
-- `GET /drivers`
-- `GET /drivers/{driver_id}`
-- `GET /standings/drivers`
-- `GET /standings/constructors`
-- `GET /predict/{circuit_id}` (full prediction)
-- `GET /predict/{circuit_id}/winner`
-- `GET /predict/{circuit_id}/dnf`
-- `GET /predict/{circuit_id}/h2h/{driver1_id}/{driver2_id}`
+#### Prediction Endpoints ✨ NEW in v3.1
 
-#### Endpoints (v3 routes: `api/routes_v3.py`)
+- `GET /predict/{circuit_id}` - Full race prediction with all drivers
+- `GET /predict/{circuit_id}/winner` - Top 5 win probabilities only (fast)
+- `GET /predict/{circuit_id}/top5` - Minimal payload for dashboard (Section 4.4)
+- `GET /predict/{circuit_id}/dnf` - DNF risk per driver
+- `GET /predict/{circuit_id}/h2h/{driver1_id}/{driver2_id}` - Head-to-head comparison
+- `GET /predict/{circuit_id}/constructors` - Constructor-level predictions (Section 4.1) ✨ NEW
 
-- `POST /predict`
-- `POST /h2h`
-- `GET /constructors/{circuit_id}`
-- `GET /accuracy`
-- `GET /championship-sim`
-- `GET /health`
+#### Query Parameters
 
-### Expected output fields (prediction JSON)
+All prediction endpoints support:
+- `rain_probability`: Float 0.0-1.0 (optional, uses circuit default if omitted)
+- `n_simulations`: Integer 100-50000 (default: 5000)
+- `seed`: Integer for reproducible results (optional)
 
-When using the CLI with `--json-out` or querying the API, each driver prediction includes keys like:
-- `driver_id`, `driver`, `team`
+#### Response Caching (Section 4.3)
+
+Prediction endpoints use TTL-based caching (5-minute default):
+- Repeated identical requests return instantly
+- Cache key includes circuit_id, rain_probability, n_simulations, seed
+- Reduces server load for dashboard polling
+
+### Expected Output Fields
+
+When using the CLI with `--json-out` or querying the API, each driver prediction includes:
+- `driver_id`, `driver_name` (or `driver`), `team`
 - `predicted_position`, `expected_position_float`
-- `win_probability` / `win_pct` (depending on layer)
-- `top3_probability` / `top3_pct`
-- `top10_probability` / `top10_pct`
-- `dnf_probability` / `dnf_pct`
-- `confidence`
-- `position_distribution`
+- `win_pct` - Win probability percentage (normalized to sum to 100%)
+- `top3_pct` - Probability of finishing P1-P3
+- `top10_pct` - Probability of finishing P1-P10
+- `dnf_pct` - Probability of Did Not Finish
+- `confidence` - Model confidence level ("high", "medium", "low")
+- `position_distribution` - Array of 20 values showing position probabilities
+- `features` - Raw feature scores used in prediction
+- `composite_score` - Weighted composite score
+
+**Note:** Probabilities are monotonically constrained: `win_pct ≤ top3_pct ≤ top10_pct` (Section 3.5)
 
 ### Using the API in Your Own Code
 
@@ -763,32 +823,39 @@ data = response.json()
 
 # Print top 5 drivers
 for pred in data["predictions"][:5]:
-    print(f"{pred['driver_name']}: {pred['win_probability']*100:.1f}% win chance")
+    print(f"{pred['driver_name']}: {pred['win_pct']:.1f}% win chance")
+
+# Constructor predictions
+const_response = requests.get("http://localhost:8000/api/v1/predict/canada/constructors")
+constructor_data = const_response.json()
+for team in constructor_data["constructors"]:
+    print(f"{team['constructor']}: {team['win_pct']:.1f}% win chance")
 ```
 
 ---
 
-## 🌐 Web Dashboard (NEW in v3.0)
+## 🌐 Web Dashboard (v3.1 - FastAPI)
 
-The interactive web dashboard provides a beautiful, user-friendly interface for all prediction features without requiring command-line usage.
+The interactive web dashboard provides a beautiful, user-friendly interface for all prediction features without requiring command-line usage. **Now rebuilt with FastAPI and Jinja2** (replacing Flask from v3.0).
 
 ### Starting the Dashboard
 
 ```bat
-py main.py dashboard --port 5000
+py main.py dashboard --port 8080
 ```
 
-Then open your browser to: **http://127.0.0.1:5000**
+Then open your browser to: **http://127.0.0.1:8080**
 
-### Dashboard Features
+### Dashboard Features (v3.1 Enhancements)
 
-#### 1. **Race Prediction Interface**
-- Select any circuit from dropdown menu
+#### 1. **Race Prediction Interface** ✨ NEW
+- Dynamic circuit selector with AJAX loading (Section 5.3)
+- Loading states with visual feedback during computation (Section 5.4)
 - Adjust rain probability slider (0-100%)
 - Set number of simulations (1,000 - 50,000)
-- View predictions in interactive table
-- Beautiful Plotly bar charts showing win probabilities
+- View predictions in responsive table
 - Color-coded confidence indicators
+- Error handling with user-friendly messages
 
 #### 2. **Head-to-Head Comparison Tool**
 - Compare any two drivers directly
@@ -797,11 +864,12 @@ Then open your browser to: **http://127.0.0.1:5000**
 - Position distribution visualization
 - Perfect for rivalry analysis
 
-#### 3. **Constructor Predictions**
+#### 3. **Constructor Predictions** ✨ NEW
 - Team-level win and podium probabilities
 - Aggregated from individual driver performance
 - Constructor championship implications
 - Useful for team-focused betting strategies
+- Endpoint: `/predict/{circuit}/constructors`
 
 #### 4. **Championship Simulator**
 - Simulate remaining races (select how many)
@@ -817,14 +885,15 @@ Then open your browser to: **http://127.0.0.1:5000**
 - Identify which predictions are most reliable
 - Track model improvement over time
 
-### Technical Details
+### Technical Details (v3.1)
 
-- **Framework**: Flask with Jinja2 templates
+- **Framework**: FastAPI with Jinja2 templates (replaced Flask)
 - **Charts**: Plotly.js for interactive visualizations
-- **Styling**: Modern CSS with gradient backgrounds
-- **Integration**: Direct calls to prediction engine (no separate API needed)
-- **Performance**: Predictions complete in <1 second for standard simulations
+- **Styling**: Modern CSS with gradient backgrounds and responsive design
+- **Integration**: Direct calls to prediction engine via FastAPI routes
+- **Performance**: Response caching with 5-minute TTL for repeated queries
 - **Responsive**: Works on desktop and mobile browsers
+- **Single Server**: No separate API server needed - unified FastAPI application
 
 ---
 
@@ -1095,41 +1164,73 @@ pip install -r requirements.txt
 
 ---
 
-## 🚀 Getting Started Checklist
+## ✅ Testing & Validation (NEW in v3.1)
 
-**Ready to dive in?** Here are the essential commands to run first:
+### Integration Tests
 
-💡 **Optimize model weights** (recommended for best accuracy):
+The project includes comprehensive integration tests that validate all critical bug fixes and data integrity:
+
 ```bat
-py main.py optimize-weights --trials 100
+pytest tests/test_integration.py -v
 ```
-*Note: This takes 5-15 minutes but significantly improves prediction accuracy*
 
-**Essential next steps:**
-1. **Initialize database**: `py main.py migrate-db`
-2. **Run sample prediction**: `py main.py predict --race canada --sims 1000 --store`
-3. **Launch dashboard**: `py main.py dashboard`
-4. **View predictions**: Open http://127.0.0.1:5000 in your browser
+**Tests include:**
+- Full prediction pipeline with monotonicity constraints
+- Feature weight key alignment validation
+- No duplicate driver IDs
+- Driver team consistency across files
+- API routes import without errors
+- Data quality assertions (round numbers, etc.)
+- Recent form score crash prevention
+- Hamilton team consistency
+- Constructor strength values reasonableness
+
+**All 9 tests passing** as of v3.1 release.
+
+### Manual Verification
+
+Run the verification script to test all audit fixes:
+
+```bat
+py verify_fixes.py
+```
+
+This checks:
+- All 5 critical bugs are fixed
+- All 5 data integrity issues resolved
+- Engine quality improvements working
+- Probability constraints enforced
+
+### Quality Checks
+
+```bat
+py main.py quality-check
+```
+
+Runs internal data validation and reports any inconsistencies.
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Technology Stack (v3.1)
 
 | Category | Technology | Purpose |
 |----------|-----------|---------|
 | **Language** | Python 3.10+ | Main programming language |
 | **Database** | SQLite | Local data storage |
 | **ORM** | SQLAlchemy | Database abstraction layer |
-| **Web Framework** | FastAPI | REST API server |
-| **Dashboard** | Flask | Web dashboard |
+| **Web Framework** | FastAPI | REST API server + Dashboard |
+| **Dashboard** | Jinja2 | HTML templates (replaced Flask) |
 | **Data Processing** | NumPy | Vectorized simulations |
-| **Optimization** | Optuna | Bayesian weight optimization |
+| **Optimization** | Optuna | Weight optimization framework |
 | **CLI** | Click | Command-line interface |
 | **Validation** | Pydantic | Data schema validation |
 | **Visualization** | Plotly | Interactive charts |
 | **F1 Data** | FastF1 | Official F1 data access |
 | **Terminal UI** | Rich | Beautiful console output |
-| **Testing** | pytest | Automated testing |
+| **Testing** | pytest | Automated testing (9 integration tests) |
+| **Caching** | Custom TTLCache | Response caching (5-min TTL) |
+
+**Removed in v3.1:** pymc, arviz, redis, xgboost, lightgbm, pyarrow (unused dependencies cleaned up)
 
 ---
 

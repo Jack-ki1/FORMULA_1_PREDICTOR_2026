@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 
 
+
+
 # ── Prediction Request/Response ────────────────────────────────────────────────
 
 class PredictionRequest(BaseModel):
@@ -32,10 +34,12 @@ class RaceMetaOut(BaseModel):
     city: str
     race_date: str
     sprint_weekend: bool
+    is_sprint_race: Optional[bool] = Field(False, description="Whether this is a sprint race (P1-7)")
     safety_car_probability: float
     rain_probability: float
     overall_model_confidence: float
     n_simulations: int
+    model_version: Optional[str] = Field(None, description="Model version used for prediction (P3-32)")
 
 
 class DriverPredictionOut(BaseModel):
@@ -62,25 +66,26 @@ class RacePredictionResponse(BaseModel):
 # ── Winner Prediction ──────────────────────────────────────────────────────────
 
 class WinnerPredictionResponse(BaseModel):
-    winners: List[Dict[str, float]]
+    circuit: str
+    top_5_win_probabilities: List[Dict[str, Any]]
 
 
 # ── DNF Probability ────────────────────────────────────────────────────────────
 
 class DNFProbabilityResponse(BaseModel):
-    dnf_probabilities: List[Dict]
+    circuit: str
+    dnf_risk: List[Dict[str, Any]]
 
 
 # ── Head-to-Head Comparison ────────────────────────────────────────────────────
 
 class H2HComparisonResponse(BaseModel):
-    driver1: str
-    driver2: str
-    driver1_finishes_ahead_pct: float
-    driver2_finishes_ahead_pct: float
-    driver1_avg_position: float
-    driver2_avg_position: float
-    notes: str
+    circuit: str
+    driver1: Dict[str, Any]
+    driver2: Dict[str, Any]
+    driver1_beats_driver2_prob: float
+    driver2_beats_driver1_prob: float
+    analysis: str
 
 
 # ── Standings ──────────────────────────────────────────────────────────────────
@@ -89,16 +94,12 @@ class StandingsEntry(BaseModel):
     driver: str
     position: int
     points: float
-    wins: int
-    podiums: int
 
 
 class ConstructorStandingsEntry(BaseModel):
     constructor: str
     position: int
     points: float
-    wins: int
-    podiums: int
 
 
 class StandingsResponse(BaseModel):
@@ -111,10 +112,15 @@ class StandingsResponse(BaseModel):
 class CircuitSummary(BaseModel):
     id: str
     name: str
-    round: int
-    date: str
-    sprint: bool
+    city: str
+    country: str
+    circuit_type: List[str]
     safety_car_probability: float
+    overtaking_difficulty: int
+    power_unit_demand: float
+    brake_demand: float
+    sprint_weekend: bool
+    race_date: str
 
 
 class CircuitResponse(BaseModel):

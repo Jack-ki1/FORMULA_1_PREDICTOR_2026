@@ -33,9 +33,10 @@ class PredictionTracker:
             circuit_id: Circuit identifier
             prediction_result: Result from predict() function
         """
+        db = SessionLocal()  # Open per-call session to avoid session closure issues
         try:
             # Get or create race
-            race = self.db.query(Race).filter(
+            race = db.query(Race).filter(
                 Race.circuit_id == circuit_id,
                 Race.season == 2026
             ).first()
@@ -46,8 +47,8 @@ class PredictionTracker:
                     season=2026,
                     completed=False,
                 )
-                self.db.add(race)
-                self.db.flush()
+                db.add(race)
+                db.flush()
             
             # Store predictions for each driver
             for driver_pred in prediction_result["predictions"]:
@@ -62,17 +63,17 @@ class PredictionTracker:
                     composite_score=driver_pred.get("composite_score", 0.5),
                     model_version="v3.0",
                 )
-                self.db.add(prediction)
+                db.add(prediction)
             
-            self.db.commit()
+            db.commit()
             logger.info(f"Stored predictions for {circuit_id}")
             
         except Exception as e:
-            self.db.rollback()
+            db.rollback()
             logger.error(f"Failed to store predictions: {e}")
             raise
         finally:
-            self.db.close()
+            db.close()  # Always close the per-call session here
     
     def evaluate_race(self, circuit_id: str, actual_results: Dict):
         """

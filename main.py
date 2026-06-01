@@ -54,11 +54,16 @@ def cli():
               help="Use vectorized simulation (20x faster)")
 @click.option("--export", default=None,
               help="Export predictions to CSV/JSON file")
-@click.option("--store", is_flag=True,
+@click.option("--store", is_flag=True, default=True,  # P2-13: Enable by default
               help="Store prediction in database for accuracy tracking")
+@click.option("--sprint", is_flag=True,
+              help="Force sprint race mode (overrides circuit default)")
+@click.option("--use-weather-api", is_flag=True,
+              help="Fetch rain probability from OpenWeatherMap API (P1-6)")
 def predict(race: str, rain: float, sims: int, seed: int,
             grid_override: str, json_out: bool, auto_report: bool,
-            vectorized: bool, export: str, store: bool):
+            vectorized: bool, export: str, store: bool, sprint: bool,
+            use_weather_api: bool):
     """Run a race outcome prediction."""
     if rain is not None and not (0.0 <= rain <= 1.0):
         console.print("[red]Error:[/] --rain must be between 0.0 and 1.0"); sys.exit(1)
@@ -81,7 +86,28 @@ def predict(race: str, rain: float, sims: int, seed: int,
     except ImportError as e:
         console.print(f"[red]Import error:[/] {e}"); sys.exit(1)
 
-    console.print(f"\n[bold cyan]F1 Prediction Engine v3.0[/] — [bold]{race.upper()}[/]\n")
+    # P1-6: Fetch rain probability from weather API if requested
+    if use_weather_api and rain is None:
+        try:
+            from engine.weather_api import get_rain_probability
+            from data.calendar_2026 import CALENDAR_2026
+            
+            # Get race date from calendar
+            calendar_race = next((r for r in CALENDAR_2026 if r["circuit"] == race), None)
+            if calendar_race:
+                race_date = calendar_race["date"]
+                weather_rain_prob = get_rain_probability(race, race_date)
+                if weather_rain_prob is not None:
+                    rain = weather_rain_prob
+                    console.print(f"[green]✓ Weather API:[/] Rain probability = {rain*100:.0f}%")
+                else:
+                    console.print("[yellow]Weather API unavailable. Using default rain probability.[/]")
+            else:
+                console.print("[yellow]Race date not found in calendar. Using default rain probability.[/]")
+        except Exception as e:
+            console.print(f"[yellow]Weather API error:[/] {e}. Using default rain probability.")
+
+    console.print(f"\n[bold cyan]F1 Prediction Engine v3.1[/] — [bold]{race.upper()}{' (SPRINT)' if sprint else ''}[/]\n")
 
     try:
         with console.status(f"Running {sims:,} Monte Carlo simulations{' (vectorized)' if vectorized else ''}…"):
@@ -91,6 +117,7 @@ def predict(race: str, rain: float, sims: int, seed: int,
                 n_simulations=sims,
                 seed=seed,
                 grid_overrides=grid_overrides,
+                is_sprint=sprint or None,  # P1-7: Sprint flag
             ))
     except KeyError as e:
         console.print(f"[red]Circuit not found:[/] {e}\n"
@@ -119,8 +146,10 @@ def predict(race: str, rain: float, sims: int, seed: int,
         f"Rain: [blue]{meta['rain_probability']*100:.0f}%[/]  "
         f"Confidence: [green]{meta['overall_model_confidence']*100:.0f}%[/]  "
         f"Sims: {meta['n_simulations']:,}"
-        + ("\n[magenta]⚡ Sprint Weekend[/]" if meta["sprint_weekend"] else "")
-        + (f"\n[dim]Grid overrides applied: {grid_overrides}[/]" if grid_overrides else ""),
+        + ("\n[magenta]⚡ Sprint Weekend[/]" if meta.get("sprint_weekend") else "")
+        + ("\n[magenta]🏁 Sprint Race[/]" if meta.get("is_sprint_race") else "")
+        + (f"\n[dim]Grid overrides applied: {grid_overrides}[/]" if grid_overrides else "")
+        + f"\n[dim]Model version: {meta.get('model_version', 'unknown')}[/]",  # P3-32
         title="Race Info",
     ))
 
@@ -371,22 +400,28 @@ def championship_sim(remaining: int, sims: int):
         console.print(f"[red]Championship simulation failed:[/] {e}"); sys.exit(1)
 
 
-# ── dashboard (NEW v3.0) ───────────────────────────────────────────────────────
+# ── dashboard (NEW - Section 5.1: FastAPI replacement for Flask) ───────────────
 
 @cli.command()
-@click.option("--port", "-p", type=int, default=5000, help="Dashboard port")
-def dashboard(port: int):
-    """Start the interactive web dashboard (NEW v3.0)."""
-    console.print(f"\n[bold cyan]F1 Predictor Dashboard v3.0[/] → http://127.0.0.1:{port}\n")
+@click.option("--port", default=8080, type=int, help="Dashboard port (default: 8080)")
+@click.option("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
+def dashboard(port: int, host: str):
+    """Start the FastAPI-based prediction dashboard (replaces Flask)."""
+    console.print(f"\n[bold cyan]F1 Prediction Dashboard[/] — Starting on http://{host}:{port}\n")
+    console.print("[dim]Features:[/] Circuit selector, live predictions, H2H comparison, standings\n")
     
     try:
-        import subprocess
-        # Pass port as environment variable to Flask app
-        env = os.environ.copy()
-        env['FLASK_PORT'] = str(port)
-        subprocess.run([sys.executable, "dashboard/app.py"], env=env, check=True)
-    except Exception as e:
-        console.print(f"[red]Dashboard failed to start:[/] {e}"); sys.exit(1)
+        import uvicorn
+        from api.dashboard import app
+        
+        uvicorn.run(app, host=host, port=port, reload=False)
+    except ImportError as e:
+        console.print(f"[red]Import error:[/] {e}")
+        console.print("[yellow]Tip:[/] Install Jinja2: pip install jinja2")
+        sys.exit(1)
+    except OSError as e:
+        console.print(f"[red]Dashboard failed to bind:[/] {e}")
+        sys.exit(1)
 
 
 # ── report ─────────────────────────────────────────────────────────────────────
@@ -432,6 +467,136 @@ def quality_check():
             [sys.executable, "scripts/data_quality_report.py"],
             check=False
         )
+
+
+# ── update-data (P0-1 & P1-8) ─────────────────────────────────────────────────
+
+@cli.command("update-data")
+@click.option("--race", "-r", required=True, help="Race circuit ID")
+@click.option("--results", required=True, help="JSON file with race results")
+@click.option("--dry-run", is_flag=True, help="Show changes without applying")
+def update_data(race: str, results: str, dry_run: bool):
+    """Update driver standings, ELO, and form data after a race (P0-1 & P1-8)."""
+    console.print(f"\n[bold cyan]Updating Season Data:[/] {race.upper()}\n")
+    
+    try:
+        import json
+        with open(results, 'r') as f:
+            race_results = json.load(f)
+        
+        from scripts.update_season_data import update_season_data, load_results_from_json
+        race_results = load_results_from_json(results)
+        
+        console.print(f"[dim]Race results:[/] {len(race_results)} drivers")
+        
+        if dry_run:
+            console.print("[yellow]DRY RUN - No changes will be applied[/]\n")
+            # Just show what would be updated
+            from data.driver_data import DRIVERS
+            for driver_id, position in sorted(race_results.items(), key=lambda x: x[1]):
+                if driver_id in DRIVERS:
+                    driver = DRIVERS[driver_id]
+                    points = {1:25, 2:18, 3:15, 4:12, 5:10, 6:8, 7:6, 8:4, 9:2, 10:1}.get(position, 0)
+                    console.print(f"  {driver['name']}: P{position} (+{points} pts, ELO update)")
+        else:
+            updates = update_season_data(race, race_results)
+            
+            console.print(f"[green]✓ Updates applied:[/]")
+            console.print(f"  ELO updates: {len(updates['elo_updates'])}")
+            console.print(f"  Points updates: {len(updates['points_updates'])}")
+            console.print(f"  Form updates: {len(updates['form_updates'])}")
+            
+            if updates['errors']:
+                console.print(f"\n[red]Errors:[/] {len(updates['errors'])}")
+                for error in updates['errors']:
+                    console.print(f"  ✗ {error}")
+        
+    except Exception as e:
+        console.print(f"[red]Data update failed:[/] {e}"); sys.exit(1)
+
+
+# ── data-freshness-check (P3-37) ───────────────────────────────────────────────
+
+@cli.command("data-freshness-check")
+def data_freshness_check():
+    """Validate data freshness and consistency (P3-37)."""
+    console.print("\n[bold cyan]Data Freshness Check[/]\n")
+    
+    try:
+        from datetime import datetime, timedelta
+        from data.calendar_2026 import CALENDAR_2026
+        from data.driver_data import get_all_drivers
+        from data.circuit_data import get_all_circuits
+        
+        issues = []
+        warnings = []
+        
+        # Check 1: Active driver count
+        drivers = get_all_drivers()
+        if len(drivers) < 18:
+            issues.append(f"Too few active drivers: {len(drivers)} (expected ~20)")
+        elif len(drivers) > 22:
+            issues.append(f"Too many active drivers: {len(drivers)} (expected ~20)")
+        else:
+            console.print(f"[green]✓ Active drivers:[/] {len(drivers)}")
+        
+        # Check 2: Circuit count
+        circuits = get_all_circuits()
+        if len(circuits) < 20:
+            issues.append(f"Too few circuits: {len(circuits)} (expected ~24)")
+        else:
+            console.print(f"[green]✓ Circuits loaded:[/] {len(circuits)}")
+        
+        # Check 3: Calendar has current/recent races
+        today = datetime.now()
+        upcoming_races = [r for r in CALENDAR_2026 if r["status"] == "upcoming"]
+        if not upcoming_races:
+            warnings.append("No upcoming races in calendar. All races marked as completed or TBC?")
+        else:
+            next_race = min(upcoming_races, key=lambda r: r["date"])
+            next_race_date = datetime.strptime(next_race["date"], "%Y-%m-%d")
+            days_until = (next_race_date - today).days
+            console.print(f"[green]✓ Next race:[/] {next_race['name']} in {days_until} days")
+        
+        # Check 4: Driver ELO ratings are reasonable
+        elos = [d["elo"] for d in drivers]
+        if min(elos) < 1200:
+            warnings.append(f"Very low ELO detected: {min(elos)}")
+        if max(elos) > 2000:
+            warnings.append(f"Very high ELO detected: {max(elos)}")
+        console.print(f"[green]✓ ELO range:[/] {min(elos):.0f} - {max(elos):.0f}")
+        
+        # Check 5: Driver points are non-negative
+        negative_points = [d for d in drivers if d.get("championship_points_2026", 0) < 0]
+        if negative_points:
+            issues.append(f"{len(negative_points)} drivers with negative points")
+        else:
+            console.print(f"[green]✓ All drivers have non-negative points[/]")
+        
+        # Check 6: Recent form data populated
+        empty_form = [d for d in drivers if not d.get("recent_form") or all(p == 0 for p in d["recent_form"])]
+        if empty_form:
+            warnings.append(f"{len(empty_form)} drivers have empty/zero recent form")
+        else:
+            console.print(f"[green]✓ Recent form data populated for all drivers[/]")
+        
+        # Summary
+        console.print()
+        if issues:
+            console.print(f"[red]✗ Issues found: {len(issues)}[/]")
+            for issue in issues:
+                console.print(f"  ✗ {issue}")
+        
+        if warnings:
+            console.print(f"[yellow]⚠ Warnings: {len(warnings)}[/]")
+            for warning in warnings:
+                console.print(f"  ⚠ {warning}")
+        
+        if not issues and not warnings:
+            console.print("[green]✓ All data freshness checks passed![/]")
+        
+    except Exception as e:
+        console.print(f"[red]Data freshness check failed:[/] {e}"); sys.exit(1)
 
 
 # ── circuits ───────────────────────────────────────────────────────────────────

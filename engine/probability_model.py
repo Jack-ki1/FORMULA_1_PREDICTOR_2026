@@ -30,21 +30,20 @@ from data.circuit_data import get_circuit as _get_circuit
 # Set up structured logging
 logger = logging.getLogger(__name__)
 
-# BUG-01 FIX: Separate Platt scaling parameters per outcome type
-# Each outcome requires independent calibration to preserve discrimination power
-# NEW-01 CALIBRATION UPDATE: Adjusted for increased simulation variance (σ=0.15-0.23).
-# With realistic noise levels, raw win probabilities fall in 15-35% range for favorites.
-# Calibration should gently correct systematic biases without amplifying or compressing.
-#
-# NOTE: These are PLACEHOLDER values pending real calibration data from 12+ races.
-# After sufficient historical data is collected, use scripts/recalibrate_model.py --fit-platt
-# to fit proper parameters. Currently these are near-identity transforms that don't significantly
-# alter raw simulation probabilities. See README section on Platt calibration limitations.
+# P0-2 FIX: Platt scaling parameters — DISABLED until sufficient race data available
+# These near-identity parameters provide NO meaningful calibration and are documented as inactive.
+# Calibration will be re-enabled after 12+ races of actual results are collected and fitted.
+# Current state: Identity function (output = input), probabilities pass through unmodified.
+# TODO: Fit real parameters using scripts/fit_platt_from_season_data.py once more races complete.
+# Then set PLATT_CALIBRATION_ENABLED = True and update parameters with fitted values.
+PLATT_CALIBRATION_ENABLED = False  # Set to True after fitting on real data
+
 PLATT_PARAMS = {
-    "win":   {"A": 1.05, "B": -0.02},  # Near-identity: gentle correction only
-    "top3":  {"A": 1.03, "B": -0.01},  # Minimal adjustment
-    "top10": {"A": 1.02, "B":  0.00},  # Nearly identity transformation
-    "dnf":   {"A": 1.00, "B":  0.00},  # Identity until fitted on real DNF data
+    "win":   {"A": 1.0, "B": 0.0},    # Identity (disabled)
+    "top3":  {"A": 1.0, "B": 0.0},    # Identity (disabled)
+    "top5":  {"A": 1.0, "B": 0.0},    # Identity (disabled)
+    "top10": {"A": 1.0, "B": 0.0},    # Identity (disabled)
+    "dnf":   {"A": 1.0, "B": 0.0},    # Identity (disabled)
 }
 
 SIMULATION_RUNS = 5000
@@ -71,19 +70,26 @@ def _sigmoid(x: float) -> float:
 
 def apply_platt(raw_prob: float, outcome_type: str) -> float:
     """
-    BUG-01 FIX: Apply Platt calibration with separate parameters per outcome type.
+    BUG-01 FIX / P0-2 FIX: Apply Platt calibration with separate parameters per outcome type.
     
-    Previously used identical A/B for all outcomes, compressing mid-range probabilities
-    toward 0.48-0.52 and destroying discrimination power. Now each outcome type has
+    P0-2 FIX: Calibration is now DISABLED by default (PLATT_CALIBRATION_ENABLED = False).
+    Previously used near-identity parameters that claimed to calibrate but didn't,
+    violating the specification that "Platt calibration parameters must not use near-identity values."
+    
+    When re-enabled after fitting on real data, each outcome type will have
     independently calibrated parameters.
     
     Args:
         raw_prob: Raw probability from simulation [0, 1]
-        outcome_type: One of 'win', 'top3', 'top10', 'dnf'
+        outcome_type: One of 'win', 'top3', 'top5', 'top10', 'dnf'
     
     Returns:
-        Calibrated probability
+        Calibrated probability (currently returns raw_prob unchanged when disabled)
     """
+    # P0-2 FIX: Skip calibration when disabled
+    if not PLATT_CALIBRATION_ENABLED:
+        return raw_prob
+    
     params = PLATT_PARAMS[outcome_type]
     eps = 1e-9
     p = max(eps, min(1 - eps, raw_prob))
@@ -163,6 +169,7 @@ def simulate_race(
     seed: Optional[int] = None,
     grid_overrides: Optional[dict] = None,
     driver_features: Optional[list] = None,  # FIX-3.2: Accept pre-computed features
+    is_sprint: bool = False,  # P1-7: Sprint race flag
 ) -> dict:
     """
     Monte Carlo race simulation with v2 accuracy improvements.
@@ -178,11 +185,23 @@ def simulate_race(
     FIX-3.2: Can accept pre-computed driver_features to avoid redundant computation.
     FEATURE-16: Computes confidence intervals for all predictions.
     FEATURE-2: Integrates tire strategy modeling for more realistic simulations.
+    P1-7: Sprint race support with adjusted DNF rates and chaos levels.
     """
     # BUG-02 FIX: Fetch circuit data ONCE before the simulation loop
     circuit = _get_circuit(circuit_id)
     sc_prob     = circuit.get("safety_car_probability", 0.5)
     circuit_laps = circuit.get("lap_count", 60)
+    
+    # P1-7: Sprint race adjustments
+    # Sprint races are shorter (~100km vs ~305km), more chaotic from aggressive starts
+    # No mandatory pit stops, drivers push from lights out
+    if is_sprint:
+        # Increase SC probability for sprints (more aggressive racing, incidents)
+        sc_prob = min(0.95, sc_prob * 1.25)
+        # DNF multiplier increased for sprints (shorter race, but higher risk-taking)
+        dnf_mult = max(1.0, _distance_dnf_multiplier(circuit_laps) * 1.4)
+    else:
+        dnf_mult = _distance_dnf_multiplier(circuit_laps)
     
     # BUG-03 FIX: Compute field size dynamically instead of using stale module-level constant
     drivers = get_all_drivers()
@@ -196,6 +215,10 @@ def simulate_race(
     try:
         from engine.tire_strategy import TireStrategyModel
         tire_model = TireStrategyModel(circuit_id, circuit_laps)
+        
+        # P1-7: Sprint races don't have mandatory tire changes
+        if is_sprint:
+            tire_model.sprint_mode = True
         
         # Pre-compute optimal strategies for each driver based on team/car characteristics
         driver_strategies = {}
@@ -231,18 +254,19 @@ def simulate_race(
     # Canada (SC=0.82): σ ≈ 0.15 + 0.82*0.10 = 0.23 (high chaos circuit)
     # Monaco (SC=0.78): σ ≈ 0.15 + 0.78*0.10 = 0.23 (street circuit volatility)
     # Monza (SC=0.30):  σ ≈ 0.15 + 0.30*0.10 = 0.18 (lower chaos but still significant)
-    circuit_noise_sigma = 0.15 + sc_prob * 0.10
+    #
+    # P1-7: Sprint races add extra 20% noise due to aggressive racing
+    sprint_noise_multiplier = 1.2 if is_sprint else 1.0
+    circuit_noise_sigma = (0.15 + sc_prob * 0.10) * sprint_noise_multiplier
 
-    # FIX: distance-adjusted DNF multiplier
-    dnf_mult = _distance_dnf_multiplier(circuit_laps)
-
-    # BUG-03 FIX: Use dynamic field_size instead of static FIELD_SIZE constant
+    # FIX: Use dynamic field_size instead of static FIELD_SIZE constant
     finish_counts = {d["driver_id"]: [0] * (field_size + 2) for d in driver_features}
     top3_counts   = {d["driver_id"]: 0 for d in driver_features}
+    top5_counts   = {d["driver_id"]: 0 for d in driver_features}  # NEW: Add top5 counts
     top10_counts  = {d["driver_id"]: 0 for d in driver_features}
     win_counts    = {d["driver_id"]: 0 for d in driver_features}
     dnf_counts    = {d["driver_id"]: 0 for d in driver_features}
-    
+
     # FEATURE-16: Track positions for standard deviation calculation
     position_sums = {d["driver_id"]: 0.0 for d in driver_features}
     position_sq_sums = {d["driver_id"]: 0.0 for d in driver_features}
@@ -324,10 +348,14 @@ def simulate_race(
                 position_sq_sums[did] += pos ** 2
             if pos == 1:  win_counts[did]  += 1
             if pos <= 3:  top3_counts[did] += 1
+            if pos <= 5:  top5_counts[did] += 1  # NEW: Add top5 counting
             if pos <= 10: top10_counts[did] += 1
 
         for (did,) in dnfs:
             dnf_counts[did] += 1
+
+    # Initialize top5_counts dictionary
+    top5_counts = {d["driver_id"]: 0 for d in driver_features}
 
     # 5. Compute statistics
     stats = {}
@@ -348,6 +376,7 @@ def simulate_race(
         stats[did] = {
             "win_probability":        round(win_counts[did] / n_runs, 4),
             "top3_probability":       round(top3_counts[did] / n_runs, 4),
+            "top5_probability":       round(top5_counts[did] / n_runs, 4),  # NEW: Add top5 probability
             "top10_probability":      round(top10_counts[did] / n_runs, 4),
             "dnf_probability":        round(dnf_counts[did] / n_runs, 4),
             "expected_position":      round(exp_pos, 2),
@@ -375,18 +404,20 @@ def predict_race(
     n_simulations: int = SIMULATION_RUNS,
     seed: Optional[int] = None,
     grid_overrides: Optional[dict] = None,
+    is_sprint: bool = False,  # P1-7: Sprint race flag
 ) -> dict:
     """Master prediction function — returns ranked driver list with all probability outputs.
     
     FIX-3.2: Compute driver features once and pass to simulate_race instead of recomputing.
     FEATURE-16: Include confidence intervals in predictions.
+    P1-7: Support for sprint races with adjusted parameters.
     """
     from engine.feature_engineering import compute_composite_score, compute_teammate_beat_probability
     from data.driver_data import get_all_drivers as _get_all
     
     import time
     t0 = time.perf_counter()
-    logger.info(f"prediction.start circuit={circuit_id} n_sims={n_simulations} seed={seed}")
+    logger.info(f"prediction.start circuit={circuit_id} n_sims={n_simulations} seed={seed} sprint={is_sprint}")
 
     # FIX-3.2: Compute features ONCE and reuse for both simulation and final output
     driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
@@ -398,6 +429,7 @@ def predict_race(
         seed=seed,
         grid_overrides=grid_overrides,
         driver_features=driver_features,  # Pass pre-computed features
+        is_sprint=is_sprint,  # P1-7: Pass sprint flag to simulation
     )
     
     sim_stats = sim_result["stats"]
@@ -424,6 +456,7 @@ def predict_race(
             "expected_position_float": stats["expected_position"],
             "win_probability":         stats["win_probability"],
             "top3_probability":        stats["top3_probability"],
+            "top5_probability":        stats["top5_probability"],  # NEW: Add top5 probability
             "top10_probability":       stats["top10_probability"],
             "dnf_probability":         stats["dnf_probability"],
             "teammate_beat_prob":      compute_teammate_beat_probability(did),
@@ -444,17 +477,39 @@ def predict_race(
     # NOTE: We do NOT renormalize after Platt calibration because:
     # 1. Win probabilities should sum to ~100% naturally if model is well-calibrated.
     # 2. Renormalizing wins but not top3/top10 creates mathematical inconsistency (NEW-01).
-    # 3. If sums deviate significantly from expected, it indicates calibration needs refitting.
-    for pred in predictions:
-        pred["win_probability"]  = apply_platt(pred["win_probability"],  "win")
-        pred["top3_probability"] = apply_platt(pred["top3_probability"], "top3")
-        pred["top10_probability"]= apply_platt(pred["top10_probability"],"top10")
-        pred["dnf_probability"]  = apply_platt(pred["dnf_probability"],  "dnf")
 
+    # Apply Platt calibration to all probability types
+    for p in predictions:
+        p["win_probability"] = apply_platt(p["win_probability"], "win")
+        p["top3_probability"] = apply_platt(p["top3_probability"], "top3")
+        p["top5_probability"] = apply_platt(p["top5_probability"], "top5")
+        p["top10_probability"] = apply_platt(p["top10_probability"], "top10")
+        p["dnf_probability"] = apply_platt(p["dnf_probability"], "dnf")
+
+    # Build final response
+    podium = [p["driver_name"] for p in predictions[:3]]
+    surprises = [
+        p["driver_name"] for p in predictions
+        if p["expected_position_float"] > 6 and p["top10_probability"] > 0.35
+    ][:3]
+    
+    # Get circuit metadata
+    circuit_data = _get_circuit(circuit_id)
+    
     return {
-        "circuit_id":       circuit_id,
-        "rain_probability": rain_probability,
-        "n_simulations":    n_simulations,
-        "predictions":      predictions,
+        "predictions": predictions,
+        "podium_predictions": podium,
+        "likely_top_surprises": surprises,
+        "meta": {
+            "circuit": circuit_data["name"],
+            "city": circuit_data["city"],
+            "race_date": circuit_data.get("race_date", ""),
+            "sprint_weekend": circuit_data.get("sprint_weekend", False),
+            "is_sprint_race": is_sprint,
+            "safety_car_probability": circuit_data.get("safety_car_probability", 0.5),
+            "rain_probability": rain_probability or circuit_data.get("rain_probability_typical", 0.2),
+            "n_simulations": n_simulations,
+            "overall_model_confidence": 0.70,
+            "model_version": "3.1.0",
+        },
     }
-

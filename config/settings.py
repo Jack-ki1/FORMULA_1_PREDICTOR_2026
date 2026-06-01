@@ -17,16 +17,16 @@ import os
 # They should sum to approximately 1.0 (though small deviations are OK)
 FEATURE_WEIGHTS: Dict[str, float] = {
     # Core performance indicators
-    "elo": 0.25,                    # Overall driver skill rating
-    "constructor": 0.20,            # Team performance level
-    "recent_form": 0.15,            # Performance in last 6 races
-    "grid_position": 0.15,          # Starting position advantage
+    "elo_rating":           0.25,   # Overall driver skill rating (matches engine key)
+    "constructor_strength": 0.20,   # Team performance level (matches engine key)
+    "recent_form":          0.15,   # Performance in last 6 races
+    "grid_position":        0.15,   # Starting position advantage
     
     # Specialized skills
-    "wet_weather": 0.08,            # Wet weather driving ability
-    "tire_management": 0.07,        # Tire preservation skills
-    "safety_car": 0.05,             # Ability to capitalize on SC situations
-    "track_fit": 0.05,              # Suitability to specific circuit characteristics
+    "weather_adjustment":   0.08,   # Wet weather driving ability (matches engine key)
+    "reliability":          0.07,   # Driver reliability (matches engine key)
+    "safety_car_upside":    0.05,   # Ability to capitalize on SC situations (matches engine key)
+    "track_type_fit":       0.05,   # Suitability to specific circuit characteristics (matches engine key)
 }
 
 

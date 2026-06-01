@@ -25,8 +25,40 @@ FEATURE ADDITIONS:
   - FEATURE-16: Confidence intervals in predictions
 """
 
-from fastapi import APIRouter, HTTPException, Query
+import logging
+logger = logging.getLogger(__name__)
+
+# Section 4.3: Add response caching for expensive predictions
+from functools import lru_cache
+import hashlib
+import json
 from typing import Optional
+import time
+
+# Simple TTL cache implementation
+class TTLCache:
+    """In-memory cache with TTL support."""
+    def __init__(self, ttl_seconds: int = 300):  # 5 minute default TTL
+        self.ttl = ttl_seconds
+        self.cache = {}
+        self.timestamps = {}
+    
+    def get(self, key: str):
+        if key in self.cache:
+            if time.time() - self.timestamps[key] < self.ttl:
+                return self.cache[key]
+            else:
+                del self.cache[key]
+                del self.timestamps[key]
+        return None
+    
+    def set(self, key: str, value):
+        self.cache[key] = value
+        self.timestamps[key] = time.time()
+
+prediction_cache = TTLCache(ttl_seconds=300)
+
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 
 from api.schemas import (
@@ -74,11 +106,39 @@ async def health_check():
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _result_to_response(result: dict) -> RacePredictionResponse:
-    """Map predict() output dict → Pydantic response model."""
+    """Map predict() output dict → Pydantic response model.
+    
+    P2-12: Add confidence intervals to driver predictions.
+    P3-32: Add model version to predictions.
+    """
     meta = result["meta"]
+    
+    # Map predictions with confidence intervals
+    predictions_with_ci = []
+    for p in result["predictions"]:
+        pred_dict = {
+            "driver": p.get("driver", p.get("driver_name")),
+            "team": p["team"],
+            "predicted_position": p["predicted_position"],
+            "win_pct": p["win_pct"],
+            "top3_pct": p["top3_pct"],
+            "top10_pct": p["top10_pct"],
+            "dnf_pct": p["dnf_pct"],
+            "teammate_beat_pct": p["teammate_beat_pct"],
+            "confidence": p["confidence"],
+            # P2-12: Confidence intervals from simulation
+            "win_pct_ci95_lower": p.get("win_ci_lower"),
+            "win_pct_ci95_upper": p.get("win_ci_upper"),
+            "top3_pct_ci95_lower": p.get("top3_ci_lower"),
+            "top3_pct_ci95_upper": p.get("top3_ci_upper"),
+            # P3-32: Model version
+            "model_version": meta.get("model_version"),
+        }
+        predictions_with_ci.append(DriverPredictionOut(**pred_dict))
+    
     return RacePredictionResponse(
         meta=RaceMetaOut(**meta),
-        predictions=[DriverPredictionOut(**p) for p in result["predictions"]],
+        predictions=predictions_with_ci,
         podium_predictions=result["podium_predictions"],
         likely_top_surprises=result["likely_top_surprises"],
     )
@@ -99,6 +159,16 @@ async def predict_race(
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Circuit '{circuit_id}' not found. "
                             f"Check GET /circuits for available IDs.")
+    
+    # Section 4.3: Check cache first
+    cache_key = hashlib.md5(
+        f"{circuit_id}:{rain_probability}:{n_simulations}:{seed}".encode()
+    ).hexdigest()
+    cached_result = prediction_cache.get(cache_key)
+    if cached_result:
+        logger.info(f"Cache hit for {circuit_id}")
+        return _result_to_response(cached_result)
+    
     try:
         # FIX-3.3: Run CPU-heavy prediction in thread pool to avoid blocking event loop
         request = PredictionRequest(
@@ -108,6 +178,9 @@ async def predict_race(
             seed=seed,
         )
         result = await run_in_threadpool(predict, request)
+        
+        # Section 4.3: Cache the result
+        prediction_cache.set(cache_key, result)
         
         # FEATURE-18: Store prediction for tracking
         try:
@@ -241,23 +314,28 @@ async def predict_head_to_head(
         if not pred1 or not pred2:
             raise HTTPException(status_code=404, detail="One or both drivers not found in predictions")
         
-        # Calculate head-to-head probability based on position distributions
-        # P(driver1 beats driver2) = sum over all positions where pos1 < pos2
+        # Section 5.2 Fix: Calculate head-to-head probability with proper normalization
         pos_dist1 = pred1.get("position_distribution", [0] * 20)
         pos_dist2 = pred2.get("position_distribution", [0] * 20)
         
-        h2h_prob = 0.0
-        for i in range(len(pos_dist1)):
-            for j in range(i + 1, len(pos_dist2)):
-                # Driver1 at position i+1, Driver2 at position j+1 (i < j means driver1 ahead)
-                h2h_prob += pos_dist1[i] * pos_dist2[j]
+        def compute_h2h_probability(dist1: list, dist2: list) -> float:
+            """P(driver1 finishes ahead of driver2) from position distributions."""
+            n = len(dist1)
+            total1 = sum(dist1) or 1
+            total2 = sum(dist2) or 1
+            p1 = [x / total1 for x in dist1]
+            p2 = [x / total2 for x in dist2]
+            
+            # CDF-based approach: sum P(d1 at position i) * P(d2 at position j>i)
+            cumsum2 = 0.0
+            p_d1_wins = 0.0
+            for pos in range(n - 1, -1, -1):
+                cumsum2 += p2[pos] if pos < len(p2) else 0
+                if pos > 0 and pos - 1 < len(p1):
+                    p_d1_wins += p1[pos - 1] * cumsum2
+            return round(p_d1_wins, 4)
         
-        # Normalize to account for both finishing
-        total_finish_prob = sum(pos_dist1) * sum(pos_dist2)
-        if total_finish_prob > 0:
-            h2h_prob_normalized = h2h_prob / total_finish_prob
-        else:
-            h2h_prob_normalized = 0.5
+        h2h_prob_normalized = compute_h2h_probability(pos_dist1, pos_dist2)
         
         return H2HComparisonResponse(
             circuit=circuit_id,
@@ -450,6 +528,71 @@ async def all_standings():
 
 # ── Circuits ───────────────────────────────────────────────────────────────────
 
+@router.get("/predict/{circuit_id}/constructors", tags=["Predictions"])
+async def predict_constructors(
+    circuit_id: str,
+    rain_probability: Optional[float] = Query(None, ge=0.0, le=1.0),
+):
+    """Section 4.1: Constructor-level win and podium probabilities."""
+    try:
+        get_circuit(circuit_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Circuit '{circuit_id}' not found.")
+    
+    # Check cache
+    cache_key = hashlib.md5(
+        f"constructors:{circuit_id}:{rain_probability}".encode()
+    ).hexdigest()
+    cached_result = prediction_cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    try:
+        request = PredictionRequest(
+            circuit_id=circuit_id,
+            rain_probability=rain_probability,
+            n_simulations=3000,
+            output_format="summary",
+        )
+        result = await run_in_threadpool(predict, request)
+        
+        # Aggregate driver predictions by constructor
+        constructor_stats = {}
+        for pred in result["predictions"]:
+            team = pred["team"]
+            if team not in constructor_stats:
+                constructor_stats[team] = {
+                    "constructor": team,
+                    "win_pct": 0.0,
+                    "podium_pct": 0.0,
+                    "points_pct": 0.0,
+                    "drivers": []
+                }
+            constructor_stats[team]["win_pct"] += pred["win_pct"]
+            constructor_stats[team]["podium_pct"] += pred["top3_pct"]
+            constructor_stats[team]["points_pct"] += pred["top10_pct"]
+            constructor_stats[team]["drivers"].append(pred["driver"])
+        
+        # Sort by win probability
+        constructors_list = sorted(
+            constructor_stats.values(),
+            key=lambda x: x["win_pct"],
+            reverse=True
+        )
+        
+        response = {
+            "circuit": circuit_id,
+            "constructors": constructors_list
+        }
+        
+        # Cache the result
+        prediction_cache.set(cache_key, response)
+        
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/circuits", response_model=CircuitListResponse, tags=["Circuits"])
 async def list_circuits():
     """List all circuits in the 2026 calendar."""
@@ -540,3 +683,54 @@ async def season_accuracy(season_year: int = Query(2026)):
         return tracker.get_season_accuracy(season_year=season_year)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/predict/{circuit_id}/top5", tags=["Predictions"])
+async def predict_top5(
+    circuit_id: str,
+    rain_probability: Optional[float] = Query(None, ge=0.0, le=1.0),
+):
+    """Section 4.4: Minimal payload with top 5 drivers only for dashboard initial render."""
+    try:
+        get_circuit(circuit_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Circuit '{circuit_id}' not found.")
+    
+    # Check cache
+    cache_key = hashlib.md5(
+        f"top5:{circuit_id}:{rain_probability}".encode()
+    ).hexdigest()
+    cached_result = prediction_cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    try:
+        request = PredictionRequest(
+            circuit_id=circuit_id,
+            rain_probability=rain_probability,
+            n_simulations=2000,  # Fewer simulations for faster response
+            output_format="summary",
+        )
+        result = await run_in_threadpool(predict, request)
+        top5 = sorted(result["predictions"], key=lambda x: x["win_pct"], reverse=True)[:5]
+        
+        response = {
+            "circuit": circuit_id,
+            "top5": [
+                {
+                    "driver": p["driver"],
+                    "team": p["team"],
+                    "win_pct": p["win_pct"],
+                    "predicted_position": p["predicted_position"]
+                }
+                for p in top5
+            ]
+        }
+        
+        # Cache the result
+        prediction_cache.set(cache_key, response)
+        
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

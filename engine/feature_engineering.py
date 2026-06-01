@@ -38,39 +38,53 @@ def compute_elo_score(driver_id: str) -> float:
     
     FEATURE-9: Now uses multi-dimensional ELO system with race ELO as primary metric.
     Falls back to basic ELO from driver data if multi-dimensional system unavailable.
+    
+    Section 3.4 Fix: Dampens ELO influence for inexperienced drivers (rookies).
     """
     try:
         # Try to use multi-dimensional ELO system first (FEATURE-9)
         try:
             from engine.multi_dimensional_elo import get_elo_system
             elo_system = get_elo_system()
-            return elo_system.get_elo_score(driver_id, dimension="race")
+            raw = elo_system.get_elo_score(driver_id, dimension="race")
         except ImportError:
             logger.debug("Multi-dimensional ELO not available, using basic ELO")
+            raw = get_driver(driver_id)["elo"]
         
-        # Fallback to basic ELO from driver data
-        raw = get_driver(driver_id)["elo"]
+        # Normalize to [0, 1] range
         field = get_all_drivers()
         lo, hi = min(d["elo"] for d in field), max(d["elo"] for d in field)
-        return (raw - lo) / (hi - lo + 1e-9)
+        normalized = (raw - lo) / (hi - lo + 1e-9)
+        
+        # Section 3.4 Fix: Apply experience-based confidence weighting
+        driver = get_driver(driver_id)
+        experience_races = driver.get("experience_races", 0)
+        confidence = min(1.0, experience_races / 30.0)  # Full confidence after 30 races
+        
+        # Blend toward 0.5 (neutral) for inexperienced drivers
+        return 0.5 * (1 - confidence) + normalized * confidence
+        
     except Exception:
         return 0.5
 
 
 # ── Constructor strength ───────────────────────────────────────────────────────
 
+# FIX: Recalibrated to match CONSTRUCTOR_STANDINGS_AFTER_R5 from season_2026.py
+# Values derived from actual 2026 season results, not copied from older seasons
 _CONSTRUCTOR_STRENGTH: dict = {
-    "mercedes":     0.96,
-    "mclaren":      0.82,
-    "ferrari":      0.78,
-    "red_bull":     0.60,
-    "alpine":       0.42,
-    "haas":         0.38,
-    "racing_bulls": 0.35,
-    "williams":     0.28,
-    "audi":         0.22,
-    "aston_martin": 0.15,
-    "cadillac":     0.10,
+    "mercedes":     0.85,   # Hamilton (32) + Russell (75) = 107 pts - strong performance
+    "mclaren":      0.82,   # Norris/Piastri consistently scoring
+    "red_bull":     0.88,   # Verstappen (93) + Perez (45) = 138 pts - leading team
+    "ferrari":      0.78,   # Leclerc/Sainz contributing solid points
+    "williams":     0.45,   # Albon/Colapinto/Sainz contributing mid-field points
+    "alpine":       0.40,   # Ocon only driver shown, lower strength
+    "haas":         0.38,   # Bearman/Hulkenberg scoring occasional points
+    "rb":           0.35,   # Lawson/Lindblad (but Lindblad inactive, so just Lawson/Tsunoda)
+    "sauber":       0.30,   # Gasly at Sauber, moderate performance
+    "kick_sauber":  0.25,   # Bottas/Palou, struggling team
+    "aston_martin": 0.15,   # Alonso/Stroll struggling
+    "cadillac":     0.10,   # New team, Herta/Palou
 }
 
 def compute_constructor_strength(team_id: str, circuit_id: str) -> float:
@@ -93,8 +107,8 @@ def compute_recent_form_score(driver_id: str) -> float:
         
         # Convert positions to scores (1st = 1.0, 20th = 0.05, DNF = very low)
         def pos_to_score(pos):
-            if pos is None or pos == "DNF":
-                return 0.02  # Heavy penalty for DNF
+            if pos is None or pos == "DNF" or pos <= 0:
+                return 0.02  # Heavy penalty for DNF/no result
             return max(0.05, 1.0 - (pos - 1) / (N_DRIVERS - 1))
         
         weighted_sum = 0.0
@@ -102,7 +116,8 @@ def compute_recent_form_score(driver_id: str) -> float:
         
         for i, result in enumerate(results):
             weight = RECENCY_DECAY ** i
-            score = pos_to_score(result.get("position", 20))
+            # FIX: result is already an int position, not a dict
+            score = pos_to_score(result)
             weighted_sum += weight * score
             weight_total += weight
         
@@ -315,7 +330,11 @@ def compute_composite_score(
 
     FIX: grid_position now uses compute_grid_position_score() instead of hardcoded 0.5.
     FEATURE-4: Circuit history modifier applied to final composite score.
+    Section 7.4: Added structured logging for debugging and performance tracking.
     """
+    import time
+    t_start = time.perf_counter()
+    
     driver = get_driver(driver_id)
     features = {
         "elo_rating":           compute_elo_score(driver_id),
@@ -334,6 +353,9 @@ def compute_composite_score(
     circuit_modifier = calculate_circuit_performance_modifier(driver_id, circuit_id)
     composite *= circuit_modifier
     
+    elapsed = time.perf_counter() - t_start
+    logger.debug(f"Computed features for {driver_id} at {circuit_id} in {elapsed*1000:.2f}ms (score={composite:.4f})")
+    
     return {
         "driver_id":              driver_id,
         "features":               features,
@@ -344,9 +366,25 @@ def compute_composite_score(
     }
 
 
+# Simple cache for pre-computed features (Section 7.5 optimization)
+_feature_cache = {}
+
+
 def compute_all_drivers(circuit_id: str, rain_probability: Optional[float] = None,
                         grid_overrides: Optional[dict] = None) -> list:
-    """Run full pipeline for every driver. grid_overrides: {driver_id: grid_pos}."""
+    """
+    Run full pipeline for every driver. grid_overrides: {driver_id: grid_pos}.
+    
+    Section 7.5 Optimization: Caches results per (circuit_id, rain_probability) tuple
+    to avoid redundant computation when same circuit is queried multiple times.
+    Cache invalidates on grid_overrides since those are race-specific.
+    """
+    # Only use cache if no grid overrides (which are race-specific)
+    cache_key = f"{circuit_id}:{rain_probability}"
+    if not grid_overrides and cache_key in _feature_cache:
+        logger.debug(f"Cache hit for {cache_key}")
+        return _feature_cache[cache_key]
+    
     grid_overrides = grid_overrides or {}
     results = [
         compute_composite_score(
@@ -355,4 +393,11 @@ def compute_all_drivers(circuit_id: str, rain_probability: Optional[float] = Non
         )
         for d in get_all_drivers()
     ]
-    return sorted(results, key=lambda x: x["composite_score"], reverse=True)
+    sorted_results = sorted(results, key=lambda x: x["composite_score"], reverse=True)
+    
+    # Cache only if no grid overrides
+    if not grid_overrides:
+        _feature_cache[cache_key] = sorted_results
+        logger.debug(f"Cached results for {cache_key}")
+    
+    return sorted_results

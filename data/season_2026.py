@@ -172,13 +172,13 @@ for i, (driver, points) in enumerate(sorted_drivers):
 # Define constructor mapping for all drivers
 CONSTRUCTOR_MAPPING = {
     "antonelli": "mercedes",
-    "hamilton": "ferrari", 
+    "hamilton": "mercedes",  # FIX: Was incorrectly set to "ferrari" - season results show Mercedes points
     "verstappen": "red_bull",
     "leclerc": "ferrari",
     "norris": "mclaren",
     "russell": "mercedes",
     "piastri": "mclaren",
-    "sainz": "williams",
+    "sainz": "ferrari",  # FIX: Move Sainz back to Ferrari
     "perez": "red_bull",  # Back to Red Bull after being at Cadillac
     "alonso": "aston_martin",
     "stroll": "aston_martin", 
@@ -294,3 +294,41 @@ __all__ = [
     "get_driver_last_n_results",
     "get_remaining_races"
 ]
+
+
+# ── Multi-Dimensional ELO Updates (Section 3.3 Fix) ────────────────────────────
+
+def _update_elo_ratings_from_season_results():
+    """
+    Update multi-dimensional ELO ratings based on actual season results.
+    This ensures the ELO system reflects real performance, not just initial values.
+    """
+    try:
+        from engine.multi_dimensional_elo import get_elo_system
+        
+        elo_system = get_elo_system()
+        
+        # Process each completed race in order
+        for race in SEASON_RESULTS_2026:
+            # Convert race results to format expected by ELO system
+            race_results = []
+            for result in race["results"]:
+                race_results.append({
+                    "driver_id": result["driver"],
+                    "grid_pos": result.get("position", 10),  # Approximate grid from finish
+                    "finish_pos": result["position"]
+                })
+            
+            # Update ELO ratings
+            elo_system.update_ratings_after_race(
+                race_results=race_results,
+                weather_conditions="dry"  # Default assumption
+            )
+        
+        print(f"ELO ratings updated for {len(SEASON_RESULTS_2026)} races")
+    except Exception as e:
+        print(f"Warning: Could not update ELO ratings: {e}")
+
+
+# Run ELO updates at module load time
+_update_elo_ratings_from_season_results()

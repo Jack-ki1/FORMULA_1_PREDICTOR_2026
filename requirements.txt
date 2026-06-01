@@ -12,26 +12,17 @@ pytest==8.2.0
 pytest-asyncio==0.23.6
 rich==13.7.1
 click==8.1.7
-# NEW v3.0: Database & ORM
+# Database & ORM
 sqlalchemy==2.0.29
 alembic==1.13.1
-# NEW v3.0: Machine Learning
-xgboost==2.0.3
-lightgbm==4.3.0
+# Weight Optimization
 optuna==3.6.1
-# NEW v3.0: Real F1 Data
+# Real F1 Data
 fastf1==3.6.0
-# NEW v3.0: Advanced Analytics
-pyarrow==15.0.2
-# NEW v3.0: Caching
-redis==5.0.3
-# NEW v3.0: Bayesian Methods
-pymc==5.10.4
-arviz==0.17.1
-# NEW v3.0: Web Dashboard (optional)
+# Web Dashboard (optional)
 flask==3.0.2
 flask-cors==4.0.0
-# NEW v3.0: Visualization
+# Visualization
 plotly==5.20.0
 matplotlib==3.8.3
 seaborn==0.13.2
