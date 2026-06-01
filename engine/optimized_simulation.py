@@ -4,11 +4,6 @@ Performance Optimization Module (FEATURE-13).
 Vectorizes Monte Carlo simulation using NumPy for 10-50x speedup.
 Implements parallel processing and optional GPU support via CuPy.
 
-PURPOSE vs probability_model.py:
-- This module: Fast, vectorized simulations for real-time dashboard updates
-- probability_model.py: Detailed, feature-rich predictions with full explanation
-- Both are intentionally separate - one for speed, one for depth
-
 Usage:
     from engine.optimized_simulation import simulate_race_vectorized
     result = simulate_race_vectorized("canada", n_runs=10000)

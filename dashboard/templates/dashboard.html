@@ -175,7 +175,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏎️ F1 Predictor v3.0 Dashboard</h1>
+            <h1>🏎️ F1 Predictor  Dashboard</h1>
             <p>Advanced Race Prediction System with Machine Learning & Monte Carlo Simulations</p>
         </div>
 
@@ -215,7 +215,7 @@
                         <select id="circuit" required>
                             <option value="canada">Canada</option>
                             <option value="monaco">Monaco</option>
-                            <option value="silverstone">Silverstone</option>
+                            <option value="britain">Silverstone</option>
                             <option value="monza">Monza</option>
                             <option value="spa">Spa</option>
                             <option value="hungary">Hungary</option>
@@ -258,7 +258,7 @@
                     <select id="constructor-circuit">
                         <option value="canada">Canada</option>
                         <option value="monaco">Monaco</option>
-                        <option value="silverstone">Silverstone</option>
+                        <option value="britain">Silverstone</option>
                         <option value="monza">Monza</option>
                         <option value="spa">Spa</option>
                     </select>
@@ -273,6 +273,11 @@
                 <p>Running predictions... This may take a moment.</p>
             </div>
             <div id="results"></div>
+            <div id="download-section" style="margin-top: 20px; display: none;">
+                <button onclick="downloadReport()" class="btn" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    📄 Download Full HTML Report
+                </button>
+            </div>
         </div>
 
         <div class="two-column">
@@ -460,6 +465,12 @@
             
             // Create heatmap
             createHeatmap(data.predictions);
+            
+            // Show download button
+            const downloadSection = document.getElementById('download-section');
+            if (downloadSection) {
+                downloadSection.style.display = 'block';
+            }
         }
 
         function createCharts(predictions) {
@@ -715,6 +726,29 @@
         function showError(message) {
             document.getElementById('loading').classList.remove('active');
             document.getElementById('results').innerHTML = `<p style="color: red; font-weight: bold;">Error: ${message}</p>`;
+        }
+
+        function downloadReport() {
+            const circuit = document.getElementById('circuit').value;
+            if (!circuit) {
+                alert('Please select a circuit first');
+                return;
+            }
+            
+            // Show loading message
+            const downloadBtn = event.target;
+            const originalText = downloadBtn.innerHTML;
+            downloadBtn.innerHTML = '⏳ Generating report...';
+            downloadBtn.disabled = true;
+            
+            // Trigger download
+            window.location.href = `/download-report/${circuit}`;
+            
+            // Restore button after 2 seconds
+            setTimeout(() => {
+                downloadBtn.innerHTML = originalText;
+                downloadBtn.disabled = false;
+            }, 2000);
         }
     </script>
 </body>

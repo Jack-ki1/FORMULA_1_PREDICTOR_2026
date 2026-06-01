@@ -87,6 +87,45 @@ def _build_html_report(
     meta = result.get("meta", {})
     podium = result.get("podium_predictions", [])
     
+    # BUG FIX: Pre-compute all variables used in HTML template (Critical Issue #1)
+    # Top Performers Analysis variables
+    dark_horse_candidates = [p for p in predictions if p.get('top3_pct', 0) > 20 and p.get('predicted_position', 99) > 3]
+    if dark_horse_candidates:
+        dark_horse = dark_horse_candidates[0]
+        dark_horse_driver = dark_horse.get('driver', 'N/A')
+        dark_horse_top3 = dark_horse.get('top3_pct', 0)
+    else:
+        dark_horse_driver = 'N/A'
+        dark_horse_top3 = 0.0
+    
+    safest_candidates = [p for p in predictions if p.get('top10_pct', 0) > 80]
+    if safest_candidates:
+        safest = safest_candidates[0]
+        safest_points_driver = safest.get('driver', 'N/A')
+        safest_points_top10 = safest.get('top10_pct', 0)
+    else:
+        safest_points_driver = 'N/A'
+        safest_points_top10 = 0.0
+    
+    # Weather Impact variables
+    rain_prob_value = rain_probability or meta.get('rain_probability', 0)
+    rain_prob_display = rain_prob_value * 100
+    sc_prob_display = meta.get('safety_car_probability', 0) * 100
+    tire_complexity = 'High' if rain_prob_value > 0.5 else 'Medium' if rain_prob_value > 0.3 else 'Low'
+    overtaking_opps = 'Increased' if rain_prob_value > 0.4 else 'Normal'
+    predictability = 'Lower - more variables' if rain_prob_value > 0.5 else 'Standard'
+    model_confidence = meta.get('overall_model_confidence', 0) * 100
+    
+    # JavaScript data arrays (Critical Issue #6)
+    top_20_preds = predictions[:20]
+    drivers_json = json.dumps([p.get('driver', '') for p in top_20_preds])
+    win_probs_json = json.dumps([p.get('win_pct', 0) for p in top_20_preds])
+    top3_probs_json = json.dumps([p.get('top3_pct', 0) for p in top_20_preds])
+    expected_positions_json = json.dumps([p.get('predicted_position', 0) for p in top_20_preds])
+    expected_points_json = json.dumps([round(p.get('expected_points', 0), 1) for p in top_20_preds])
+    dnf_probs_json = json.dumps([p.get('dnf_pct', 0) for p in predictions[:15]])
+    position_distributions_json = json.dumps([p.get('position_distribution', [0] * 20) for p in predictions[:10]])
+    
     # Build HTML with enhanced structure
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -378,10 +417,16 @@ def _build_html_report(
                 </tr>
 """
     
-    # DNF analysis table
+    # DNF analysis table with improved risk classification (Critical Issue #4)
     for pred in predictions[:15]:
         dnf_pct = pred.get('dnf_pct', 0)
-        risk_level = "🟢 Low" if dnf_pct < 5 else "🟡 Medium" if dnf_pct < 10 else "🔴 High"
+        # BUG FIX: Better DNF risk classification with three tiers
+        if dnf_pct > 25:
+            risk_level = "🔴 High"
+        elif dnf_pct > 15:
+            risk_level = "🟡 Medium"
+        else:
+            risk_level = "🟢 Low"
         html += f"""                <tr>
                     <td><strong>{pred.get('driver', 'Unknown')}</strong></td>
                     <td>{pred.get('team', 'Unknown').replace('_', ' ').title()}</td>
@@ -389,7 +434,7 @@ def _build_html_report(
                     <td>{risk_level}</td>
                     <td>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: {dnf_pct * 2}%; background: {'#28a745' if dnf_pct < 5 else '#ffc107' if dnf_pct < 10 else '#dc3545'};"></div>
+                            <div class="progress-fill" style="width: {min(dnf_pct * 2, 100)}%; background: {'#28a745' if dnf_pct <= 15 else '#ffc107' if dnf_pct <= 25 else '#dc3545'};"></div>
                         </div>
                     </td>
                 </tr>
@@ -430,7 +475,7 @@ def _build_html_report(
                 </tr>
 """
     
-    html += """            </table>
+    html += f"""            </table>
         </div>
 
         <div class="card">
@@ -443,13 +488,13 @@ def _build_html_report(
                 </div>
                 <div>
                     <h3>Dark Horse</h3>
-                    <p><strong>{[p for p in predictions if p.get('top3_pct', 0) > 20 and p.get('predicted_position', 99) > 3][:1][0].get('driver', 'N/A')}</strong></p>
-                    <p>Top 3: {[p for p in predictions if p.get('top3_pct', 0) > 20 and p.get('predicted_position', 99) > 3][:1][0].get('top3_pct', 0):.1f}%</p>
+                    <p><strong>{dark_horse_driver}</strong></p>
+                    <p>Top 3: {dark_horse_top3:.1f}%</p>
                 </div>
                 <div>
                     <h3>Safest Bet for Points</h3>
-                    <p><strong>{[p for p in predictions if p.get('top10_pct', 0) > 80][:1][0].get('driver', 'N/A')}</strong></p>
-                    <p>Top 10: {[p for p in predictions if p.get('top10_pct', 0) > 80][:1][0].get('top10_pct', 0):.1f}%</p>
+                    <p><strong>{safest_points_driver}</strong></p>
+                    <p>Top 10: {safest_points_top10:.1f}%</p>
                 </div>
             </div>
         </div>
@@ -490,19 +535,19 @@ def _build_html_report(
                 </tr>
 """
     
-    html += """            </table>
+    html += f"""            </table>
         </div>
 
         <div class="two-column">
             <div class="card">
                 <h2>🌧️ Weather Impact Analysis</h2>
-                <h3>Current Rain Probability: {(rain_probability or meta.get('rain_probability', 0)) * 100:.0f}%</h3>
+                <h3>Current Rain Probability: {rain_prob_display:.0f}%</h3>
                 <p>Impact on race dynamics:</p>
                 <ul style="margin: 10px 0 10px 20px;">
-                    <li>Safety car probability: {meta.get('safety_car_probability', 0) * 100:.0f}%</li>
-                    <li>Tire strategy complexity: {'High' if (rain_probability or 0) > 0.5 else 'Medium' if (rain_probability or 0) > 0.3 else 'Low'}</li>
-                    <li>Overtaking opportunities: {'Increased' if (rain_probability or 0) > 0.4 else 'Normal'}</li>
-                    <li>Predictability: {'Lower - more variables' if (rain_probability or 0) > 0.5 else 'Standard'}</li>
+                    <li>Safety car probability: {sc_prob_display:.0f}%</li>
+                    <li>Tire strategy complexity: {tire_complexity}</li>
+                    <li>Overtaking opportunities: {overtaking_opps}</li>
+                    <li>Predictability: {predictability}</li>
                 </ul>
             </div>
 
@@ -519,7 +564,7 @@ def _build_html_report(
                     </tr>
                     <tr>
                         <td>Model Confidence</td>
-                        <td>{meta.get('overall_model_confidence', 0) * 100:.1f}%</td>
+                        <td>{model_confidence:.1f}%</td>
                     </tr>
                     <tr>
                         <td>Data Points Analyzed</td>
@@ -530,8 +575,8 @@ def _build_html_report(
                         <td>500+</td>
                     </tr>
                     <tr>
-                        <td>Driver Parameters</td>
-                        <td>25+ per driver</td>
+                        <td>Driver Database</td>
+                        <td>20 drivers</td>
                     </tr>
                 </table>
             </div>
@@ -548,141 +593,148 @@ def _build_html_report(
         </div>
 
         <div class="footer">
-            <p>Generated by F1 Predictor v3.0 on """ + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + """</p>
-            <p>Monte Carlo Simulation · """ + f"{n_simulations:,}" + """ simulations · Advanced ML Models</p>
+            <p>Generated by F1 Predictor v3.0 on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+            <p>Monte Carlo Simulation · {n_simulations:,} simulations · Advanced ML Models</p>
             <p style="margin-top: 10px;">© 2026 F1 Prediction System | Comprehensive Race Analytics</p>
         </div>
     </div>
 
     <script>
         // Data preparation
-        const drivers = """ + json.dumps([p.get('driver', '') for p in predictions[:20]]) + """;
-        const winProbs = """ + json.dumps([p.get('win_pct', 0) for p in predictions[:20]]) + """;
-        const top3Probs = """ + json.dumps([p.get('top3_pct', 0) for p in predictions[:20]]) + """;
-        const expectedPositions = """ + json.dumps([p.get('predicted_position', 0) for p in predictions[:20]]) + """;
-        const expectedPoints = """ + json.dumps([p.get('expected_points', 0) for p in predictions[:20]]) + """;
-        const dnfProbs = """ + json.dumps([p.get('dnf_pct', 0) for p in predictions[:15]]) + """;
+        const drivers = {drivers_json};
+        const winProbs = {win_probs_json};
+        const top3Probs = {top3_probs_json};
+        const expectedPositions = {expected_positions_json};
+        const expectedPoints = {expected_points_json};
+        const dnfProbs = {dnf_probs_json};
+        const positionDistributions = {position_distributions_json};
+        
+        // BUG FIX: Define predictions array for interactive features (Critical Issue #6)
+        const predictions = drivers.map((driver, i) => ({{
+            driver: driver,
+            position_distribution: positionDistributions[i] || Array(20).fill(0)
+        }}));
 
         // Win probability chart
-        const winTrace = {
+        const winTrace = {{
             x: drivers,
             y: winProbs,
             type: 'bar',
-            marker: {
+            marker: {{
                 color: 'rgb(102, 126, 234)',
-            }
-        };
+            }}
+        }};
 
-        const winLayout = {
+        const winLayout = {{
             title: 'Win Probability by Driver (%)',
-            xaxis: { title: 'Driver', tickangle: -45 },
-            yaxis: { title: 'Win Probability (%)' },
-            margin: { b: 100 }
-        };
+            xaxis: {{ title: 'Driver', tickangle: -45 }},
+            yaxis: {{ title: 'Win Probability (%)' }},
+            margin: {{ b: 100 }}
+        }};
 
         Plotly.newPlot('winChart', [winTrace], winLayout);
 
         // Top 3 probability chart
-        const top3Trace = {
+        const top3Trace = {{
             x: drivers,
             y: top3Probs,
             type: 'bar',
-            marker: {
+            marker: {{
                 color: 'rgb(118, 75, 162)',
-            }
-        };
+            }}
+        }};
 
-        const top3Layout = {
+        const top3Layout = {{
             title: 'Top 3 Finish Probability (%)',
-            xaxis: { title: 'Driver', tickangle: -45 },
-            yaxis: { title: 'Top 3 Probability (%)' },
-            margin: { b: 100 }
-        };
+            xaxis: {{ title: 'Driver', tickangle: -45 }},
+            yaxis: {{ title: 'Top 3 Probability (%)' }},
+            margin: {{ b: 100 }}
+        }};
 
         Plotly.newPlot('top3Chart', [top3Trace], top3Layout);
 
         // Expected position chart
-        const positionTrace = {
+        const positionTrace = {{
             x: drivers,
             y: expectedPositions,
             type: 'bar',
-            marker: {
+            marker: {{
                 color: 'rgb(255, 99, 132)',
-            }
-        };
+            }}
+        }};
 
-        const positionLayout = {
+        const positionLayout = {{
             title: 'Expected Finish Position',
-            xaxis: { title: 'Driver', tickangle: -45 },
-            yaxis: { title: 'Position', autorange: 'reversed' },
-            margin: { b: 100 }
-        };
+            xaxis: {{ title: 'Driver', tickangle: -45 }},
+            yaxis: {{ title: 'Position', autorange: 'reversed' }},
+            margin: {{ b: 100 }}
+        }};
 
         Plotly.newPlot('positionChart', [positionTrace], positionLayout);
 
         // Expected points chart
-        const pointsTrace = {
+        const pointsTrace = {{
             x: drivers,
             y: expectedPoints,
             type: 'bar',
-            marker: {
+            marker: {{
                 color: 'rgb(54, 162, 235)',
-            }
-        };
+            }}
+        }};
 
-        const pointsLayout = {
+        const pointsLayout = {{
             title: 'Expected Points per Driver',
-            xaxis: { title: 'Driver', tickangle: -45 },
-            yaxis: { title: 'Expected Points' },
-            margin: { b: 100 }
-        };
+            xaxis: {{ title: 'Driver', tickangle: -45 }},
+            yaxis: {{ title: 'Expected Points' }},
+            margin: {{ b: 100 }}
+        }};
 
         Plotly.newPlot('pointsChart', [pointsTrace], pointsLayout);
 
         // Heatmap chart
         const heatmapData = [];
         const z = [];
-        for (let i = 0; i < 10 && i < predictions.length; i++) {
+        for (let i = 0; i < 10 && i < predictions.length; i++) {{
             const pred = predictions[i];
             const row = Array(20).fill(0);
-            for (let j = 0; j < 20 && j < (pred.position_distribution || []).length; j++) {
+            for (let j = 0; j < 20 && j < (pred.position_distribution || []).length; j++) {{
                 row[j] = (pred.position_distribution || [])[j] || 0;
-            }
+            }}
             z.push(row);
-        }
+        }}
 
-        const heatmapTrace = {
+        const heatmapTrace = {{
             z: z,
-            x: Array.from({length: 20}, (_, i) => `P${i+1}`),
+            x: Array.from({{length: 20}}, (_, i) => `P${{i+1}}`),
             y: drivers.slice(0, 10),
             type: 'heatmap',
             colorscale: 'Viridis',
-        };
+        }};
 
-        const heatmapLayout = {
+        const heatmapLayout = {{
             title: 'Position Distribution (Top 10 Drivers)',
-            xaxis: { title: 'Position' },
-            yaxis: { title: 'Driver' },
-        };
+            xaxis: {{ title: 'Position' }},
+            yaxis: {{ title: 'Driver' }},
+        }};
 
         Plotly.newPlot('heatmapChart', [heatmapTrace], heatmapLayout);
 
         // Cumulative probability chart
-        const cumulativeTrace = {
+        const cumulativeTrace = {{
             x: drivers,
             y: top3Probs.map((top3, idx) => top3 + winProbs[idx]),
             type: 'scatter',
             mode: 'lines+markers',
-            marker: { size: 10 },
-            line: { width: 3, color: 'rgb(102, 126, 234)' }
-        };
+            marker: {{ size: 10 }},
+            line: {{ width: 3, color: 'rgb(102, 126, 234)' }}
+        }};
 
-        const cumulativeLayout = {
+        const cumulativeLayout = {{
             title: 'Cumulative Win + Top 3 Probability',
-            xaxis: { title: 'Driver', tickangle: -45 },
-            yaxis: { title: 'Combined Probability (%)' },
-            margin: { b: 100 }
-        };
+            xaxis: {{ title: 'Driver', tickangle: -45 }},
+            yaxis: {{ title: 'Combined Probability (%)' }},
+            margin: {{ b: 100 }}
+        }};
 
         Plotly.newPlot('cumulativeChart', [cumulativeTrace], cumulativeLayout);
     </script>

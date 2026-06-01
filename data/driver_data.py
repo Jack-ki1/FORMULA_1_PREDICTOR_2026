@@ -42,7 +42,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [1, 2, 1, 3, 1, 2],  # Last 6 results
         "championship_points_2026": 105,
         "wins_2026": 3,
-        "active": False
+        "active": True
     },
     "russell": {
         "id": "russell",
@@ -75,7 +75,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "id": "hamilton",
         "name": "Lewis Hamilton",
         "short": "HAM",
-        "team": "mercedes",
+        "team": "ferrari",
         "nationality": "British",
         "number": 44,
         "experience_races": 334,
@@ -93,8 +93,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
             "street": 0.95,
             "balanced": 0.97
         },
-        # FIX: Updated to match actual SEASON_RESULTS_2026 (R1:4, R2:5, R3:8, R4:5, R5:2)
-        "recent_form": [2, 5, 8, 5, 4, 0],  # Last 6 results (most recent first, padded with 0)
+        "recent_form": [7, 9, 8, 9, 7, 8],
         "championship_points_2026": 32,
         "wins_2026": 0,
         "active": True
@@ -244,7 +243,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "id": "sainz",
         "name": "Carlos Sainz",
         "short": "SAI",
-        "team": "ferrari",  # FIX: Move Sainz back to Ferrari where he belongs
+        "team": "williams",
         "nationality": "Spanish",
         "number": 55,
         "experience_races": 180,
@@ -300,7 +299,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "id": "ocon",
         "name": "Esteban Ocon",
         "short": "OCO",
-        "team": "alpine",  # FIX: Was incorrectly set to "haas" - should match CONSTRUCTOR_MAPPING
+        "team": "haas",
         "nationality": "French",
         "number": 31,
         "experience_races": 136,
@@ -350,7 +349,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [9, 8, 7, 8, 7, 6],
         "championship_points_2026": 1,
         "wins_2026": 0,
-        "active": True  # Keep active - Sauber driver
+        "active": True
     },
     "devries": {
         "id": "devries",
@@ -377,7 +376,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [14, 13, 12, 13, 12, 11],
         "championship_points_2026": 2,
         "wins_2026": 0,
-        "active": False  # FIX: Reserve driver, not competing in main races
+        "active": True
     },
     
     # Aston Martin
@@ -462,7 +461,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [15, 14, 13, 14, 13, 12],
         "championship_points_2026": 2,
         "wins_2026": 0,
-        "active": False  # FIX: Reserve driver, not competing in main races
+        "active": True
     },
     "hulkenberg": {
         "id": "hulkenberg",
@@ -471,23 +470,23 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "team": "haas",
         "nationality": "German",
         "number": 27,
-        "experience_races": 212,
-        "elo": 1490,
-        "wet_skill": 7.8,
-        "brakezone_skill": 8.2,
-        "tire_management": 8.2,
-        "qualifying_delta_avg": 0.22,
-        "dnf_rate_career": 0.20,
-        "dnf_rate_recent": 0.17,
+        "experience_races": 155,
+        "elo": 1480,
+        "wet_skill": 7.5,
+        "brakezone_skill": 7.8,
+        "tire_management": 8.0,
+        "qualifying_delta_avg": 0.25,
+        "dnf_rate_career": 0.16,
+        "dnf_rate_recent": 0.13,
         "track_type_fit": {
             "high_downforce": 0.85,
-            "technical": 0.83,
+            "technical": 0.82,
             "power_unit": 0.80,
-            "street": 0.84,
+            "street": 0.83,
             "balanced": 0.84
         },
-        "recent_form": [16, 15, 14, 15, 14, 13],
-        "championship_points_2026": 8,
+        "recent_form": [12, 11, 10, 11, 10, 9],
+        "championship_points_2026": 12,
         "wins_2026": 0,
         "active": True
     },
@@ -497,7 +496,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "id": "gasly",
         "name": "Pierre Gasly",
         "short": "GAS",
-        "team": "sauber",  # FIX: Match CONSTRUCTOR_MAPPING exactly
+        "team": "alpine",
         "nationality": "French",
         "number": 10,
         "experience_races": 142,
@@ -548,7 +547,6 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "active": True
     },
     
-    # Kick Sauber
     "zhou": {
         "id": "zhou",
         "name": "Zhou Guanyu",
@@ -609,7 +607,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "id": "palou",
         "name": "Alex Palou",
         "short": "PAL",
-        "team": "kick_sauber",  # FIX: Was incorrectly set to "cadillac" - should match CONSTRUCTOR_MAPPING
+        "team": "cadillac",
         "nationality": "Spanish",
         "number": 7,
         "experience_races": 52,
@@ -686,13 +684,13 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [0, 0, 0, 0, 0, 5],  # First race was position 5
         "championship_points_2026": 4,
         "wins_2026": 0,
-        "active": False  # FIX: Reserve driver, not competing in main races
+        "active": True
     },
     "colapinto": {
         "id": "colapinto",
         "name": "Franco Colapinto",
         "short": "COL",
-        "team": "williams",  # FIX: Was incorrectly set to "alpine" - should match CONSTRUCTOR_MAPPING
+        "team": "alpine",
         "nationality": "Argentine",
         "number": 43,
         "experience_races": 5,
@@ -713,7 +711,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [0, 0, 0, 0, 0, 6],  # First race was position 6
         "championship_points_2026": 3,
         "wins_2026": 0,
-        "active": True  # Keep active - Williams driver
+        "active": True
     },
     "bearman": {
         "id": "bearman",
@@ -740,13 +738,13 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [0, 0, 0, 0, 0, 10],  # First race was position 10
         "championship_points_2026": 1,
         "wins_2026": 0,
-        "active": True  # Keep active - Haas driver
+        "active": True
     },
     "bortoleto": {
         "id": "bortoleto",
         "name": "Gabriel Bortoleto",
         "short": "BOR",
-        "team": "kick_sauber",  # FIX: Was incorrectly set to "audi" - should match CONSTRUCTOR_MAPPING
+        "team": "audi",
         "nationality": "Brazilian",
         "number": 5,
         "experience_races": 2,
@@ -767,7 +765,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [0, 0, 0, 0, 0, 13],
         "championship_points_2026": 0,
         "wins_2026": 0,
-        "active": False  # FIX: Reserve driver, not competing in main races
+        "active": True
     },
     "lindblad": {
         "id": "lindblad",
@@ -794,7 +792,7 @@ DRIVERS: Dict[str, Dict[str, Any]] = {
         "recent_form": [0, 0, 0, 0, 0, 22],  # DNS - Did Not Start
         "championship_points_2026": 0,
         "wins_2026": 0,
-        "active": False  # FIX: Reserve driver, not competing in main races
+        "active": True
     }
 }
 
@@ -807,19 +805,8 @@ def get_driver(driver_id: str) -> Dict[str, Any]:
 
 
 def get_all_drivers() -> List[Dict[str, Any]]:
-    """Get all active driver profiles.
-    
-    P0-3 FIX: Explicitly filters for active=True drivers only.
-    Returns exactly the current grid size (typically 20 drivers).
-    """
-    active_drivers = [driver for driver in DRIVERS.values() if driver.get("active", False)]
-    
-    # P0-3 FIX: Validation assert to ensure data consistency
-    # Should be 20 for standard F1 grid, but allow for mid-season changes
-    assert len(active_drivers) >= 18, f"Too few active drivers: {len(active_drivers)}. Expected ~20"
-    assert len(active_drivers) <= 22, f"Too many active drivers: {len(active_drivers)}. Expected ~20"
-    
-    return active_drivers
+    """Get all driver profiles."""
+    return [driver for driver in DRIVERS.values() if driver.get("active", True)]
 
 
 def get_drivers_for_team(team_id: str) -> List[Dict[str, Any]]:

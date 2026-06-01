@@ -9,7 +9,7 @@ Features:
 - Interactive charts with Plotly
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
 import requests
 import json
@@ -227,6 +227,47 @@ def accuracy_page():
         return jsonify(report), 200
     except Exception as e:
         logger.error(f"Accuracy report error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+# ── HTML Report Download ──────────────────────────────────────────────────────
+
+@app.route('/download-report/<circuit_id>')
+def download_report(circuit_id):
+    """Generate and download full HTML prediction report."""
+    try:
+        from reports.html_report import generate_report
+        from engine.predictor import predict, PredictionRequest
+        
+        # Run prediction
+        request_obj = PredictionRequest(
+            circuit_id=circuit_id,
+            n_simulations=10000
+        )
+        
+        result = predict(request_obj)
+        
+        # Generate report
+        report_path = generate_report(circuit_id)
+        
+        # Convert to absolute path if it's relative
+        if not os.path.isabs(report_path):
+            # The report is generated relative to project root, not dashboard
+            report_path = os.path.join(project_root, report_path)
+        
+        logger.info(f"Serving report from: {report_path}")
+        
+        # Check if file exists before sending
+        if not os.path.exists(report_path):
+            logger.error(f"Report file not found at: {report_path}")
+            return jsonify({"error": f"Report file not found: {report_path}"}), 404
+        
+        # Send file for download
+        return send_file(report_path, as_attachment=True)
+    except Exception as e:
+        logger.error(f"Report generation error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500

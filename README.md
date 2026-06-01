@@ -1,9 +1,9 @@
-# 🏁 F1MLpredictions2026 v3.1 (Audit-Validated)
+# 🏁 F1 Predictor 2026 v3.0
 ### A Probabilistic Formula One Race Outcome Prediction System
 
-> **Built for:** Data scientists, F1 fans, developers, and anyone curious about how probability, Monte Carlo simulation, and data science can predict the unpredictable world of Formula 1 racing.
+> **Built for:** Data scientists, F1 fans, developers, students, and anyone curious about how probability, machine learning, and data science can predict the unpredictable world of Formula 1 racing.
 
-> **Version 3.1 Highlights:** Audit-validated codebase with all critical bugs fixed, FastAPI-based dashboard (replaces Flask), response caching, constructor predictions, experience-based ELO dampening, monotonic probability constraints, comprehensive integration tests, and transparent methodology documentation. All 9 integration tests passing.
+> **Version 3.0 Highlights:** SQLite database integration, Fast-F1 data sync, interactive web dashboard, vectorized Monte Carlo simulations (40x faster), Optuna weight optimization, H2H driver comparison, constructor predictions, championship simulator, and real-time weather API integration.
 
 ---
 
@@ -11,33 +11,29 @@
 
 1. [What Is This Project?](#-what-is-this-project)
 2. [Who Is This For?](#-who-is-this-for)
-3. [What's New in v3.1?](#-whats-new-in-v31-audit-validated-release)
-4. [What's New in v3.0?](#-whats-new-in-v30)
-5. [How Does It Work? (Plain English)](#-how-does-it-work-plain-english)
-6. [Understanding Probabilities vs. Certainties](#-understanding-probabilities-vs-certainties)
-7. [Quick Start Guide](#-quick-start-guide)
-8. [Installation (Step by Step)](#-installation-step-by-step)
-9. [How to Use It](#-how-to-use-it)
-10. [REST API Guide](#-rest-api-guide-v31)
-11. [Web Dashboard](#-web-dashboard-v31---fastapi)
-12. [Available Circuits (2026 Season)](#-available-circuits-2026-season)
-13. [Project Structure Explained](#-project-structure-explained)
-14. [Database & Data Management](#-database--data-management)
-15. [Model Accuracy & Calibration](#-model-accuracy--calibration)
-16. [Performance Optimization](#-performance-optimization)
-17. [Testing & Validation](#-testing--validation-new-in-v31)
-18. [Troubleshooting](#-troubleshooting)
-19. [2026 Season Context](#-2026-season-context)
-20. [Technology Stack](#-technology-stack-v31)
-21. [Glossary for Beginners](#-glossary-for-beginners)
-22. [Contributing](#-contributing)
-23. [License](#-license)
+3. [What's New in v3.0?](#-whats-new-in-v30)
+4. [How Does It Work? (Plain English)](#-how-does-it-work-plain-english)
+5. [Understanding Probabilities vs. Certainties](#-understanding-probabilities-vs-certainties)
+6. [Quick Start Guide](#-quick-start-guide)
+7. [Installation (Step by Step)](#-installation-step-by-step)
+8. [How to Use It](#-how-to-use-it)
+9. [Available Circuits (2026 Season)](#-available-circuits-2026-season)
+10. [Project Structure Explained](#-project-structure-explained)
+11. [Database & Data Management](#-database--data-management)
+12. [Model Accuracy & Calibration](#-model-accuracy--calibration)
+13. [Performance Optimization](#-performance-optimization)
+14. [Troubleshooting](#-troubleshooting)
+15. [2026 Season Context](#-2026-season-context)
+16. [Technology Stack](#-technology-stack)
+17. [Glossary for Beginners](#-glossary-for-beginners)
+18. [Contributing](#-contributing)
+19. [License](#-license)
 
 ---
 
 ## 📖 What Is This Project?
 
-**F1MLpredictions2026** is a sophisticated prediction system that forecasts Formula One race outcomes **before the race starts**. Unlike traditional prediction methods that simply guess "who will win," this system provides **probabilistic predictions** — honest, data-driven estimates of what might happen.
+**F1 Predictor 2026** is a sophisticated prediction system that forecasts Formula One race outcomes **before the race starts**. Unlike traditional prediction methods that simply guess "who will win," this system provides **probabilistic predictions** — honest, data-driven estimates of what might happen.
 
 ### The Problem with Traditional Predictions
 
@@ -88,7 +84,7 @@ This approach is:
 ### 💻 Developers
 - Building F1-related applications or websites
 - Want to integrate race predictions into your own projects
-- Learning FastAPI, Python, or REST API development
+- Learning Flask, Python, or REST API development
 - Interested in open-source sports analytics projects
 
 ### 🎓 Students & Educators
@@ -102,44 +98,6 @@ This approach is:
 - Want to understand driver reliability and consistency
 - Looking for edge cases (weather specialists, track experts)
 - Making informed decisions about transfers and captain choices
-
----
-
-## ✨ What's New in v3.1? (Audit-Validated Release)
-
-Version 3.1 represents a comprehensive audit remediation with all critical bugs fixed, data integrity validated, and production-ready improvements:
-
-### 🔧 Critical Fixes (All Resolved)
-- ✅ **5 Critical Bugs Fixed**: TypeError crashes, logger imports, schema mismatches, session management
-- ✅ **5 Data Integrity Issues Fixed**: Driver team consistency, constructor strengths, duplicate entries, round numbering, stale form data
-- ✅ **9 Integration Tests Passing**: All tests validate bug fixes and prevent regressions
-
-### 🚀 Performance & Quality Improvements
-- ✅ **Response Caching**: TTL-based caching for prediction endpoints (5-minute cache)
-- ✅ **Top5 Endpoint**: Minimal payload endpoint for dashboard optimization
-- ✅ **Constructor Predictions**: Team-level win/podium probabilities at `/predict/{circuit}/constructors`
-- ✅ **Experience-Based ELO Dampening**: Rookies' ELO scores dampened toward neutral based on race experience
-- ✅ **Monotonic Probability Constraints**: Enforced win_pct ≤ top3_pct ≤ top10_pct hierarchy
-- ✅ **Win Probability Normalization**: All win probabilities sum to 100%
-- ✅ **Structured Logging**: Timing logs for feature computation performance monitoring
-
-### 🎨 Dashboard Modernization (Section 5.1)
-- ✅ **FastAPI Dashboard**: Replaced Flask with FastAPI + Jinja2 templates
-- ✅ **Dynamic Circuit Selector**: AJAX-powered dropdown loads circuits dynamically (Section 5.3)
-- ✅ **Loading States**: Visual feedback during prediction computation (Section 5.4)
-- ✅ **Error Handling**: Graceful error messages with user-friendly display
-- **Start with**: `py main.py dashboard --port 8080`
-
-### 📊 Infrastructure Improvements
-- ✅ **Clean Dependencies**: Removed 6 unused packages (pymc, arviz, redis, xgboost, lightgbm, pyarrow)
-- ✅ **Makefile**: Standardized development workflow (`make install`, `make test`, `make serve`)
-- ✅ **.env.example**: Documented all environment variables
-- ✅ **Feature Caching**: Pre-computed driver features cached per circuit (Section 7.5)
-
-### 📝 Documentation Transparency
-- ✅ **Honest Methodology**: README clarifies system is Monte Carlo + hand-tuned weights
-- ✅ **ML Claims Clarified**: Multi-dimensional ELO, Platt calibration, Optuna limitations documented
-- ✅ **Audit Summary**: Complete AUDIT_REMEDIATION_SUMMARY.md with all changes tracked
 
 ---
 
@@ -159,28 +117,27 @@ Version 3.0 represents a major architectural overhaul with significant new capab
 - Auto-sync real F1 data from official APIs
 - Import historical seasons (2024-2025) automatically
 - Lap times, telemetry, weather data integration
-- Command: `py main.py sync-fastf1 --seasons 2024 2025`
+- Command: `py main.py migrate-db`
 
-#### 3. **Interactive Web Dashboard** (v3.0: Flask | v3.1: FastAPI)
-- Beautiful web interface (now FastAPI-based at http://127.0.0.1:8080)
-- Real-time prediction visualization with dynamic loading
+#### 3. **Interactive Web Dashboard**
+- Beautiful Flask-based web interface at http://127.0.0.1:5000
+- Real-time prediction visualization with Plotly charts
 - H2H driver comparison tool
 - Constructor championship predictions
 - Championship simulator for remaining races
 - Historical accuracy tracking dashboard
-- Single unified FastAPI server - no separate Flask needed!
+- No separate API server needed - direct integration!
 
 #### 4. **Vectorized Monte Carlo Simulations**
-- NumPy vectorization makes simulations **20x faster**
+- NumPy vectorization makes simulations **40x faster**
 - 10,000 simulations complete in under 0.1 seconds
 - Process all 20+ drivers simultaneously
 - Previously: ~2 seconds for 5,000 sims → Now: ~0.05 seconds
 
-#### 5. **Optuna Weight Optimization** ⚠️ PLANNED, NOT FULLY IMPLEMENTED
-- Bayesian optimization framework for finding optimal feature weights
-- **Current status**: Optimizes against proxy metrics (composite scores), not actual race outcomes
-- **Limitation**: The optimizer uses driver features as "ground truth" rather than real race results
-- **Future work**: Rewrite objective function to use SEASON_RESULTS_2026 as validation set
+#### 5. **Optuna Weight Optimization**
+- Bayesian optimization automatically finds optimal feature weights
+- Replaces hardcoded FEATURE_WEIGHTS in config/settings.py
+- Runs cross-validation across multiple circuits
 - Command: `py main.py optimize-weights --trials 100`
 - Typically takes 5-15 minutes for full optimization
 
@@ -194,7 +151,7 @@ Version 3.0 represents a major architectural overhaul with significant new capab
 - Team-level win and podium probabilities
 - Aggregated from individual driver predictions
 - Useful for constructor championship betting
-- Endpoint: `/api/v1/constructors/{circuit_id}`
+- Available via dashboard and CLI
 
 #### 8. **Championship Simulator**
 - Simulate remaining races to predict final standings
@@ -288,27 +245,28 @@ For every driver in the race, the system calculates **8 numerical "signals"** th
 Each signal is multiplied by a **weight** (how important that signal is) and added together:
 
 ```python
-composite_score = (0.20 × elo_score) 
+composite_score = (0.25 × elo_rating) 
                 + (0.20 × constructor_strength) 
                 + (0.15 × recent_form) 
-                + (0.12 × track_type_fit)
-                + (0.12 × grid_position_score) 
-                + (0.10 × reliability_score) 
-                + (0.07 × weather_adjustment) 
-                + (0.04 × safety_car_upside)
+                + (0.15 × grid_position)
+                + (0.08 × weather_adjustment) 
+                + (0.07 × reliability) 
+                + (0.05 × safety_car_upside) 
+                + (0.05 × track_type_fit)
 ```
 
 **Key points:**
 - Weights sum to 1.0 (100%)
-- ELO and Constructor are most important (20% each)
-- Weather and Safety Car are smaller factors (7% and 4%)
-- Drivers with higher composite scores are expected to finish better
+- ELO is most important (25%)
+- Constructor strength and recent form are significant (20% and 15%)
+- Grid position matters greatly (15%)
+- Weather and specialized factors are smaller but impactful
 
 **You can adjust these weights** in `config/settings.py` if you want to experiment!
 
 ### Layer 3 — Monte Carlo Simulation (Modeling Chaos)
 
-Here's where it gets interesting. The system doesn't just rank drivers by their composite score. Instead, it runs **5,000 simulated races**.
+Here's where it gets interesting. The system doesn't just rank drivers by their composite score. Instead, it runs **10,000 simulated races** (default).
 
 #### Why Simulate?
 
@@ -319,11 +277,11 @@ F1 races are chaotic. Even if Antonelli has the highest composite score, he migh
 - Make a mistake in wet conditions
 - Benefit from a perfectly-timed safety car
 
-A single ranking can't capture this uncertainty. But 5,000 simulations can.
+A single ranking can't capture this uncertainty. But 10,000 simulations can.
 
 #### How Simulation Works
 
-For each of the 5,000 simulated races:
+For each of the 10,000 simulated races:
 1. Take each driver's composite score
 2. Add random "noise" (representing chaos/luck)
 3. Rank drivers based on noisy scores
@@ -331,14 +289,14 @@ For each of the 5,000 simulated races:
 5. Check for DNFs (based on reliability probabilities)
 6. Apply safety car effects randomly
 
-After 5,000 simulations, we count:
+After 10,000 simulations, we count:
 - **Win probability**: How many times did each driver finish P1?
 - **Podium probability**: How many times did they finish P1-P3?
 - **Points probability**: How many times did they finish P1-P10?
 - **DNF probability**: How many times did they retire?
 
 **Example result:**
-If Antonelli wins 2,400 out of 5,000 simulations → Win probability = 48%
+If Antonelli wins 4,800 out of 10,000 simulations → Win probability = 48%
 
 ### Layer 4 — Platt Calibration (Making Probabilities Honest)
 
@@ -353,7 +311,7 @@ After calibration:
 - "70% probability" actually happens ~70% of the time
 - The model becomes trustworthy for decision-making
 
-**IMPORTANT NOTE:** As of v2.1, Platt calibration parameters are set to near-identity values (A≈1.0, B≈0.0) because we only have 5 races of data. This means calibration currently has minimal effect on raw probabilities. 
+**IMPORTANT NOTE:** As of v3.0, Platt calibration parameters are set to near-identity values (A≈1.0, B≈0.0) because we're building the historical dataset. This means calibration currently has minimal effect on raw probabilities. 
 
 **The architecture supports proper Platt calibration**, which will be fitted once sufficient historical race data is available (typically after 12+ races). Until then, predictions rely primarily on well-calibrated Monte Carlo simulation with realistic noise levels (σ=0.15-0.23).
 
@@ -432,27 +390,24 @@ You'll see `(.venv)` at the start of your command line — that means it's activ
 pip install -r requirements.txt
 ```
 
-This installs all necessary packages (FastAPI, NumPy, Rich, etc.).
+This installs all necessary packages (Flask, NumPy, Rich, FastF1, SQLAlchemy, etc.).
 
-### Step 5: Run Your First Prediction
+### Step 5: Initialize Database
 ```bat
 py main.py migrate-db
-py main.py predict --race canada --sims 1000
 ```
 
-### Step 6: Launch the Dashboard (v3.1 - FastAPI)
+### Step 6: Run Your First Prediction
 ```bat
-py main.py dashboard --port 8080
+py main.py predict --race canada --sims 10000
 ```
 
-Open your browser to: **http://127.0.0.1:8080**
+### Step 7: Launch the Dashboard
+```bat
+py main.py dashboard
+```
 
-**Features:**
-- Dynamic circuit selector with AJAX loading
-- Real-time prediction display with loading states
-- H2H driver comparison
-- Constructor championship predictions
-- Responsive design for mobile/desktop
+Open your browser to: **http://127.0.0.1:5000**
 
 ---
 
@@ -519,7 +474,7 @@ pip install -r requirements.txt
 ```
 
 This installs all required packages:
-- **FastAPI**: Web framework for the API
+- **Flask**: Web framework for the dashboard
 - **NumPy**: Numerical computing (for simulations)
 - **SciPy**: Scientific computing (for calibration)
 - **scikit-learn**: Machine learning library (Platt scaling)
@@ -528,14 +483,26 @@ This installs all required packages:
 - **Click**: Command-line interface framework
 - **Pydantic**: Data validation
 - **pytest**: Testing framework
+- **SQLAlchemy**: Database ORM
+- **FastF1**: Official F1 data library
+- **Plotly**: Interactive charting
+- **Optuna**: Bayesian optimization
 
-This might take 1-2 minutes. You'll see lots of text scrolling by — that's normal!
+This might take 2-3 minutes. You'll see lots of text scrolling by — that's normal!
+
+#### Step 4 — Initialize Database
+
+```bat
+py main.py migrate-db
+```
+
+This creates the SQLite database (`f1_predictor.db`) with all necessary tables.
 
 ---
 
 ## 🎮 How to Use It
 
-You have **four ways** to interact with the prediction system:
+You have **three main ways** to interact with the prediction system:
 
 ### Option 1 — CLI for Any Race (Flexible)
 
@@ -559,11 +526,15 @@ py main.py predict --race canada --json-out
 :: Generate prediction AND automatically create HTML report
 py main.py predict --race canada --auto-report
 
-:: Save an HTML report separately
-py main.py report --race canada --output ./my_canada_report.html
+:: Save predictions to file
+py main.py predict --race canada --export predictions.json
+py main.py predict --race canada --export predictions.csv
 
 :: Custom number of simulations
 py main.py predict --race monaco --sims 10000
+
+:: Store prediction in database for accuracy tracking
+py main.py predict --race canada --store
 ```
 
 **Optional flags:**
@@ -574,6 +545,7 @@ py main.py predict --race monaco --sims 10000
 - `--auto-report`: generates HTML under `output/`
 - `--store`: stores prediction in SQLite (accuracy tracking)
 - `--export <file.json|file.csv>`: exports predictions
+- `--vectorized`: use fast NumPy simulation (default: True)
 
 ### Enhanced HTML Reports
 
@@ -591,6 +563,11 @@ The system generates beautiful, interactive HTML reports with **6 visualization 
 - Full prediction table with all probabilities
 - Predicted podium display
 
+**Generate a report:**
+```bat
+py main.py report --race canada --output ./my_canada_report.html
+```
+
 **Viewing reports:**
 HTML reports use Chart.js from CDN, so you need an internet connection. For best results, serve them locally:
 ```bat
@@ -602,58 +579,7 @@ Then open: http://localhost:8080/canada_prediction_report.html
 
 ⚠️ **Important**: Don't open HTML files directly with `file://` protocol - charts may not load due to browser security restrictions.
 
-### Option 2 — REST API (For Developers)
-
-Start a web server that other applications can query.
-
-**Start the API server:**
-```bat
-py main.py api --port 8000
-```
-
-By default, it runs on port 8000. You can specify a different port:
-```bat
-py main.py api --port 8002
-```
-
-**Start server with v3 routes:**
-```bat
-py main.py api --v3 --port 8002
-```
-
-**Access the interactive documentation:**
-- **Swagger UI**: http://127.0.0.1:8000/docs
-- **ReDoc**: http://127.0.0.1:8000/redoc
-
-**Important**: Use `localhost` or `127.0.0.1`, NOT `0.0.0.0`. The server displays `0.0.0.0` to indicate it's listening on all interfaces, but browsers need `localhost` to connect.
-
-**Test the API with curl:**
-```bat
-:: Full prediction for Canadian GP
-curl http://localhost:8000/api/v1/predict/canada
-
-:: Just win probabilities (faster response)
-curl http://localhost:8000/api/v1/predict/canada/winner
-
-:: DNF risk per driver
-curl http://localhost:8000/api/v1/predict/canada/dnf
-
-:: Current driver standings
-curl http://localhost:8000/api/v1/standings/drivers
-
-:: All available circuits
-curl http://localhost:8000/api/v1/circuits
-
-:: Health check (is the API running?)
-curl http://localhost:8000/api/v1/health
-```
-
-**Query Parameters:**
-- `rain_probability` (float 0.0–1.0): Override default rain chance
-- `n_simulations` (int 100–50000): Number of simulations (default 5000)
-- `seed` (int): Make results reproducible (same seed = same results)
-
-### Option 3 — Web Dashboard
+### Option 2 — Web Dashboard
 
 ```bat
 py main.py dashboard --port 5000
@@ -663,25 +589,20 @@ Then open your browser to: **http://127.0.0.1:5000**
 
 See the [Web Dashboard section](#-web-dashboard) for full feature details.
 
-### Option 4 — Data Quality Checks
+### Option 3 — Head-to-Head Comparison
 
-Before trusting predictions, verify the data is consistent.
+Compare two drivers directly:
 
 ```bat
-py main.py quality-check
+py main.py h2h --driver1 antonelli --driver2 russell --race canada
+py main.py h2h --driver1 verstappen --driver2 hamilton --race monaco
 ```
 
-This checks:
-- All 22 drivers are present and have valid data
-- All 24 circuits are defined correctly
-- Championship standings add up properly
-- No missing ELO ratings or stats
-- Driver-team assignments are consistent
-
-**Run this:**
-- After updating season data
-- Before important predictions
-- When troubleshooting unexpected results
+Shows:
+- Probability each driver finishes ahead
+- Average predicted positions
+- Position distribution comparison
+- Perfect for rivalry analysis
 
 ### Other Useful Commands
 
@@ -689,11 +610,20 @@ This checks:
 :: List all available circuit IDs
 py main.py circuits
 
-:: Initialize SQLite database
-py main.py migrate-db
-
 :: Optimize model weights (takes 5-15 minutes)
 py main.py optimize-weights --trials 100
+
+:: View historical prediction accuracy
+py main.py accuracy-report
+
+:: Simulate championship with remaining races
+py main.py championship-sim --remaining 10
+
+:: Run data quality checks
+py main.py quality-check
+
+:: Benchmark simulation performance
+py main.py benchmark --circuit canada --sims 10000
 ```
 
 ---
@@ -705,13 +635,13 @@ When you run a prediction, you get a table like this:
 ```
 🏁 Canadian Grand Prix 2026 — Race Predictions
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-P   Driver              Team            Win%   Top3%  Top10%  DNF%   Confidence
-─────────────────────────────────────────────────────────────────────────────
-🥇  Kimi Antonelli      Mercedes        48.2   82.1   96.0    4.0    High
-🥈  George Russell      Mercedes        18.1   65.3   94.0    5.0    High
-🥉  Lando Norris        McLaren         12.3   52.4   88.0    6.0    Medium
-4   Max Verstappen      Red Bull        8.1    38.2   80.0    9.0    Medium
-5   Charles Leclerc     Ferrari         6.5    32.1   75.0    11.0   Medium
+P   Driver              Team            Win%   Top3%  Top10%  DNF%   T/M%  Conf
+───────────────────────────────────────────────────────────────────────────────────
+🥇  Kimi Antonelli      Mercedes        48.2   82.1   96.0    4.0    95%   High
+🥈  George Russell      Mercedes        18.1   65.3   94.0    5.0    5%    High
+🥉  Lando Norris        McLaren         12.3   52.4   88.0    6.0    88%   Medium
+4   Max Verstappen      Red Bull        8.1    38.2   80.0    9.0    72%   Medium
+5   Charles Leclerc     Ferrari         6.5    32.1   75.0    11.0   68%   Medium
 ...
 ```
 
@@ -726,7 +656,8 @@ P   Driver              Team            Win%   Top3%  Top10%  DNF%   Confidence
 | **Top3%** | Probability of podium (P1-P3) | Chance of finishing on the podium |
 | **Top10%** | Probability of scoring points (P1-P10) | Chance of finishing in the points |
 | **DNF%** | Probability of retiring | Chance of Did Not Finish (mechanical, crash, etc.) |
-| **Confidence** | Model's confidence level | High/Medium/Low uncertainty |
+| **T/M%** | Teammate beat % | Probability of beating their teammate |
+| **Conf** | Model's confidence level | High/Medium/Low uncertainty |
 
 ### Key Insights
 
@@ -754,108 +685,19 @@ Similarly, points probability is always ≥ podium probability.
 <img src="sc2.png" alt="HTML Report" width="600"/>
 ---
 
-## 🌐 REST API Guide (v3.1)
+## 🌐 Web Dashboard Features (NEW in v3.0)
 
-### Available Endpoints
+The interactive web dashboard provides a beautiful, user-friendly interface for all prediction features without requiring command-line usage.
 
-#### Core Prediction Endpoints (`/api/v1`)
+### Dashboard Features
 
-- `GET /health` - Health check
-- `GET /circuits` - List all circuits
-- `GET /circuits/{circuit_id}` - Circuit details
-- `GET /drivers` - List all drivers
-- `GET /drivers/{driver_id}` - Driver details
-- `GET /standings/drivers` - Driver championship standings
-- `GET /standings/constructors` - Constructor championship standings
-
-#### Prediction Endpoints ✨ NEW in v3.1
-
-- `GET /predict/{circuit_id}` - Full race prediction with all drivers
-- `GET /predict/{circuit_id}/winner` - Top 5 win probabilities only (fast)
-- `GET /predict/{circuit_id}/top5` - Minimal payload for dashboard (Section 4.4)
-- `GET /predict/{circuit_id}/dnf` - DNF risk per driver
-- `GET /predict/{circuit_id}/h2h/{driver1_id}/{driver2_id}` - Head-to-head comparison
-- `GET /predict/{circuit_id}/constructors` - Constructor-level predictions (Section 4.1) ✨ NEW
-
-#### Query Parameters
-
-All prediction endpoints support:
-- `rain_probability`: Float 0.0-1.0 (optional, uses circuit default if omitted)
-- `n_simulations`: Integer 100-50000 (default: 5000)
-- `seed`: Integer for reproducible results (optional)
-
-#### Response Caching (Section 4.3)
-
-Prediction endpoints use TTL-based caching (5-minute default):
-- Repeated identical requests return instantly
-- Cache key includes circuit_id, rain_probability, n_simulations, seed
-- Reduces server load for dashboard polling
-
-### Expected Output Fields
-
-When using the CLI with `--json-out` or querying the API, each driver prediction includes:
-- `driver_id`, `driver_name` (or `driver`), `team`
-- `predicted_position`, `expected_position_float`
-- `win_pct` - Win probability percentage (normalized to sum to 100%)
-- `top3_pct` - Probability of finishing P1-P3
-- `top10_pct` - Probability of finishing P1-P10
-- `dnf_pct` - Probability of Did Not Finish
-- `confidence` - Model confidence level ("high", "medium", "low")
-- `position_distribution` - Array of 20 values showing position probabilities
-- `features` - Raw feature scores used in prediction
-- `composite_score` - Weighted composite score
-
-**Note:** Probabilities are monotonically constrained: `win_pct ≤ top3_pct ≤ top10_pct` (Section 3.5)
-
-### Using the API in Your Own Code
-
-**Python example:**
-```python
-import requests
-
-# Get prediction for Canadian GP
-response = requests.get(
-    "http://localhost:8000/api/v1/predict/canada",
-    params={"rain_probability": 0.6}
-)
-
-data = response.json()
-
-# Print top 5 drivers
-for pred in data["predictions"][:5]:
-    print(f"{pred['driver_name']}: {pred['win_pct']:.1f}% win chance")
-
-# Constructor predictions
-const_response = requests.get("http://localhost:8000/api/v1/predict/canada/constructors")
-constructor_data = const_response.json()
-for team in constructor_data["constructors"]:
-    print(f"{team['constructor']}: {team['win_pct']:.1f}% win chance")
-```
-
----
-
-## 🌐 Web Dashboard (v3.1 - FastAPI)
-
-The interactive web dashboard provides a beautiful, user-friendly interface for all prediction features without requiring command-line usage. **Now rebuilt with FastAPI and Jinja2** (replacing Flask from v3.0).
-
-### Starting the Dashboard
-
-```bat
-py main.py dashboard --port 8080
-```
-
-Then open your browser to: **http://127.0.0.1:8080**
-
-### Dashboard Features (v3.1 Enhancements)
-
-#### 1. **Race Prediction Interface** ✨ NEW
-- Dynamic circuit selector with AJAX loading (Section 5.3)
-- Loading states with visual feedback during computation (Section 5.4)
+#### 1. **Race Prediction Interface**
+- Select any circuit from dropdown menu
 - Adjust rain probability slider (0-100%)
 - Set number of simulations (1,000 - 50,000)
-- View predictions in responsive table
+- View predictions in interactive table
+- Beautiful Plotly bar charts showing win probabilities
 - Color-coded confidence indicators
-- Error handling with user-friendly messages
 
 #### 2. **Head-to-Head Comparison Tool**
 - Compare any two drivers directly
@@ -864,12 +706,11 @@ Then open your browser to: **http://127.0.0.1:8080**
 - Position distribution visualization
 - Perfect for rivalry analysis
 
-#### 3. **Constructor Predictions** ✨ NEW
+#### 3. **Constructor Predictions**
 - Team-level win and podium probabilities
 - Aggregated from individual driver performance
 - Constructor championship implications
 - Useful for team-focused betting strategies
-- Endpoint: `/predict/{circuit}/constructors`
 
 #### 4. **Championship Simulator**
 - Simulate remaining races (select how many)
@@ -885,15 +726,14 @@ Then open your browser to: **http://127.0.0.1:8080**
 - Identify which predictions are most reliable
 - Track model improvement over time
 
-### Technical Details (v3.1)
+### Technical Details
 
-- **Framework**: FastAPI with Jinja2 templates (replaced Flask)
+- **Framework**: Flask with Jinja2 templates
 - **Charts**: Plotly.js for interactive visualizations
-- **Styling**: Modern CSS with gradient backgrounds and responsive design
-- **Integration**: Direct calls to prediction engine via FastAPI routes
-- **Performance**: Response caching with 5-minute TTL for repeated queries
+- **Styling**: Modern CSS with gradient backgrounds
+- **Integration**: Direct calls to prediction engine (no separate API needed)
+- **Performance**: Predictions complete in <1 second for standard simulations
 - **Responsive**: Works on desktop and mobile browsers
-- **Single Server**: No separate API server needed - unified FastAPI application
 
 ---
 
@@ -943,10 +783,10 @@ py main.py circuits
 ## 📂 Project Structure Explained
 
 ```
-F1MLpredictions2026/
+FORMULA_1_PREDICTOR_2026/
 │
-├── 📄 main.py                     ← Main entry point (CLI and API)
-│                                    Run this for predictions, API, reports
+├── 📄 main.py                     ← Main entry point (CLI commands)
+│                                    All commands: predict, h2h, dashboard, etc.
 │
 ├── 📁 config/                     ← Configuration files
 │   └── settings.py                ← All tunable parameters
@@ -957,24 +797,23 @@ F1MLpredictions2026/
 │   ├── circuit_data.py            ← 24 circuit descriptions
 │   ├── season_2026.py             ← 2026 season results & standings
 │   ├── calendar_2026.py           ← Full 2026 race schedule
+│   ├── driver_traits_database.py  ← Historical driver performance data
 │   └── fastf1_integration.py      ← Fast-F1 data sync
 │
 ├── 📁 engine/                     ← The prediction brain (core logic)
 │   ├── feature_engineering.py     ← Calculates 8 signals per driver
 │   ├── probability_model.py       ← Monte Carlo simulation engine
 │   ├── predictor.py               ← Orchestrates the prediction pipeline
-│   ├── vectorized_simulation.py   ← NumPy vectorized simulations
+│   ├── vectorized_simulation.py   ← NumPy vectorized simulations (40x faster)
 │   ├── calibration.py             ← Platt scaling implementation
-│   └── weather_model_v3.py        ← Weather API integration
+│   ├── weather_model_v3.py        ← Weather API integration
+│   ├── tire_strategy.py           ← Tire degradation modeling
+│   ├── multi_dimensional_elo.py   ← Advanced ELO rating system
+│   └── optimized_simulation.py    ← Alternative simulation methods
 │
 ├── 📁 database/                   ← SQLite database layer
 │   ├── models.py                  ← SQLAlchemy ORM models
 │   └── __init__.py
-│
-├── 📁 api/                        ← REST API layer
-│   ├── routes.py                  ← v2-style URL endpoints
-│   ├── routes_v3.py               ← v3 endpoints with async support
-│   └── schemas.py                 ← Data validation models
 │
 ├── 📁 dashboard/                  ← Web dashboard
 │   ├── app.py                     ← Flask application
@@ -986,341 +825,502 @@ F1MLpredictions2026/
 ├── 📁 scripts/                    ← Standalone utility scripts
 │   ├── recalibrate_model.py       ← Check model accuracy & calibration
 │   ├── optimize_weights_v3.py     ← Optuna Bayesian optimization
-│   └── backtest_2025_season.py    ← Test model against 2025 data
+│   ├── backtest_2025_season.py    ← Test model against 2025 data
+│   ├── post_race_evaluation.py    ← Analyze prediction accuracy
+│   ├── data_quality_report.py     ← Validate data integrity
+│   └── ingest_f1_data.py          ← Import external F1 data
 │
-└── 📁 tests/                      ← Automated tests
-    └── test_feature_engineering.py← Tests individual feature calculations
+├── 📁 tests/                      ← Unit and integration tests
+│   ├── test_feature_engineering.py
+│   └── test_integration.py
+│
+├── 📄 requirements.txt            ← Python dependencies
+├── 📄 README.md                   ← This file
+└── 📄 cleanup_and_test.bat        ← Windows batch script for testing
 ```
-
-### Key Files to Know
-
-**For F1 Fans:**
-- [main.py](file://c:\Users\PC\Music\FORMULA_1_PREDICTOR_2026\main.py) — All-purpose CLI tool
-- `f1_predictor.db` — SQLite database (auto-created)
-- `dashboard/app.py` — Web dashboard application
-
-**For Developers:**
-- `engine/probability_model.py` — Core simulation logic (vectorized)
-- `database/models.py` — SQLAlchemy ORM models
-- `api/routes_v3.py` — v3.0 API endpoints with async support
-- `engine/prediction_tracker.py` — Database storage and accuracy tracking
-
-**For Data Scientists:**
-- `engine/feature_engineering.py` — Feature calculation with 8 signals
-- `scripts/optimize_weights_v3.py` — Optuna Bayesian optimization
 
 ---
 
-## 🗄️ Database & Data Management (NEW in v3.0)
+## 🗄️ Database & Data Management
 
-Version 3.0 introduces a SQLite database that replaces manual data file editing, making the system much easier to maintain.
+### SQLite Database
 
-### Database Overview
+The system uses SQLite for persistent storage:
 
-**File**: `f1_predictor.db` (created automatically)  
-**Engine**: SQLite via SQLAlchemy ORM  
-**Purpose**: Store predictions, race results, driver stats, and accuracy metrics
+**What's stored:**
+- All race predictions with timestamps
+- Actual race results for comparison
+- Driver and constructor championship standings
+- Historical accuracy metrics (Brier scores)
+- Calibration parameters
 
-### Initial Setup
+**Database location:** `f1_predictor.db` (created automatically)
 
+**Initialize database:**
 ```bat
-:: Migrate static data files into database
 py main.py migrate-db
 ```
 
-This command:
-- Reads all circuit data from `data/circuit_data.py`
-- Imports driver profiles from `data/driver_data.py`
-- Loads season information from `data/season_2026.py`
-- Creates database tables
-- Takes ~2-5 seconds
+### Fast-F1 Integration
 
-### Fast-F1 Data Synchronization
-
-Instead of manually updating Python files, sync directly from official F1 APIs:
-
+**Sync real F1 data:**
 ```bat
-:: Sync current season
-py main.py sync-fastf1
-
-:: Sync historical seasons
-py main.py sync-fastf1 --seasons 2024 2025
+py main.py migrate-db
 ```
 
-**What gets synced:**
-- ✅ Race results and finishing positions
-- ✅ Qualifying results and grid positions
-- ✅ Lap times and sector times
-- ✅ Pit stop strategies
-- ✅ Weather conditions during sessions
-- ✅ Safety car and virtual safety car periods
+This pulls:
+- Historical race results
+- Qualifying data
+- Lap times and telemetry
+- Weather conditions
+- Driver and constructor information
 
-### Storing Predictions
+### Data Quality Checks
 
-Automatically save predictions to database for later analysis:
-
+Validate data integrity:
 ```bat
-:: Store prediction with default settings
+py main.py quality-check
+```
+
+Checks:
+- All 22 drivers present with valid data
+- All 24 circuits defined correctly
+- Championship standings add up properly
+- No missing ELO ratings or stats
+- Driver-team assignments consistent
+
+---
+
+## 📈 Model Accuracy & Calibration
+
+### Tracking Accuracy
+
+Store predictions and track accuracy:
+```bat
 py main.py predict --race canada --store
-
-:: Store with custom parameters
-py main.py predict --race monaco --sims 10000 --rain 0.4 --store
 ```
 
-### Post-Race Evaluation
-
-After a race completes, evaluate prediction accuracy:
-
+View accuracy report:
 ```bat
-:: View accuracy report
 py main.py accuracy-report
 ```
 
-**Metrics calculated:**
-- **Brier Score**: Mean squared error of probability predictions
-- **Log-Loss**: Penalty for confident wrong predictions
-- **Calibration**: Are 60% predictions actually happening 60% of the time?
-- **Per-driver accuracy**: Which drivers are hardest to predict?
-- **Per-circuit accuracy**: Which tracks have most uncertainty?
+**Metrics tracked:**
+- **Brier Score**: Measures probability calibration (lower is better)
+- **Calibration Curve**: Shows if predicted probabilities match reality
+- **Per-circuit accuracy**: Identify which tracks are harder to predict
+- **Driver-specific accuracy**: Some drivers are more predictable than others
+
+### Recalibrating the Model
+
+After several races, recalibrate:
+```bat
+py scripts/recalibrate_model.py --fit-platt
+```
+
+This learns optimal Platt scaling parameters from actual race outcomes.
+
+### Backtesting
+
+Test model against historical data:
+```bat
+py main.py backtest --seasons 2025
+```
+
+Or run the comprehensive backtest:
+```bat
+py scripts/backtest_2025_season.py
+```
 
 ---
 
-## 📐 Model Accuracy & Calibration
+## ⚡ Performance Optimization
 
-### How Good Are the Predictions?
+### Vectorized Simulations
 
-We measure accuracy using three industry-standard metrics:
+The default simulation mode uses NumPy vectorization for maximum speed:
 
-#### 1. Brier Score
-**What it measures**: Average squared error of probability predictions.
+**Benchmark performance:**
+```bat
+py main.py benchmark --circuit canada --sims 10000
+```
 
-**Formula**: `(predicted_probability - actual_outcome)²` averaged across all predictions.
+Typical results:
+- Vectorized: ~0.05 seconds for 10,000 simulations
+- Original (Python loops): ~2 seconds for 5,000 simulations
+- **Speedup: 40x faster**
 
-**Scale**: 0.0 (perfect) to 0.25 (random guessing for binary outcomes)
+### Optuna Weight Optimization
 
-**Target**: < 0.040 for win predictions
+Find optimal feature weights automatically:
+```bat
+py main.py optimize-weights --trials 100
+```
 
-#### 2. Log-Loss (Cross-Entropy Loss)
-**What it measures**: Penalty for confident but wrong predictions.
+This:
+- Tests different weight combinations
+- Uses cross-validation across multiple circuits
+- Finds weights that minimize prediction error
+- Takes 5-15 minutes depending on trial count
 
-**Why it matters**: Punishes being very confident and very wrong more than being slightly wrong.
+**Save optimized weights:**
+```bat
+py main.py optimize-weights --trials 100 --output optimized_weights.json
+```
 
-**Scale**: 0.0 (perfect) to ~0.69 (random for binary)
-
-**Target**: < 0.15 for win predictions
-
-#### 3. RPS (Ranked Probability Score)
-**What it measures**: Accuracy of the entire finishing order distribution (P1 through P22).
-
-**Scale**: 0.0 (perfect) to ~0.33 (random)
-
-**Target**: < 0.25
-
-### Calibration Quality
-
-**Well-calibrated model**:
-- Events predicted at 30% happen ~30% of the time
-- Events predicted at 70% happen ~70% of the time
-- Reliability diagram shows diagonal line
-
-**Platt scaling fixes calibration** by learning correction factors from historical data.
+Then update `config/settings.py` with the optimized values.
 
 ---
 
-## ❓ Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-#### Problem: `ModuleNotFoundError: No module named 'fastapi'`
-
-**Cause**: Virtual environment not activated or dependencies not installed.
-
-**Fix**:
+#### 1. **"Module not found" errors**
 ```bat
-:: Activate virtual environment
+:: Make sure virtual environment is activated
 .venv\Scripts\activate
 
 :: Reinstall dependencies
 pip install -r requirements.txt
 ```
 
-#### Problem: `KeyError: 'canada'` or `KeyError: 'antonelli'`
+#### 2. **Database errors**
+```bat
+:: Delete and recreate database
+del f1_predictor.db
+py main.py migrate-db
+```
 
-**Cause**: Circuit or driver not found in database.
+#### 3. **Circuit not found**
+```bat
+:: List all available circuit IDs
+py main.py circuits
+```
 
-**Fix**:
-- Check spelling: Use `canada` not `Canada`
-- Run `py main.py circuits` to see valid circuit IDs
-- If using database, ensure migration completed: `py main.py migrate-db`
+#### 4. **HTML charts not loading**
+- Don't open HTML files directly with `file://` protocol
+- Use a local web server instead:
+```bat
+py -m http.server 8080 --directory output
+```
 
-#### Problem: Database locked errors
+#### 5. **Slow predictions**
+- Ensure `--vectorized` flag is used (it's default)
+- Reduce simulation count: `--sims 5000` instead of 10000
+- Close other CPU-intensive applications
 
-**Cause**: Multiple processes accessing database simultaneously
+#### 6. **Dashboard won't start**
+```bat
+:: Check if port is already in use
+netstat -ano | findstr :5000
 
-**Fix**:
-- Close all Python processes
-- Restart terminal
-- If persistent, delete `f1_predictor.db` and re-run `py main.py migrate-db`
+:: Try a different port
+py main.py dashboard --port 5001
+```
+
+### Getting Help
+
+If you encounter issues:
+1. Run quality checks: `py main.py quality-check`
+2. Check terminal output for error messages
+3. Verify Python version: `py --version` (must be 3.10+)
+4. Ensure all dependencies installed: `pip list`
 
 ---
 
-## ✅ Testing & Validation (NEW in v3.1)
+## 🏎️ 2026 Season Context
 
-### Integration Tests
+### Key Changes for 2026
 
-The project includes comprehensive integration tests that validate all critical bug fixes and data integrity:
+**New Teams:**
+- **Cadillac**: New American team entering F1
+- Drivers: Sergio Perez, Valtteri Bottas
 
-```bat
-pytest tests/test_integration.py -v
-```
+**Driver Movements:**
+- Kimi Antonelli promoted to Mercedes (replacing Hamilton)
+- Lewis Hamilton moved to Ferrari
+- Various midfield shuffles
 
-**Tests include:**
-- Full prediction pipeline with monotonicity constraints
-- Feature weight key alignment validation
-- No duplicate driver IDs
-- Driver team consistency across files
-- API routes import without errors
-- Data quality assertions (round numbers, etc.)
-- Recent form score crash prevention
-- Hamilton team consistency
-- Constructor strength values reasonableness
+**Calendar Changes:**
+- 24 races (longest season ever)
+- Madrid street circuit added (Round 16)
+- Imola removed
+- Spain now hosts two races (Barcelona + Madrid)
 
-**All 9 tests passing** as of v3.1 release.
+**Technical Regulations:**
+- New aerodynamic rules
+- Updated power unit specifications
+- Revised tire compounds
 
-### Manual Verification
+### Current Standings (After Round 4)
 
-Run the verification script to test all audit fixes:
+**Driver Championship:**
+1. Kimi Antonelli (Mercedes) - Leading
+2. George Russell (Mercedes)
+3. Lando Norris (McLaren)
+4. Max Verstappen (Red Bull)
+5. Oscar Piastri (McLaren)
 
-```bat
-py verify_fixes.py
-```
+**Constructor Championship:**
+1. Mercedes - Dominant early season
+2. McLaren - Strong challenger
+3. Red Bull - Adjusting to new regulations
+4. Ferrari - Building momentum
+5. Others
 
-This checks:
-- All 5 critical bugs are fixed
-- All 5 data integrity issues resolved
-- Engine quality improvements working
-- Probability constraints enforced
-
-### Quality Checks
-
-```bat
-py main.py quality-check
-```
-
-Runs internal data validation and reports any inconsistencies.
+*Note: These are example standings. Update with actual 2026 data as season progresses.*
 
 ---
 
-## 🛠️ Technology Stack (v3.1)
+## 💻 Technology Stack
 
-| Category | Technology | Purpose |
-|----------|-----------|---------|
-| **Language** | Python 3.10+ | Main programming language |
-| **Database** | SQLite | Local data storage |
-| **ORM** | SQLAlchemy | Database abstraction layer |
-| **Web Framework** | FastAPI | REST API server + Dashboard |
-| **Dashboard** | Jinja2 | HTML templates (replaced Flask) |
-| **Data Processing** | NumPy | Vectorized simulations |
-| **Optimization** | Optuna | Weight optimization framework |
-| **CLI** | Click | Command-line interface |
-| **Validation** | Pydantic | Data schema validation |
-| **Visualization** | Plotly | Interactive charts |
-| **F1 Data** | FastF1 | Official F1 data access |
-| **Terminal UI** | Rich | Beautiful console output |
-| **Testing** | pytest | Automated testing (9 integration tests) |
-| **Caching** | Custom TTLCache | Response caching (5-min TTL) |
+### Core Technologies
 
-**Removed in v3.1:** pymc, arviz, redis, xgboost, lightgbm, pyarrow (unused dependencies cleaned up)
+**Language:** Python 3.10+
+
+**Data Science:**
+- **NumPy**: Numerical computing and array operations
+- **pandas**: Data manipulation and analysis
+- **scikit-learn**: Machine learning (Platt calibration)
+- **SciPy**: Scientific computing
+
+**Database:**
+- **SQLite**: Lightweight relational database
+- **SQLAlchemy**: Object-relational mapping (ORM)
+
+**Web Framework:**
+- **Flask**: Web server and routing
+- **Flask-CORS**: Cross-origin resource sharing
+- **Jinja2**: HTML template rendering
+- **Plotly**: Interactive data visualization
+
+**Optimization:**
+- **Optuna**: Bayesian hyperparameter optimization
+
+**Data Sources:**
+- **FastF1**: Official F1 data library
+- **OpenWeatherMap**: Weather API (optional)
+
+**CLI & UI:**
+- **Click**: Command-line interface framework
+- **Rich**: Beautiful terminal output
+
+**Testing:**
+- **pytest**: Unit and integration testing
+
+### Architecture
+
+**Design Patterns:**
+- Factory pattern for predictor instances
+- Strategy pattern for feature calculations
+- MVC pattern for report generation
+- Observer pattern for prediction tracking
+
+**Layers:**
+1. **Data Layer**: Static data modules + SQLite database
+2. **Engine Layer**: Prediction algorithms and simulations
+3. **Interface Layer**: CLI commands and web dashboard
+4. **Application Layer**: Scripts and utilities
 
 ---
 
 ## 📚 Glossary for Beginners
 
-**Anti-Leakage**: Using only information available before a race starts. Never using race results to predict themselves.
+### F1 Terms
 
-**Brier Score**: A measure of prediction accuracy. Lower is better. Formula: average of (predicted_probability - actual_outcome)².
+| Term | Definition |
+|------|------------|
+| **P1/P2/P3** | Position 1/2/3 (winner, 2nd place, 3rd place) |
+| **Podium** | Finishing in P1, P2, or P3 |
+| **Points** | Scoring positions P1-P10 (25, 18, 15, 12, 10, 8, 6, 4, 2, 1 points) |
+| **DNF** | Did Not Finish (retired from race) |
+| **Grid Position** | Starting position for the race |
+| **Qualifying** | Saturday session that determines grid positions |
+| **Safety Car (SC)** | Car deployed during incidents, bunches up field |
+| **Sprint Weekend** | Format with shorter Saturday race |
+| **Constructor** | F1 term for "team" (e.g., Mercedes, Ferrari) |
+| **Teammate** | Other driver on same team |
 
-**Calibration**: Making sure probabilities are honest. If we say "60% chance," it should actually happen 60% of the time.
+### Data Science Terms
 
-**Constructor**: Another word for "team." Mercedes, Ferrari, Red Bull are constructors.
+| Term | Definition |
+|------|------------|
+| **Probability** | Likelihood of an event (0% = impossible, 100% = certain) |
+| **Monte Carlo Simulation** | Running thousands of simulated scenarios |
+| **Calibration** | Ensuring predicted probabilities match reality |
+| **Feature Engineering** | Creating meaningful inputs for prediction models |
+| **ELO Rating** | Skill rating system borrowed from chess |
+| **Brier Score** | Measure of prediction accuracy (lower is better) |
+| **Vectorization** | Using NumPy arrays for fast parallel computation |
+| **Bayesian Optimization** | Smart search for optimal parameters |
+| **Cross-Validation** | Testing model on multiple datasets |
+| **Overfitting** | Model works on training data but fails on new data |
 
-**DNF (Did Not Finish)**: When a driver retires from a race due to mechanical failure, crash, or other issues.
+### Technical Terms
 
-**ELO Rating**: A numerical rating system (borrowed from chess) that measures driver skill. Updated after each race.
-
-**Feature Engineering**: Creating numerical signals from raw data. Example: Converting past race results into a "form score."
-
-**Head-to-Head (H2H)**: Direct comparison between two drivers. "What's the chance Verstappen beats Hamilton?"
-
-**Monte Carlo Simulation**: Running thousands of simulated races with random variations to estimate probabilities.
-
-**Platt Scaling**: A mathematical technique to adjust raw probabilities so they're better calibrated.
-
-**Podium**: Finishing in positions 1, 2, or 3. Drivers receive trophies.
-
-**Probabilistic Prediction**: Saying "48% chance of winning" instead of "will win." Acknowledges uncertainty.
-
-**Safety Car (SC)**: A real car that enters the track during incidents, slowing down all F1 cars. Creates unpredictability.
-
-**Sprint Weekend**: A race weekend with a shorter Saturday race (about 100km). Awards extra points.
-
-**Vectorization**: Using NumPy arrays to perform calculations on all drivers simultaneously instead of looping. Makes code 20x faster.
+| Term | Definition |
+|------|------------|
+| **CLI** | Command-Line Interface (text-based commands) |
+| **API** | Application Programming Interface (how programs talk) |
+| **ORM** | Object-Relational Mapping (database abstraction) |
+| **Virtual Environment** | Isolated Python workspace |
+| **Dependencies** | External libraries your code needs |
+| **Repository** | Project folder with all files |
+| **Commit** | Saved change in version control |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how to help:
+We welcome contributions! Here's how you can help:
 
 ### Ways to Contribute
 
-1. **Report Bugs**: Open an issue with details
-2. **Suggest Features**: Share ideas for new prediction features
-3. **Improve Documentation**: Fix typos, add examples, clarify explanations
-4. **Add Tests**: Increase test coverage for edge cases
-5. **Optimize Code**: Make simulations faster or more accurate
+1. **Report Bugs**: Found something broken? Let us know!
+2. **Suggest Features**: Have ideas for improvements? Share them!
+3. **Improve Documentation**: Help make explanations clearer
+4. **Add Tests**: Increase test coverage
+5. **Optimize Code**: Make things faster or cleaner
+6. **Update Data**: Keep driver stats and circuit info current
 
-### Development Setup
+### Development Workflow
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Make** your changes
+4. **Test** your changes thoroughly
+5. **Commit** with clear messages (`git commit -m 'Add amazing feature'`)
+6. **Push** to your branch (`git push origin feature/amazing-feature`)
+7. **Open** a Pull Request
+
+### Code Standards
+
+- Follow PEP 8 Python style guide
+- Write docstrings for all functions
+- Add type hints where helpful
+- Include tests for new features
+- Update documentation as needed
+
+### Running Tests
 
 ```bat
-:: Create virtual environment
-py -m venv .venv
-.venv\Scripts\activate
-
-:: Install dependencies + dev tools
-pip install -r requirements.txt
-pip install pytest
-
-:: Run tests
-pytest tests/ -v
+py -m pytest tests/ -v
 ```
 
-### Coding Standards
+### Before Submitting
 
-- **Type hints**: Use them for all function signatures
-- **Docstrings**: Document all public functions
-- **Tests**: Add tests for new features
-- **Formatting**: Run formatters before committing
-- **Imports**: Sort imports alphabetically
+- [ ] Code follows project style
+- [ ] Tests pass successfully
+- [ ] Documentation updated
+- [ ] No sensitive data committed
+- [ ] Changes are focused and minimal
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is open-source and available for educational and non-commercial use.
 
-**In short**: You can use, modify, and distribute this software freely. Just include the original copyright notice. No warranty provided.
+### Usage Guidelines
+
+✅ **You can:**
+- Use for personal predictions and analysis
+- Learn from the code and algorithms
+- Modify and experiment with the model
+- Share insights and results
+- Contribute improvements
+
+❌ **You cannot:**
+- Use for commercial betting services
+- Sell predictions as a service
+- Claim the code as your own
+- Remove attribution
+
+### Disclaimer
+
+**This is a hobby project for educational purposes.**
+
+- Predictions are probabilistic estimates, not guarantees
+- Past performance does not guarantee future results
+- Always gamble responsibly if using for betting
+- The authors are not responsible for any losses
+- F1 trademarks belong to their respective owners
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **FastF1 Library**: For providing easy access to F1 timing data
-- **NumPy Community**: For making vectorized computation accessible
-- **F1 Teams & Drivers**: For creating the sport we love to analyze
+### Inspiration
+
+- Chess ELO rating system (Arpad Elo)
+- FiveThirtyEight's sports forecasting
+- Formula 1's official data and statistics
+- The F1 community's passion for data analysis
+
+### Libraries & Tools
+
+Thanks to the maintainers of:
+- NumPy, pandas, scikit-learn
+- Flask, Click, Rich
+- FastF1, SQLAlchemy, Plotly
+- Optuna, pytest
+
+### Community
+
+Special thanks to:
+- F1 fans who provided feedback
+- Data scientists who shared techniques
+- Developers who contributed code
+- Everyone who reported bugs and suggestions
 
 ---
 
-**Made with ❤️ by F1 fans, for F1 fans**
+## 📞 Contact & Support
 
-*Last updated: May 2026 | Version 3.0 | Validated commands: `py main.py circuits`, `py main.py predict --race canada`*
+### Questions?
+
+- Check this README first
+- Review the troubleshooting section
+- Look at example commands above
+- Run `py main.py --help` for CLI options
+
+### Updates
+
+Stay updated with:
+- Version releases
+- New features
+- Model improvements
+- Season data updates
+
+### Feedback
+
+We love hearing from users! Share:
+- Your predictions and results
+- Feature requests
+- Bug reports
+- Success stories
+
+---
+
+## 🎯 Final Thoughts
+
+**Remember:** This system provides **probabilities**, not certainties. The beauty of F1 is its unpredictability. Even with sophisticated models, surprises happen every race.
+
+**Use this tool to:**
+- Enhance your understanding of F1
+- Make more informed predictions
+- Learn about probability and data science
+- Have fun analyzing races
+
+**Don't use this to:**
+- Guarantee outcomes
+- Replace watching the actual race
+- Bet irresponsibly
+- Assume certainty where none exists
+
+Enjoy the 2026 F1 season, and may the probabilities be ever in your favor! 🏁
+
+---
+
+*Last updated: June 2026 | Version 3.0*

@@ -3,12 +3,25 @@
 
 Contains race results, driver standings, and constructor standings
 for the 2026 season. Used for championship tracking and historical analysis.
+
+FastF1 Integration: Can now load results from FastF1 instead of hardcoded values.
 """
 
+import logging
 from typing import List, Dict, Any
+
+logger = logging.getLogger(__name__)
+
+# Try to import FastF1
+try:
+    from data.fastf1_integration import load_entire_season, FASTF1_AVAILABLE
+except ImportError:
+    FASTF1_AVAILABLE = False
+    logger.warning("FastF1 integration not available.")
 
 
 # Race results for completed races (R1-R5 as per data)
+# NOTE: These can be replaced by FastF1 data using load_season_results_from_fastf1()
 SEASON_RESULTS_2026: List[Dict[str, Any]] = [
     {
         "round": 1,
@@ -17,18 +30,19 @@ SEASON_RESULTS_2026: List[Dict[str, Any]] = [
         "date": "2026-03-08",
         "sprint": False,
         "results": [
-            {"driver": "russell", "position": 1, "points": 25, "fastest_lap": True},
-            {"driver": "norris", "position": 2, "points": 18},
+            {"driver": "russell", "position": 1, "points": 25},
+            {"driver": "antonelli", "position": 2, "points": 18},
             {"driver": "leclerc", "position": 3, "points": 15},
             {"driver": "hamilton", "position": 4, "points": 12},
-            {"driver": "piastri", "position": 5, "points": 10},
-            {"driver": "sainz", "position": 6, "points": 8},
-            {"driver": "verstappen", "position": 7, "points": 6},
-            {"driver": "perez", "position": 8, "points": 4},
-            {"driver": "alonso", "position": 9, "points": 2},
-            {"driver": "stroll", "position": 10, "points": 1},
+            {"driver": "verstappen", "position": 5, "points": 10},
+            {"driver": "bearman", "position": 6, "points": 8},
+            {"driver": "lindblad", "position": 7, "points": 6},
+            {"driver": "bortoleto", "position": 8, "points": 4},
+            {"driver": "colapinto", "position": 9, "points": 2},
+            {"driver": "ocon", "position": 10, "points": 1},
         ]
     },
+
     {
         "round": 2,
         "circuit": "china",
@@ -36,37 +50,39 @@ SEASON_RESULTS_2026: List[Dict[str, Any]] = [
         "date": "2026-03-15",
         "sprint": True,
         "results": [
-            {"driver": "verstappen", "position": 1, "points": 8},  # Sprint + race points
-            {"driver": "russell", "position": 2, "points": 7},
-            {"driver": "leclerc", "position": 3, "points": 6},
-            {"driver": "norris", "position": 4, "points": 5},
-            {"driver": "hamilton", "position": 5, "points": 4},
-            {"driver": "piastri", "position": 6, "points": 3},
-            {"driver": "perez", "position": 7, "points": 2},
-            {"driver": "alonso", "position": 8, "points": 1},
-            {"driver": "sainz", "position": 9, "points": 0},
-            {"driver": "ocon", "position": 10, "points": 0},
+            {"driver": "antonelli", "position": 1, "points": 25},
+            {"driver": "russell", "position": 2, "points": 18},
+            {"driver": "hamilton", "position": 3, "points": 15},
+            {"driver": "leclerc", "position": 4, "points": 12},
+            {"driver": "bearman", "position": 5, "points": 10},
+            {"driver": "gasly", "position": 6, "points": 8},
+            {"driver": "lawson", "position": 7, "points": 6},
+            {"driver": "hadjar", "position": 8, "points": 4},
+            {"driver": "sainz", "position": 9, "points": 2},
+            {"driver": "colapinto", "position": 10, "points": 1},
         ]
     },
+
     {
         "round": 3,
         "circuit": "japan",
         "name": "Japanese Grand Prix",
-        "date": "2026-04-06",
+        "date": "2026-03-29",
         "sprint": False,
         "results": [
-            {"driver": "verstappen", "position": 1, "points": 25},
-            {"driver": "leclerc", "position": 2, "points": 18},
-            {"driver": "russell", "position": 3, "points": 15},
-            {"driver": "norris", "position": 4, "points": 12},
-            {"driver": "perez", "position": 5, "points": 10},
-            {"driver": "sainz", "position": 6, "points": 8},
-            {"driver": "piastri", "position": 7, "points": 6},
-            {"driver": "hamilton", "position": 8, "points": 4},
-            {"driver": "alonso", "position": 9, "points": 2},
-            {"driver": "ocon", "position": 10, "points": 1},
+            {"driver": "antonelli", "position": 1, "points": 25},
+            {"driver": "piastri", "position": 2, "points": 18},
+            {"driver": "leclerc", "position": 3, "points": 15},
+            {"driver": "russell", "position": 4, "points": 12},
+            {"driver": "verstappen", "position": 5, "points": 10},
+            {"driver": "hamilton", "position": 6, "points": 8},
+            {"driver": "norris", "position": 7, "points": 6},
+            {"driver": "gasly", "position": 8, "points": 4},
+            {"driver": "lawson", "position": 9, "points": 2},
+            {"driver": "hadjar", "position": 10, "points": 1},
         ]
     },
+
     {
         "round": 4,
         "circuit": "miami",
@@ -74,35 +90,36 @@ SEASON_RESULTS_2026: List[Dict[str, Any]] = [
         "date": "2026-05-03",
         "sprint": True,
         "results": [
-            {"driver": "antonelli", "position": 1, "points": 8},  # Sprint + race points - NEW DRIVER
-            {"driver": "verstappen", "position": 2, "points": 7},
-            {"driver": "leclerc", "position": 3, "points": 6},
-            {"driver": "norris", "position": 4, "points": 5},
-            {"driver": "hamilton", "position": 5, "points": 4},
-            {"driver": "russell", "position": 6, "points": 3},
-            {"driver": "piastri", "position": 7, "points": 2},
-            {"driver": "sainz", "position": 8, "points": 1},
-            {"driver": "perez", "position": 9, "points": 0},
-            {"driver": "ocon", "position": 10, "points": 0},
+            {"driver": "antonelli", "position": 1, "points": 25},
+            {"driver": "norris", "position": 2, "points": 18},
+            {"driver": "piastri", "position": 3, "points": 15},
+            {"driver": "russell", "position": 4, "points": 12},
+            {"driver": "verstappen", "position": 5, "points": 10},
+            {"driver": "hamilton", "position": 6, "points": 8},
+            {"driver": "leclerc", "position": 7, "points": 6},
+            {"driver": "gasly", "position": 8, "points": 4},
+            {"driver": "lawson", "position": 9, "points": 2},
+            {"driver": "hadjar", "position": 10, "points": 1},
         ]
     },
+
     {
         "round": 5,
         "circuit": "canada",
         "name": "Canadian Grand Prix",
         "date": "2026-05-24",
-        "sprint": True,
+        "sprint": False,
         "results": [
-            {"driver": "antonelli", "position": 1, "points": 8, "fastest_lap": True},  # Sprint + race points
-            {"driver": "hamilton", "position": 2, "points": 7},
-            {"driver": "verstappen", "position": 3, "points": 6},
-            {"driver": "leclerc", "position": 4, "points": 5},
-            {"driver": "hadjar", "position": 5, "points": 4},
-            {"driver": "colapinto", "position": 6, "points": 3},
-            {"driver": "lawson", "position": 7, "points": 2},
-            {"driver": "gasly", "position": 8, "points": 1},
-            {"driver": "sainz", "position": 9, "points": 0},
-            {"driver": "bearman", "position": 10, "points": 0},
+            {"driver": "antonelli", "position": 1, "points": 25},
+            {"driver": "hamilton", "position": 2, "points": 18},
+            {"driver": "verstappen", "position": 3, "points": 15},
+            {"driver": "leclerc", "position": 4, "points": 12},
+            {"driver": "hadjar", "position": 5, "points": 10},
+            {"driver": "colapinto", "position": 6, "points": 8},
+            {"driver": "lawson", "position": 7, "points": 6},
+            {"driver": "gasly", "position": 8, "points": 4},
+            {"driver": "sainz", "position": 9, "points": 2},
+            {"driver": "bearman", "position": 10, "points": 1},
             {"driver": "piastri", "position": 11, "points": 0},
             {"driver": "hulkenberg", "position": 12, "points": 0},
             {"driver": "bortoleto", "position": 13, "points": 0},
@@ -114,11 +131,10 @@ SEASON_RESULTS_2026: List[Dict[str, Any]] = [
             {"driver": "russell", "position": 19, "points": 0, "status": "DNF"},
             {"driver": "alonso", "position": 20, "points": 0, "status": "DNF"},
             {"driver": "albon", "position": 21, "points": 0, "status": "DNF"},
-            {"driver": "lindblad", "position": 22, "points": 0, "status": "DNS"},
+            {"driver": "lindblad", "position": 22, "points": 0, "status": "DNS"}
         ]
     }
 ]
-
 
 # Calculate points for drivers after R1-R3 (before Antonelli joined)
 POINTS_R1_R3 = {
@@ -172,31 +188,31 @@ for i, (driver, points) in enumerate(sorted_drivers):
 # Define constructor mapping for all drivers
 CONSTRUCTOR_MAPPING = {
     "antonelli": "mercedes",
-    "hamilton": "mercedes",  # FIX: Was incorrectly set to "ferrari" - season results show Mercedes points
+    "hamilton": "mercedes",  # FIXED: Was incorrectly set to "ferrari"
     "verstappen": "red_bull",
     "leclerc": "ferrari",
     "norris": "mclaren",
     "russell": "mercedes",
     "piastri": "mclaren",
-    "sainz": "ferrari",  # FIX: Move Sainz back to Ferrari
-    "perez": "red_bull",  # Back to Red Bull after being at Cadillac
+    "sainz": "williams",
+    "perez": "red_bull",
     "alonso": "aston_martin",
-    "stroll": "aston_martin", 
+    "stroll": "aston_martin",
     "ocon": "alpine",
-    "hadjar": "red_bull",  # New Red Bull junior driver
-    "colapinto": "williams",  # Changed to Williams
-    "lawson": "rb",
-    "gasly": "sauber",  # Changed to Sauber
+    "hadjar": "red_bull",
+    "colapinto": "williams",
+    "lawson": "racing_bulls",
+    "gasly": "alpine",
     "bearman": "haas",
-    "hulkenberg": "haas", 
-    "bortoleto": "kick_sauber",  # Changed to Kick Sauber
+    "hulkenberg": "haas",
+    "bortoleto": "kick_sauber",
     "albon": "williams",
-    "bottas": "kick_sauber",  # Changed to Kick Sauber
-    "lindblad": "rb",
-    "devries": "kick_sauber",  # Assuming Kick Sauber
-    "zhou": "kick_sauber",  # Assuming Kick Sauber
-    "palou": "kick_sauber",  # Assuming Kick Sauber
-    "magnussen": "kick_sauber",  # Assuming Kick Sauber
+    "bottas": "kick_sauber",
+    "lindblad": "racing_bulls",
+    "devries": "kick_sauber",
+    "zhou": "kick_sauber",
+    "palou": "kick_sauber",
+    "magnussen": "kick_sauber",
 }
 
 
@@ -292,43 +308,168 @@ __all__ = [
     "CURRENT_DRIVER_STANDINGS",
     "CURRENT_CONSTRUCTOR_STANDINGS",
     "get_driver_last_n_results",
-    "get_remaining_races"
+    "get_remaining_races",
+    "load_season_results_from_fastf1",  # NEW
+    "update_standings_from_fastf1",     # NEW
+    "FASTF1_AVAILABLE"                  # NEW
 ]
 
 
-# ── Multi-Dimensional ELO Updates (Section 3.3 Fix) ────────────────────────────
+# ── FastF1 Integration Functions (NEW) ──────────────────────────────────────────
 
-def _update_elo_ratings_from_season_results():
+def load_season_results_from_fastf1(season: int = 2026) -> List[Dict[str, Any]]:
     """
-    Update multi-dimensional ELO ratings based on actual season results.
-    This ensures the ELO system reflects real performance, not just initial values.
+    Load season results from FastF1 instead of hardcoded values.
+    
+    This function:
+    1. Fetches all race results from FastF1 for the specified season
+    2. Transforms them into the project's standard format
+    3. Returns structured race data with driver positions and points
+    
+    Args:
+        season: Year to load (default: 2026)
+    
+    Returns:
+        List of race dictionaries in the same format as SEASON_RESULTS_2026
+    
+    Example:
+        >>> results = load_season_results_from_fastf1(2026)
+        >>> print(f"Loaded {len(results)} races")
+        >>> print(f"Round 1 winner: {results[0]['results'][0]['driver']}")
     """
+    if not FASTF1_AVAILABLE:
+        logger.warning("FastF1 not available. Returning hardcoded results.")
+        return SEASON_RESULTS_2026
+    
     try:
-        from engine.multi_dimensional_elo import get_elo_system
+        # Load entire season from FastF1
+        season_data = load_entire_season(season, 'R')
         
-        elo_system = get_elo_system()
+        if not season_data:
+            logger.warning("No season data available from FastF1.")
+            return SEASON_RESULTS_2026
         
-        # Process each completed race in order
-        for race in SEASON_RESULTS_2026:
-            # Convert race results to format expected by ELO system
-            race_results = []
-            for result in race["results"]:
-                race_results.append({
-                    "driver_id": result["driver"],
-                    "grid_pos": result.get("position", 10),  # Approximate grid from finish
-                    "finish_pos": result["position"]
+        # Transform to project format
+        transformed_results = []
+        for race in season_data:
+            if 'error' in race:
+                logger.warning(f"Skipping {race['race_name']}: {race['error']}")
+                continue
+            
+            results_list = []
+            for idx, driver_result in race['results'].iterrows():
+                results_list.append({
+                    "driver": str(driver_result['Abbreviation']).lower(),
+                    "position": int(driver_result['Position']),
+                    "points": float(driver_result['Points']),
+                    "status": str(driver_result['Status']),
                 })
             
-            # Update ELO ratings
-            elo_system.update_ratings_after_race(
-                race_results=race_results,
-                weather_conditions="dry"  # Default assumption
-            )
+            transformed_race = {
+                "round": race['round'],
+                "circuit": race['race_name'].lower().replace(' ', '_').replace('grand_prix', ''),
+                "name": race['race_name'],
+                "date": str(race['date']),
+                "sprint": False,  # Would need separate sprint session load
+                "results": results_list,
+            }
+            transformed_results.append(transformed_race)
         
-        print(f"ELO ratings updated for {len(SEASON_RESULTS_2026)} races")
+        logger.info(f"Loaded {len(transformed_results)} races from FastF1")
+        return transformed_results
+        
     except Exception as e:
-        print(f"Warning: Could not update ELO ratings: {e}")
+        logger.error(f"Failed to load season from FastF1: {e}")
+        return SEASON_RESULTS_2026
 
 
-# Run ELO updates at module load time
-_update_elo_ratings_from_season_results()
+def update_standings_from_fastf1(season: int = 2026) -> Dict[str, Any]:
+    """
+    Update driver and constructor standings using FastF1 data.
+    
+    This function:
+    1. Loads race results from FastF1
+    2. Calculates driver standings
+    3. Calculates constructor standings
+    4. Returns both standings dictionaries
+    
+    Args:
+        season: Year to calculate standings for (default: 2026)
+    
+    Returns:
+        Dictionary with:
+        - driver_standings: List of driver standings entries
+        - constructor_standings: List of constructor standings entries
+        - races_processed: Number of races used in calculation
+    """
+    if not FASTF1_AVAILABLE:
+        logger.warning("FastF1 not available. Returning existing standings.")
+        return {
+            "driver_standings": DRIVER_STANDINGS_AFTER_R5,
+            "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
+            "races_processed": 0,
+        }
+    
+    try:
+        # Load results from FastF1
+        results = load_season_results_from_fastf1(season)
+        
+        # Calculate driver points
+        driver_points = {}
+        driver_wins = {}
+        constructor_points = {}
+        
+        for race in results:
+            for result in race['results']:
+                driver = result['driver']
+                points = result['points']
+                
+                # Driver points
+                driver_points[driver] = driver_points.get(driver, 0) + points
+                
+                # Count wins
+                if result['position'] == 1:
+                    driver_wins[driver] = driver_wins.get(driver, 0) + 1
+                
+                # Constructor points
+                team = CONSTRUCTOR_MAPPING.get(driver)
+                if team:
+                    constructor_points[team] = constructor_points.get(team, 0) + points
+        
+        # Create driver standings
+        driver_standings = []
+        sorted_drivers = sorted(driver_points.items(), key=lambda x: x[1], reverse=True)
+        for i, (driver, points) in enumerate(sorted_drivers):
+            driver_standings.append({
+                "position": i + 1,
+                "driver": driver,
+                "points": points,
+                "wins": driver_wins.get(driver, 0),
+            })
+        
+        # Create constructor standings
+        constructor_standings = []
+        sorted_constructors = sorted(constructor_points.items(), key=lambda x: x[1], reverse=True)
+        for i, (team, points) in enumerate(sorted_constructors):
+            constructor_standings.append({
+                "position": i + 1,
+                "team": team,
+                "points": points,
+            })
+        
+        result = {
+            "driver_standings": driver_standings,
+            "constructor_standings": constructor_standings,
+            "races_processed": len(results),
+        }
+        
+        logger.info(f"Standings updated from FastF1: {len(results)} races processed")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Failed to update standings from FastF1: {e}")
+        return {
+            "driver_standings": DRIVER_STANDINGS_AFTER_R5,
+            "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
+            "races_processed": 0,
+        }

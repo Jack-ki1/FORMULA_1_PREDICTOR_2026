@@ -18,7 +18,6 @@ import sys
 import os
 import json
 import click
-import uvicorn
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -37,7 +36,7 @@ def cli():
 
 @cli.command()
 @click.option("--race", "-r", required=True,
-              help="Circuit ID e.g. canada, monaco, silverstone (use 'britain' for Silverstone)")
+              help="Circuit ID e.g. canada, monaco, britain")
 @click.option("--rain", "-w", type=float, default=None,
               help="Override rain probability (0.0-1.0)")
 @click.option("--sims", "-n", type=int, default=10000,
@@ -54,16 +53,11 @@ def cli():
               help="Use vectorized simulation (20x faster)")
 @click.option("--export", default=None,
               help="Export predictions to CSV/JSON file")
-@click.option("--store", is_flag=True, default=True,  # P2-13: Enable by default
+@click.option("--store", is_flag=True,
               help="Store prediction in database for accuracy tracking")
-@click.option("--sprint", is_flag=True,
-              help="Force sprint race mode (overrides circuit default)")
-@click.option("--use-weather-api", is_flag=True,
-              help="Fetch rain probability from OpenWeatherMap API (P1-6)")
 def predict(race: str, rain: float, sims: int, seed: int,
             grid_override: str, json_out: bool, auto_report: bool,
-            vectorized: bool, export: str, store: bool, sprint: bool,
-            use_weather_api: bool):
+            vectorized: bool, export: str, store: bool):
     """Run a race outcome prediction."""
     if rain is not None and not (0.0 <= rain <= 1.0):
         console.print("[red]Error:[/] --rain must be between 0.0 and 1.0"); sys.exit(1)
@@ -86,28 +80,7 @@ def predict(race: str, rain: float, sims: int, seed: int,
     except ImportError as e:
         console.print(f"[red]Import error:[/] {e}"); sys.exit(1)
 
-    # P1-6: Fetch rain probability from weather API if requested
-    if use_weather_api and rain is None:
-        try:
-            from engine.weather_api import get_rain_probability
-            from data.calendar_2026 import CALENDAR_2026
-            
-            # Get race date from calendar
-            calendar_race = next((r for r in CALENDAR_2026 if r["circuit"] == race), None)
-            if calendar_race:
-                race_date = calendar_race["date"]
-                weather_rain_prob = get_rain_probability(race, race_date)
-                if weather_rain_prob is not None:
-                    rain = weather_rain_prob
-                    console.print(f"[green]✓ Weather API:[/] Rain probability = {rain*100:.0f}%")
-                else:
-                    console.print("[yellow]Weather API unavailable. Using default rain probability.[/]")
-            else:
-                console.print("[yellow]Race date not found in calendar. Using default rain probability.[/]")
-        except Exception as e:
-            console.print(f"[yellow]Weather API error:[/] {e}. Using default rain probability.")
-
-    console.print(f"\n[bold cyan]F1 Prediction Engine v3.1[/] — [bold]{race.upper()}{' (SPRINT)' if sprint else ''}[/]\n")
+    console.print(f"\n[bold cyan]F1 Prediction Engine v3.0[/] — [bold]{race.upper()}[/]\n")
 
     try:
         with console.status(f"Running {sims:,} Monte Carlo simulations{' (vectorized)' if vectorized else ''}…"):
@@ -117,7 +90,6 @@ def predict(race: str, rain: float, sims: int, seed: int,
                 n_simulations=sims,
                 seed=seed,
                 grid_overrides=grid_overrides,
-                is_sprint=sprint or None,  # P1-7: Sprint flag
             ))
     except KeyError as e:
         console.print(f"[red]Circuit not found:[/] {e}\n"
@@ -146,10 +118,8 @@ def predict(race: str, rain: float, sims: int, seed: int,
         f"Rain: [blue]{meta['rain_probability']*100:.0f}%[/]  "
         f"Confidence: [green]{meta['overall_model_confidence']*100:.0f}%[/]  "
         f"Sims: {meta['n_simulations']:,}"
-        + ("\n[magenta]⚡ Sprint Weekend[/]" if meta.get("sprint_weekend") else "")
-        + ("\n[magenta]🏁 Sprint Race[/]" if meta.get("is_sprint_race") else "")
-        + (f"\n[dim]Grid overrides applied: {grid_overrides}[/]" if grid_overrides else "")
-        + f"\n[dim]Model version: {meta.get('model_version', 'unknown')}[/]",  # P3-32
+        + ("\n[magenta]⚡ Sprint Weekend[/]" if meta["sprint_weekend"] else "")
+        + (f"\n[dim]Grid overrides applied: {grid_overrides}[/]" if grid_overrides else ""),
         title="Race Info",
     ))
 
@@ -258,22 +228,44 @@ def h2h(driver1: str, driver2: str, race: str, rain: float, sims: int):
     console.print(f"\n[bold cyan]H2H Comparison:[/] [bold]{driver1}[/] vs [bold]{driver2}[/] at {race.upper()}\n")
     
     try:
-        from api.routes_v3 import head_to_head
-        from api.schemas import H2HRequest
+        from engine.probability_model import predict_race
         
-        result = head_to_head(H2HRequest(
-            driver1=driver1,
-            driver2=driver2,
+        # Run race simulation
+        sim_result = predict_race(
             circuit_id=race,
             rain_probability=rain,
             n_simulations=sims,
-        ))
+        )
+        
+        # Extract driver predictions
+        predictions = {p["driver_id"]: p for p in sim_result["predictions"]}
+        
+        if driver1 not in predictions:
+            console.print(f"[red]Driver {driver1} not found[/]"); sys.exit(1)
+        if driver2 not in predictions:
+            console.print(f"[red]Driver {driver2} not found[/]"); sys.exit(1)
+        
+        driver1_pred = predictions[driver1]
+        driver2_pred = predictions[driver2]
+        
+        # Calculate probability driver1 finishes ahead
+        pos_dist_1 = driver1_pred.get("position_distribution", [])
+        pos_dist_2 = driver2_pred.get("position_distribution", [])
+        
+        p_driver1_ahead = 0.0
+        for pos1 in range(len(pos_dist_1)):
+            for pos2 in range(len(pos_dist_2)):
+                if pos1 < pos2:
+                    p_driver1_ahead += pos_dist_1[pos1] * pos_dist_2[pos2]
+        
+        total = p_driver1_ahead + (1 - p_driver1_ahead)
+        p_driver1_ahead = p_driver1_ahead / total if total > 0 else 0.5
         
         console.print(Panel(
-            f"[bold]{result.driver1}[/] finishes ahead: [green]{result.driver1_finishes_ahead_pct}%[/]\n"
-            f"[bold]{result.driver2}[/] finishes ahead: [yellow]{result.driver2_finishes_ahead_pct}%[/]\n\n"
-            f"Avg positions: {result.driver1} ({result.driver1_avg_position:.1f}), {result.driver2} ({result.driver2_avg_position:.1f})\n"
-            f"[dim]{result.notes}[/]",
+            f"[bold]{driver1_pred['driver_name']}[/] finishes ahead: [green]{round(p_driver1_ahead * 100, 2)}%[/]\n"
+            f"[bold]{driver2_pred['driver_name']}[/] finishes ahead: [yellow]{round((1 - p_driver1_ahead) * 100, 2)}%[/]\n\n"
+            f"Avg positions: {driver1_pred['driver_name']} ({driver1_pred['expected_position_float']:.1f}), {driver2_pred['driver_name']} ({driver2_pred['expected_position_float']:.1f})\n"
+            f"[dim]Based on {sims:,} Monte Carlo simulations[/]",
             title="H2H Result",
         ))
         
@@ -386,42 +378,98 @@ def championship_sim(remaining: int, sims: int):
     console.print(f"\n[bold cyan]Championship Simulator:[/] {remaining} races remaining\n")
     
     try:
-        from api.routes_v3 import championship_simulator
-        result = championship_simulator(remaining_races=remaining, n_simulations=sims)
+        from data.circuit_data import get_all_circuits
+        from engine.probability_model import predict_race
+        import numpy as np
+        
+        # Get remaining circuits
+        all_circuits = get_all_circuits()
+        remaining_circuits = all_circuits[:remaining]
+        
+        # Points system
+        def _get_points_for_position(position: int) -> float:
+            points_map = {
+                1: 25, 2: 18, 3: 15, 4: 12, 5: 10,
+                6: 8, 7: 6, 8: 4, 9: 2, 10: 1,
+            }
+            return points_map.get(position, 0)
+        
+        # Run Monte Carlo over multiple races
+        driver_championship_wins = {}
+        constructor_championship_wins = {}
+        
+        for sim in range(sims):
+            driver_points = {}
+            constructor_points = {}
+            
+            for circuit in remaining_circuits:
+                # Simulate race
+                sim_result = predict_race(
+                    circuit_id=circuit["id"],
+                    n_simulations=1000,
+                    seed=sim,
+                )
+                
+                # Add points
+                for driver_pred in sim_result["predictions"]:
+                    pos = driver_pred["predicted_position"]
+                    points = _get_points_for_position(pos)
+                    
+                    driver_id = driver_pred["driver_id"]
+                    team = driver_pred["team"]
+                    
+                    driver_points[driver_id] = driver_points.get(driver_id, 0) + points
+                    constructor_points[team] = constructor_points.get(team, 0) + points
+            
+            # Track winners
+            driver_winner = max(driver_points, key=driver_points.get)
+            constructor_winner = max(constructor_points, key=constructor_points.get)
+            
+            driver_championship_wins[driver_winner] = driver_championship_wins.get(driver_winner, 0) + 1
+            constructor_championship_wins[constructor_winner] = constructor_championship_wins.get(constructor_winner, 0) + 1
+        
+        # Calculate probabilities
+        driver_probs = {
+            driver: round(count / sims * 100, 2)
+            for driver, count in driver_championship_wins.items()
+        }
+        constructor_probs = {
+            team: round(count / sims * 100, 2)
+            for team, count in constructor_championship_wins.items()
+        }
+        
+        # Sort by probability
+        driver_probs = dict(sorted(driver_probs.items(), key=lambda x: x[1], reverse=True)[:5])
+        constructor_probs = dict(sorted(constructor_probs.items(), key=lambda x: x[1], reverse=True)[:5])
         
         console.print("[bold green]Driver Championship Probabilities:[/]")
-        for driver, prob in result['driver_championship'].items():
+        for driver, prob in driver_probs.items():
             console.print(f"  {driver}: {prob}%")
         
         console.print("\n[bold yellow]Constructor Championship Probabilities:[/]")
-        for team, prob in result['constructor_championship'].items():
+        for team, prob in constructor_probs.items():
             console.print(f"  {team}: {prob}%")
+        
     except Exception as e:
         console.print(f"[red]Championship simulation failed:[/] {e}"); sys.exit(1)
 
 
-# ── dashboard (NEW - Section 5.1: FastAPI replacement for Flask) ───────────────
+# ── dashboard (NEW v3.0) ───────────────────────────────────────────────────────
 
 @cli.command()
-@click.option("--port", default=8080, type=int, help="Dashboard port (default: 8080)")
-@click.option("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
-def dashboard(port: int, host: str):
-    """Start the FastAPI-based prediction dashboard (replaces Flask)."""
-    console.print(f"\n[bold cyan]F1 Prediction Dashboard[/] — Starting on http://{host}:{port}\n")
-    console.print("[dim]Features:[/] Circuit selector, live predictions, H2H comparison, standings\n")
+@click.option("--port", "-p", type=int, default=5000, help="Dashboard port")
+def dashboard(port: int):
+    """Start the interactive web dashboard (NEW v3.0)."""
+    console.print(f"\n[bold cyan]F1 Predictor Dashboard v3.0[/] → http://127.0.0.1:{port}\n")
     
     try:
-        import uvicorn
-        from api.dashboard import app
-        
-        uvicorn.run(app, host=host, port=port, reload=False)
-    except ImportError as e:
-        console.print(f"[red]Import error:[/] {e}")
-        console.print("[yellow]Tip:[/] Install Jinja2: pip install jinja2")
-        sys.exit(1)
-    except OSError as e:
-        console.print(f"[red]Dashboard failed to bind:[/] {e}")
-        sys.exit(1)
+        import subprocess
+        # Pass port as environment variable to Flask app
+        env = os.environ.copy()
+        env['FLASK_PORT'] = str(port)
+        subprocess.run([sys.executable, "dashboard/app.py"], env=env, check=True)
+    except Exception as e:
+        console.print(f"[red]Dashboard failed to start:[/] {e}"); sys.exit(1)
 
 
 # ── report ─────────────────────────────────────────────────────────────────────
@@ -469,136 +517,6 @@ def quality_check():
         )
 
 
-# ── update-data (P0-1 & P1-8) ─────────────────────────────────────────────────
-
-@cli.command("update-data")
-@click.option("--race", "-r", required=True, help="Race circuit ID")
-@click.option("--results", required=True, help="JSON file with race results")
-@click.option("--dry-run", is_flag=True, help="Show changes without applying")
-def update_data(race: str, results: str, dry_run: bool):
-    """Update driver standings, ELO, and form data after a race (P0-1 & P1-8)."""
-    console.print(f"\n[bold cyan]Updating Season Data:[/] {race.upper()}\n")
-    
-    try:
-        import json
-        with open(results, 'r') as f:
-            race_results = json.load(f)
-        
-        from scripts.update_season_data import update_season_data, load_results_from_json
-        race_results = load_results_from_json(results)
-        
-        console.print(f"[dim]Race results:[/] {len(race_results)} drivers")
-        
-        if dry_run:
-            console.print("[yellow]DRY RUN - No changes will be applied[/]\n")
-            # Just show what would be updated
-            from data.driver_data import DRIVERS
-            for driver_id, position in sorted(race_results.items(), key=lambda x: x[1]):
-                if driver_id in DRIVERS:
-                    driver = DRIVERS[driver_id]
-                    points = {1:25, 2:18, 3:15, 4:12, 5:10, 6:8, 7:6, 8:4, 9:2, 10:1}.get(position, 0)
-                    console.print(f"  {driver['name']}: P{position} (+{points} pts, ELO update)")
-        else:
-            updates = update_season_data(race, race_results)
-            
-            console.print(f"[green]✓ Updates applied:[/]")
-            console.print(f"  ELO updates: {len(updates['elo_updates'])}")
-            console.print(f"  Points updates: {len(updates['points_updates'])}")
-            console.print(f"  Form updates: {len(updates['form_updates'])}")
-            
-            if updates['errors']:
-                console.print(f"\n[red]Errors:[/] {len(updates['errors'])}")
-                for error in updates['errors']:
-                    console.print(f"  ✗ {error}")
-        
-    except Exception as e:
-        console.print(f"[red]Data update failed:[/] {e}"); sys.exit(1)
-
-
-# ── data-freshness-check (P3-37) ───────────────────────────────────────────────
-
-@cli.command("data-freshness-check")
-def data_freshness_check():
-    """Validate data freshness and consistency (P3-37)."""
-    console.print("\n[bold cyan]Data Freshness Check[/]\n")
-    
-    try:
-        from datetime import datetime, timedelta
-        from data.calendar_2026 import CALENDAR_2026
-        from data.driver_data import get_all_drivers
-        from data.circuit_data import get_all_circuits
-        
-        issues = []
-        warnings = []
-        
-        # Check 1: Active driver count
-        drivers = get_all_drivers()
-        if len(drivers) < 18:
-            issues.append(f"Too few active drivers: {len(drivers)} (expected ~20)")
-        elif len(drivers) > 22:
-            issues.append(f"Too many active drivers: {len(drivers)} (expected ~20)")
-        else:
-            console.print(f"[green]✓ Active drivers:[/] {len(drivers)}")
-        
-        # Check 2: Circuit count
-        circuits = get_all_circuits()
-        if len(circuits) < 20:
-            issues.append(f"Too few circuits: {len(circuits)} (expected ~24)")
-        else:
-            console.print(f"[green]✓ Circuits loaded:[/] {len(circuits)}")
-        
-        # Check 3: Calendar has current/recent races
-        today = datetime.now()
-        upcoming_races = [r for r in CALENDAR_2026 if r["status"] == "upcoming"]
-        if not upcoming_races:
-            warnings.append("No upcoming races in calendar. All races marked as completed or TBC?")
-        else:
-            next_race = min(upcoming_races, key=lambda r: r["date"])
-            next_race_date = datetime.strptime(next_race["date"], "%Y-%m-%d")
-            days_until = (next_race_date - today).days
-            console.print(f"[green]✓ Next race:[/] {next_race['name']} in {days_until} days")
-        
-        # Check 4: Driver ELO ratings are reasonable
-        elos = [d["elo"] for d in drivers]
-        if min(elos) < 1200:
-            warnings.append(f"Very low ELO detected: {min(elos)}")
-        if max(elos) > 2000:
-            warnings.append(f"Very high ELO detected: {max(elos)}")
-        console.print(f"[green]✓ ELO range:[/] {min(elos):.0f} - {max(elos):.0f}")
-        
-        # Check 5: Driver points are non-negative
-        negative_points = [d for d in drivers if d.get("championship_points_2026", 0) < 0]
-        if negative_points:
-            issues.append(f"{len(negative_points)} drivers with negative points")
-        else:
-            console.print(f"[green]✓ All drivers have non-negative points[/]")
-        
-        # Check 6: Recent form data populated
-        empty_form = [d for d in drivers if not d.get("recent_form") or all(p == 0 for p in d["recent_form"])]
-        if empty_form:
-            warnings.append(f"{len(empty_form)} drivers have empty/zero recent form")
-        else:
-            console.print(f"[green]✓ Recent form data populated for all drivers[/]")
-        
-        # Summary
-        console.print()
-        if issues:
-            console.print(f"[red]✗ Issues found: {len(issues)}[/]")
-            for issue in issues:
-                console.print(f"  ✗ {issue}")
-        
-        if warnings:
-            console.print(f"[yellow]⚠ Warnings: {len(warnings)}[/]")
-            for warning in warnings:
-                console.print(f"  ⚠ {warning}")
-        
-        if not issues and not warnings:
-            console.print("[green]✓ All data freshness checks passed![/]")
-        
-    except Exception as e:
-        console.print(f"[red]Data freshness check failed:[/] {e}"); sys.exit(1)
-
-
 # ── circuits ───────────────────────────────────────────────────────────────────
 
 @cli.command()
@@ -621,94 +539,6 @@ def circuits():
     console.print("\n")
     console.print(t)
     console.print()
-
-
-# ── api ─────────────────────────────────────────────────────────────────────────
-
-@cli.command()
-@click.option("--host", default=None, help="Bind host (default: from .env or 0.0.0.0)")
-@click.option("--port", default=None, type=int, help="Bind port (default: from .env or 8000)")
-@click.option("--port-auto", is_flag=True, help="If the requested port is in use, try the next free port")
-@click.option("--max-port", default=None, type=int,
-              help="Max port to try when --port-auto is enabled (default: port + 50)")
-@click.option("--reload", is_flag=True, help="Enable hot-reload (development only)")
-@click.option("--v3", is_flag=True, help="Use v3.0 enhanced API routes")
-def api(host: str, port: int, port_auto: bool, max_port: int, reload: bool, v3: bool):
-    """Start the FastAPI prediction server."""
-
-    try:
-        from fastapi import FastAPI
-        from config.settings import API_HOST, API_PORT
-    except ImportError as e:
-        console.print(f"[red]Import error:[/] {e}"); sys.exit(1)
-
-    host = host or API_HOST
-    port = port or API_PORT
-
-    # Port auto-selection
-    if port_auto:
-        import socket
-        start_port = int(port)
-        upper = int(max_port) if max_port is not None else start_port + 50
-        chosen_port = None
-
-        for p in range(start_port, upper + 1):
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                s.bind((host, p))
-                chosen_port = p
-                break
-            except OSError:
-                pass
-            finally:
-                s.close()
-
-        if chosen_port is None:
-            console.print(f"[red]Error:[/] No free port found in range {start_port}-{upper}.")
-            sys.exit(1)
-
-        if chosen_port != start_port:
-            console.print(f"[yellow]Port {start_port} in use.[/] Using free port {chosen_port} instead.")
-
-        port = chosen_port
-
-    app = FastAPI(
-        title="F1 Race Prediction API v3.0",
-        description="Probabilistic F1 race outcome prediction — 2026 season.",
-        version="3.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
-    )
-    
-    # CORS middleware
-    from fastapi.middleware.cors import CORSMiddleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["*"],
-    )
-    
-    # Use v3.0 routes if requested
-    if v3:
-        from api.routes_v3 import router
-        console.print("[bold magenta]Using v3.0 enhanced API routes[/]")
-    else:
-        from api.routes import router
-    
-    app.include_router(router, prefix="/api/v1")
-
-    console.print(f"\n[bold cyan]F1 Prediction API v3.0[/] → http://{host}:{port}")
-    console.print(f"[dim]Swagger UI:  http://{host}:{port}/docs[/]")
-    console.print(f"[dim]ReDoc:       http://{host}:{port}/redoc[/]\n")
-    try:
-        uvicorn.run(app, host=host, port=port, reload=reload)
-    except OSError as e:
-        console.print(f"[red]API failed to bind:[/] {e}")
-        if not port_auto:
-            console.print("[dim]Try again with --port-auto (or kill the process using port 8000).[/]")
-        raise
 
 
 # ── backtest ───────────────────────────────────────────────────────────────────

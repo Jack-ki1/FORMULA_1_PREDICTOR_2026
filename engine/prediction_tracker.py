@@ -23,17 +23,21 @@ class PredictionTracker:
     """Track and evaluate prediction accuracy."""
     
     def __init__(self):
-        self.db = SessionLocal()
+        # Don't open session in __init__ - use per-call sessions instead
+        self.db = None
     
     def store_prediction(self, circuit_id: str, prediction_result: Dict):
         """
         Store prediction in database for later evaluation.
         
+        FIXED: Now uses per-call session management to avoid InvalidRequestError
+        when store_prediction is called multiple times on the same instance.
+        
         Args:
             circuit_id: Circuit identifier
             prediction_result: Result from predict() function
         """
-        db = SessionLocal()  # Open per-call session to avoid session closure issues
+        db = SessionLocal()  # Open per-call session
         try:
             # Get or create race
             race = db.query(Race).filter(
@@ -73,18 +77,21 @@ class PredictionTracker:
             logger.error(f"Failed to store predictions: {e}")
             raise
         finally:
-            db.close()  # Always close the per-call session here
+            db.close()  # Always close the per-call session
     
     def evaluate_race(self, circuit_id: str, actual_results: Dict):
         """
         Evaluate predictions against actual race results.
         
+        FIXED: Now uses per-call session management.
+        
         Args:
             circuit_id: Circuit identifier
             actual_results: Dict with driver_id -> actual_position
         """
+        db = SessionLocal()  # Open per-call session
         try:
-            race = self.db.query(Race).filter(
+            race = db.query(Race).filter(
                 Race.circuit_id == circuit_id,
                 Race.season == 2026
             ).first()
@@ -93,7 +100,7 @@ class PredictionTracker:
                 raise ValueError(f"No predictions found for {circuit_id}")
             
             # Get all predictions for this race
-            predictions = self.db.query(Prediction).filter(
+            predictions = db.query(Prediction).filter(
                 Prediction.race_id == race.id
             ).all()
             
@@ -131,7 +138,7 @@ class PredictionTracker:
             # Update race as completed
             race.completed = True
             
-            self.db.commit()
+            db.commit()
             
             avg_brier = sum(brier_scores) / len(brier_scores) if brier_scores else 0.0
             
@@ -144,21 +151,24 @@ class PredictionTracker:
             }
             
         except Exception as e:
-            self.db.rollback()
+            db.rollback()
             logger.error(f"Failed to evaluate race: {e}")
             raise
         finally:
-            self.db.close()
+            db.close()
     
     def get_accuracy_report(self, season: int = 2026) -> Dict:
         """
         Generate comprehensive accuracy report.
         
+        FIXED: Now uses per-call session management.
+        
         Returns:
             Dictionary with accuracy metrics across all evaluated races.
         """
+        db = SessionLocal()  # Open per-call session
         try:
-            predictions = self.db.query(Prediction).filter(
+            predictions = db.query(Prediction).filter(
                 Prediction.model_version.like("v3%"),
                 Prediction.brier_score.isnot(None)
             ).all()
@@ -193,11 +203,12 @@ class PredictionTracker:
             logger.error(f"Failed to generate accuracy report: {e}")
             raise
         finally:
-            self.db.close()
+            db.close()
     
     def close(self):
-        """Close database session."""
-        self.db.close()
+        """Close database session (no-op with per-call sessions)."""
+        # Per-call sessions are closed automatically, nothing to do here
+        pass
 
 
 def run_post_race_evaluation(circuit_id: str, actual_results: Dict):

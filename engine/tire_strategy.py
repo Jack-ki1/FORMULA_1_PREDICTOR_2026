@@ -65,7 +65,6 @@ class TireStrategyModel:
     def __init__(self, circuit_id: str, race_laps: int):
         self.circuit_id = circuit_id
         self.race_laps = race_laps
-        self.sprint_mode = False  # P1-7: Sprint races have no mandatory tire changes
         
         # Circuit-specific tire degradation multipliers
         self.circuit_degradation_factors = self._get_circuit_tire_factors()
@@ -237,9 +236,6 @@ class TireStrategyModel:
         Uses simple heuristic search over common strategies.
         In production, would use dynamic programming or genetic algorithms.
         
-        P1-7: Sprint races have different strategy - no mandatory pit stops,
-        typically single compound for the entire short race (~100km).
-        
         Args:
             available_compounds: Available compounds for this race weekend
             rain_probability: Probability of rain
@@ -247,10 +243,6 @@ class TireStrategyModel:
         Returns:
             Optimal strategy details
         """
-        # P1-7: Sprint races use simpler strategies (no mandatory stops)
-        if self.sprint_mode:
-            return self._find_sprint_strategy(available_compounds, rain_probability)
-        
         if available_compounds is None:
             available_compounds = ["soft", "medium", "hard"]
         
@@ -275,50 +267,6 @@ class TireStrategyModel:
         
         return best_strategy
     
-    def _find_sprint_strategy(self, available_compounds: List[str] = None,
-                              rain_probability: float = 0.0) -> Dict:
-        """
-        P1-7: Find optimal strategy for sprint race.
-        
-        Sprint races are ~100km (about 1/3 of full race distance).
-        No mandatory tire changes - drivers can run entire race on one compound.
-        Strategy focuses on compound choice based on grip vs durability tradeoff.
-        """
-        if available_compounds is None:
-            available_compounds = ["soft", "medium", "hard"]
-        
-        # Sprint races typically use softer compounds due to shorter distance
-        # Calculate sprint laps (approximately 1/3 of full race)
-        sprint_laps = max(15, self.race_laps // 3)
-        
-        # Evaluate each compound for full sprint distance
-        best_compound = None
-        best_time = float('inf')
-        
-        for compound in available_compounds:
-            if compound in ["intermediate", "wet"]:
-                continue  # Only consider dry compounds unless rain
-            
-            # Calculate total time for compound over sprint distance
-            total_time_loss = 0
-            for lap in range(1, sprint_laps + 1):
-                perf = self.calculate_tire_performance(compound, lap, sprint_laps)
-                total_time_loss += (1.0 - perf)  # Time loss relative to perfect grip
-            
-            if total_time_loss < best_time:
-                best_time = total_time_loss
-                best_compound = compound
-        
-        return {
-            "strategy_type": "sprint_single_compound",
-            "recommended_compound": best_compound,
-            "pit_stops": 0,  # No mandatory stops in sprint
-            "stints": [(best_compound, 1, sprint_laps)],
-            "estimated_total_time_loss": best_time,
-            "notes": "Sprint race - no mandatory tire changes",
-            "rain_adjustment": "Consider intermediate/wet tires if rain > 30%" if rain_probability > 0.3 else None,
-        }
-
     def _generate_candidate_strategies(self, compounds: List[str]) -> List[List[Tuple[str, int, int]]]:
         """Generate common tire strategy patterns."""
         strategies = []

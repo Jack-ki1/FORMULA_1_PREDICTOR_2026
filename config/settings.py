@@ -15,18 +15,19 @@ import os
 
 # Feature weights - these determine how much each factor influences predictions
 # They should sum to approximately 1.0 (though small deviations are OK)
+# FIXED: Keys now match the actual feature names used in feature_engineering.py
 FEATURE_WEIGHTS: Dict[str, float] = {
     # Core performance indicators
-    "elo_rating":           0.25,   # Overall driver skill rating (matches engine key)
-    "constructor_strength": 0.20,   # Team performance level (matches engine key)
-    "recent_form":          0.15,   # Performance in last 6 races
-    "grid_position":        0.15,   # Starting position advantage
+    "elo_rating": 0.25,           # Overall driver skill rating (compute_elo_score)
+    "constructor_strength": 0.20, # Team performance level
+    "recent_form": 0.15,          # Performance in last 6 races
+    "grid_position": 0.15,        # Starting position advantage
     
     # Specialized skills
-    "weather_adjustment":   0.08,   # Wet weather driving ability (matches engine key)
-    "reliability":          0.07,   # Driver reliability (matches engine key)
-    "safety_car_upside":    0.05,   # Ability to capitalize on SC situations (matches engine key)
-    "track_type_fit":       0.05,   # Suitability to specific circuit characteristics (matches engine key)
+    "weather_adjustment": 0.08,   # Wet weather driving ability
+    "reliability": 0.07,          # Inverse of DNF rate
+    "safety_car_upside": 0.05,    # Ability to capitalize on SC situations
+    "track_type_fit": 0.05,       # Suitability to specific circuit characteristics
 }
 
 
@@ -35,12 +36,6 @@ RECENCY_DECAY = 0.95  # How much weight to give to more recent performances
 
 # Recency window for recent form calculations
 RECENCY_WINDOW = 6  # Number of recent races to consider for form calculation
-
-
-# API Configuration
-API_HOST = os.getenv("API_HOST", "127.0.0.1")  # SECURITY FIX: Default to localhost
-API_PORT = int(os.getenv("API_PORT", "8000"))
-DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 
 # Simulation Parameters
@@ -92,20 +87,11 @@ def validate_settings() -> Dict[str, Any]:
         "valid": len(errors) == 0,
         "errors": errors,
         "weight_sum": weight_sum,
-        "config": {
-            "api_host": API_HOST,
-            "api_port": API_PORT,
-            "debug": DEBUG,
-            "default_simulations": DEFAULT_N_SIMULATIONS,
-        }
     }
 
 
-# Settings model for Pydantic validation (if needed by API)
+# Settings model for Pydantic validation (if needed)
 class Settings(BaseModel):
-    api_host: str = API_HOST
-    api_port: int = API_PORT
-    debug: bool = DEBUG
     feature_weights: Dict[str, float] = FEATURE_WEIGHTS
     recency_decay: float = RECENCY_DECAY
     recency_window: int = RECENCY_WINDOW
@@ -132,9 +118,6 @@ __all__ = [
     "FEATURE_WEIGHTS",
     "RECENCY_DECAY",
     "RECENCY_WINDOW",
-    "API_HOST", 
-    "API_PORT", 
-    "DEBUG",
     "DEFAULT_N_SIMULATIONS",
     "MAX_SIMULATIONS",
     "MIN_SIMULATIONS",
