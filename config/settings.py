@@ -21,13 +21,14 @@ FEATURE_WEIGHTS: Dict[str, float] = {
     "elo_rating": 0.25,           # Overall driver skill rating (compute_elo_score)
     "constructor_strength": 0.20, # Team performance level
     "recent_form": 0.15,          # Performance in last 6 races
-    "grid_position": 0.15,        # Starting position advantage
+    "grid_position": 0.05,        # Starting position advantage
+    "fastf1_adjustment": 0.05,    # FastF1-derived performance/consistency signal
     
     # Specialized skills
     "weather_adjustment": 0.08,   # Wet weather driving ability
     "reliability": 0.07,          # Inverse of DNF rate
     "safety_car_upside": 0.05,    # Ability to capitalize on SC situations
-    "track_type_fit": 0.05,       # Suitability to specific circuit characteristics
+    "track_type_fit": 0.10,       # Suitability to specific circuit characteristics
 }
 
 

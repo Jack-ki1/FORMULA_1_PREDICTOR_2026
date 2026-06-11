@@ -224,6 +224,18 @@ CURRENT_DRIVER_STANDINGS = DRIVER_STANDINGS_AFTER_R5
 CURRENT_CONSTRUCTOR_STANDINGS = CONSTRUCTOR_STANDINGS_AFTER_R5
 
 
+def get_season_results(season: int = 2026) -> List[Dict[str, Any]]:
+    """
+    Return season race results, using FastF1 when available.
+    """
+    if FASTF1_AVAILABLE:
+        try:
+            return load_season_results_from_fastf1(season)
+        except Exception:
+            pass
+    return SEASON_RESULTS_2026
+
+
 def get_driver_last_n_results(driver_id: str, n: int = 6) -> List[int]:
     """
     Get the last N race results for a driver.
@@ -236,9 +248,10 @@ def get_driver_last_n_results(driver_id: str, n: int = 6) -> List[int]:
         List of positions (integers), with higher numbers for DNFs
     """
     results = []
-    
+    season_results = get_season_results(2026)
+
     # Look through the season results to find races where the driver participated
-    for race in reversed(SEASON_RESULTS_2026):
+    for race in reversed(season_results):
         found = False
         for result in race["results"]:
             if result["driver"] == driver_id:
@@ -247,12 +260,26 @@ def get_driver_last_n_results(driver_id: str, n: int = 6) -> List[int]:
                 break  # Found driver in this race, move to next race
         if not found:
             results.append(0)  # Driver didn't participate in this race
-    
+
     # Pad with zeros if needed to reach n results
     while len(results) < n:
         results.append(0)  # 0 represents no result or didn't participate
     
     return results[:n]
+
+
+def get_driver_standings(season: int = 2026) -> List[Dict[str, Any]]:
+    """Return driver standings computed from the current season data."""
+    season_results = get_season_results(season)
+    standings, _ = compute_standings_from_results(season_results, CONSTRUCTOR_MAPPING)
+    return standings
+
+
+def get_constructor_standings(season: int = 2026) -> List[Dict[str, Any]]:
+    """Return constructor standings computed from the current season data."""
+    season_results = get_season_results(season)
+    _, standings = compute_standings_from_results(season_results, CONSTRUCTOR_MAPPING)
+    return standings
 
 
 def get_remaining_races() -> List[Dict[str, Any]]:
@@ -293,7 +320,10 @@ __all__ = [
     "CONSTRUCTOR_STANDINGS_AFTER_R5",
     "CURRENT_DRIVER_STANDINGS",
     "CURRENT_CONSTRUCTOR_STANDINGS",
+    "get_season_results",
     "get_driver_last_n_results",
+    "get_driver_standings",
+    "get_constructor_standings",
     "get_remaining_races",
     "load_season_results_from_fastf1",  # NEW
     "update_standings_from_fastf1",     # NEW

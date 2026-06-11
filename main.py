@@ -116,6 +116,7 @@ def predict(race: str, rain: float, sims: int, seed: int,
                 n_simulations=sims,
                 seed=seed,
                 grid_overrides=grid_overrides,
+                vectorized=vectorized,
             ))
     except KeyError as e:
         console.print(f"[red]Circuit not found:[/] {e}\n"

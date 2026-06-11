@@ -398,6 +398,7 @@ def predict_race(
     n_simulations: int = SIMULATION_RUNS,
     seed: Optional[int] = None,
     grid_overrides: Optional[dict] = None,
+    vectorized: bool = False,
 ) -> dict:
     """Master prediction function — returns ranked driver list with all probability outputs.
     
@@ -413,19 +414,32 @@ def predict_race(
 
     # FIX-3.2: Compute features ONCE and reuse for both simulation and final output
     driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
-    
-    sim_result = simulate_race(
-        circuit_id=circuit_id,
-        rain_probability=rain_probability,
-        n_runs=n_simulations,
-        seed=seed,
-        grid_overrides=grid_overrides,
-        driver_features=driver_features,  # Pass pre-computed features
-    )
-    
-    sim_stats = sim_result["stats"]
-    confidence_intervals = sim_result["confidence_intervals"]
-    
+
+    if vectorized:
+        from engine.vectorized_simulation import simulate_race_vectorized
+
+        sim_result = simulate_race_vectorized(
+            circuit_id=circuit_id,
+            rain_probability=rain_probability,
+            n_runs=n_simulations,
+            seed=seed,
+            grid_overrides=grid_overrides,
+            driver_features=driver_features,
+        )
+        sim_stats = sim_result["stats"]
+        confidence_intervals = _compute_confidence_intervals(sim_stats, n_simulations)
+    else:
+        sim_result = simulate_race(
+            circuit_id=circuit_id,
+            rain_probability=rain_probability,
+            n_runs=n_simulations,
+            seed=seed,
+            grid_overrides=grid_overrides,
+            driver_features=driver_features,  # Pass pre-computed features
+        )
+        sim_stats = sim_result["stats"]
+        confidence_intervals = sim_result["confidence_intervals"]
+
     duration_ms = round((time.perf_counter() - t0) * 1000, 1)
     logger.info(f"prediction.complete circuit={circuit_id} duration_ms={duration_ms}")
     

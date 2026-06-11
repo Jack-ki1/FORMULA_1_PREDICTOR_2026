@@ -77,7 +77,7 @@ def _build_html_report(
     rain_probability: Optional[float],
     n_simulations: int,
 ) -> str:
-    """Build complete HTML report string with enhanced details."""
+    """Build complete HTML report string with F1 official styling."""
     
     predictions = sorted(
         result["predictions"],
@@ -760,3 +760,404 @@ if __name__ == "__main__":
     print(f"Generating report for {circuit}...")
     path = generate_report(circuit)
     print(f"✓ Report saved to {path}")
+
+
+def generate_f1_themed_report(
+    circuit_id: str,
+    rain_probability: Optional[float] = None,
+    n_simulations: int = 10000,
+    output_path: Optional[str] = None,
+    session_type: str = "RACE",
+) -> str:
+    """
+    Generate F1 official website-themed HTML race prediction report.
+    
+    Args:
+        circuit_id: Circuit identifier
+        rain_probability: Rain probability (0.0-1.0)
+        n_simulations: Number of Monte Carlo simulations
+        output_path: Custom output file path (optional)
+        session_type: Session type (PRACTICE, QUALIFYING, RACE)
+    
+    Returns:
+        Path to generated HTML file
+    """
+    try:
+        from engine.predictor import predict, PredictionRequest
+        from data.circuit_data import get_circuit
+    except ImportError as e:
+        logger.error(f"Import error: {e}")
+        raise
+    
+    # Run prediction
+    logger.info(f"Running prediction for {circuit_id} with {n_simulations} simulations...")
+    result = predict(PredictionRequest(
+        circuit_id=circuit_id,
+        rain_probability=rain_probability,
+        n_simulations=n_simulations,
+    ))
+    
+    # Get circuit info
+    circuit = get_circuit(circuit_id)
+    
+    # Generate output path
+    if not output_path:
+        os.makedirs("output", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = f"output/{circuit_id}_{session_type.lower()}_report_{timestamp}.html"
+    
+    # Generate F1-themed HTML
+    html_content = _build_f1_themed_html(result, circuit, rain_probability, n_simulations, session_type)
+    
+    # Write file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    logger.info(f"F1-themed report saved to {output_path}")
+    return output_path
+
+
+def _build_f1_themed_html(
+    result: Dict,
+    circuit: Dict,
+    rain_probability: Optional[float],
+    n_simulations: int,
+    session_type: str,
+) -> str:
+    """Build F1 official website-themed HTML report."""
+    
+    predictions = sorted(
+        result["predictions"],
+        key=lambda x: x.get('predicted_position', 999),
+    )
+    
+    meta = result.get("meta", {})
+    podium = result.get("podium_predictions", [])
+    
+    # Session type display
+    session_display = {
+        "PRACTICE": "Practice Session",
+        "QUALIFYING": "Qualifying",
+        "RACE": "Grand Prix"
+    }.get(session_type, "Race Weekend")
+    
+    # Build driver rows
+    driver_rows_html = ""
+    for i, pred in enumerate(predictions[:10]):  # Top 10
+        position = pred.get('predicted_position', i + 1)
+        medal = ""
+        if position == 1:
+            medal = "🥇"
+        elif position == 2:
+            medal = "🥈"
+        elif position == 3:
+            medal = "🥉"
+        
+        driver_rows_html += f"""
+        <div class="driver-row">
+            <div class="position">{medal}{position}</div>
+            <div class="driver-info">
+                <div class="driver-name">{pred.get('driver', 'N/A')}</div>
+                <div class="team-name">{pred.get('team', '').replace('_', ' ').title()}</div>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Win</span>
+                    <span class="stat-value">{pred.get('win_pct', 0):.1f}%</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Top 3</span>
+                    <span class="stat-value">{pred.get('top3_pct', 0):.1f}%</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Points</span>
+                    <span class="stat-value">{pred.get('expected_points', 0):.1f}</span>
+                </div>
+            </div>
+        </div>
+        """
+    
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor - {circuit.get('name', 'Unknown')} {session_display}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        :root {{
+            --f1-red: #E10600;
+            --f1-dark: #15151e;
+            --f1-black: #000000;
+            --f1-white: #FFFFFF;
+            --f1-gray: #38383f;
+        }}
+
+        body {{
+            font-family: 'Titillium Web', sans-serif;
+            background: var(--f1-dark);
+            color: var(--f1-white);
+            line-height: 1.6;
+        }}
+
+        .header {{
+            background: linear-gradient(135deg, var(--f1-black) 0%, var(--f1-dark) 100%);
+            padding: 30px 40px;
+            border-bottom: 4px solid var(--f1-red);
+        }}
+
+        .header h1 {{
+            font-size: 36px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }}
+
+        .header .subtitle {{
+            font-size: 18px;
+            color: #999;
+        }}
+
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }}
+
+        .info-card {{
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }}
+
+        .info-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }}
+
+        .info-item {{
+            text-align: center;
+        }}
+
+        .info-label {{
+            font-size: 14px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+
+        .info-value {{
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--f1-red);
+        }}
+
+        .section-title {{
+            font-size: 28px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--f1-red);
+        }}
+
+        .driver-row {{
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }}
+
+        .driver-row:hover {{
+            border-color: var(--f1-red);
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(225, 6, 0, 0.3);
+        }}
+
+        .position {{
+            font-size: 32px;
+            font-weight: 900;
+            min-width: 80px;
+            text-align: center;
+        }}
+
+        .driver-info {{
+            flex: 1;
+            margin-left: 20px;
+        }}
+
+        .driver-name {{
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }}
+
+        .team-name {{
+            font-size: 14px;
+            color: #999;
+            margin-top: 4px;
+        }}
+
+        .stats {{
+            display: flex;
+            gap: 30px;
+        }}
+
+        .stat-item {{
+            text-align: center;
+        }}
+
+        .stat-label {{
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            display: block;
+        }}
+
+        .stat-value {{
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--f1-white);
+        }}
+
+        .podium-section {{
+            background: linear-gradient(135deg, rgba(225, 6, 0, 0.1) 0%, rgba(225, 6, 0, 0.05) 100%);
+            border: 3px solid var(--f1-red);
+            border-radius: 16px;
+            padding: 40px;
+            margin: 40px 0;
+            text-align: center;
+        }}
+
+        .podium-title {{
+            font-size: 32px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            color: var(--f1-red);
+        }}
+
+        .podium-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+
+        .podium-spot {{
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            padding: 30px;
+        }}
+
+        .podium-spot.first {{
+            border: 3px solid gold;
+            order: 2;
+        }}
+
+        .podium-spot.second {{
+            border: 2px solid silver;
+            order: 1;
+        }}
+
+        .podium-spot.third {{
+            border: 2px solid #cd7f32;
+            order: 3;
+        }}
+
+        .podium-position {{
+            font-size: 48px;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }}
+
+        .podium-driver {{
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }}
+
+        @media (max-width: 768px) {{
+            .podium-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .podium-spot.first {{ order: 1; }}
+            .podium-spot.second {{ order: 2; }}
+            .podium-spot.third {{ order: 3; }}
+            
+            .stats {{
+                flex-direction: column;
+                gap: 10px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{circuit.get('name', 'Unknown')} {session_display}</h1>
+        <div class="subtitle">{circuit.get('city', 'Unknown')} • {meta.get('race_date', 'TBD')}</div>
+    </div>
+
+    <div class="container">
+        <div class="info-card">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Session Type</div>
+                    <div class="info-value">{session_display}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Simulations</div>
+                    <div class="info-value">{n_simulations:,}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Rain Probability</div>
+                    <div class="info-value">{(rain_probability or 0) * 100:.0f}%</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Model Confidence</div>
+                    <div class="info-value">{meta.get('overall_model_confidence', 0) * 100:.0f}%</div>
+                </div>
+            </div>
+        </div>
+
+        {"<div class='podium-section'>" if session_type == 'RACE' else ""}
+        {"<div class='podium-title'>Predicted Podium</div>" if session_type == 'RACE' else ""}
+        {f"<div class='podium-grid'>
+            <div class='podium-spot second'>
+                <div class='podium-position'>🥈</div>
+                <div class='podium-driver'>{podium[1] if len(podium) > 1 else 'TBD'}</div>
+            </div>
+            <div class='podium-spot first'>
+                <div class='podium-position'>🥇</div>
+                <div class='podium-driver'>{podium[0] if podium else 'TBD'}</div>
+            </div>
+            <div class='podium-spot third'>
+                <div class='podium-position'>🥉</div>
+                <div class='podium-driver'>{podium[2] if len(podium) > 2 else 'TBD'}</div>
+            </div>
+        </div>" if session_type == 'RACE' and podium else ""}
+        {"</div>" if session_type == 'RACE' else ""}
+
+        <h2 class="section-title">Top 10 Predictions</h2>
+        {driver_rows_html}
+    </div>
+</body>
+</html>"""
+    
+    return html

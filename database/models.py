@@ -1,352 +1,105 @@
-"""
-Database Layer — SQLAlchemy ORM models for F1 Prediction System v3.0.
-
-Replaces static Python modules with persistent SQLite database.
-Provides ACID guarantees, concurrent access, and efficient historical queries.
-"""
-
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from datetime import datetime
 import os
+from datetime import datetime
 
-# Database URL — can be overridden via environment variable
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    create_engine,
+)
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+
 DATABASE_URL = os.getenv("F1_DATABASE_URL", "sqlite:///f1_predictor.db")
 
-engine = create_engine(DATABASE_URL, echo=False)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(DATABASE_URL, echo=False, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
 Base = declarative_base()
 
 
-# ── Models ─────────────────────────────────────────────────────────────────────
-
-class Driver(Base):
-    """Driver profiles with ELO ratings and attributes."""
-    __tablename__ = "drivers"
-    
-    id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    number = Column(Integer)
-    nationality = Column(String)
-    team = Column(String, ForeignKey("constructors.id"))
-    elo_rating = Column(Float, default=1500.0)
-    qualifying_elo = Column(Float, default=1500.0)
-    wet_weather_elo = Column(Float, default=1500.0)
-    wet_skill = Column(Float, default=7.0)
-    experience_races = Column(Integer, default=0)
-    dnf_rate_career = Column(Float, default=0.15)
-    dnf_rate_recent = Column(Float, default=0.15)
-    qualifying_delta_avg = Column(Float, default=0.0)
-    championship_points_2026 = Column(Float, default=0.0)
-    active = Column(Boolean, default=True)
-    track_type_fit = Column(JSON)  # Dict: {"high_speed": 1.0, "street": 0.95, ...}
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    constructor = relationship("Constructor", back_populates="drivers")
-    results = relationship("RaceResult", back_populates="driver")
-    predictions = relationship("Prediction", back_populates="driver")
-    elo_history = relationship("ELOHistory", back_populates="driver")
-
-
-class Constructor(Base):
-    """Constructor (team) profiles."""
-    __tablename__ = "constructors"
-    
-    id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    nationality = Column(String)
-    base_strength = Column(Float, default=0.5)
-    reliability = Column(Float, default=0.85)
-    championship_points_2026 = Column(Float, default=0.0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    drivers = relationship("Driver", back_populates="constructor")
-    results = relationship("ConstructorResult", back_populates="constructor")
-
-
-class Circuit(Base):
-    """Circuit profiles with characteristics."""
-    __tablename__ = "circuits"
-    
-    id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    city = Column(String)
-    country = Column(String)
-    lap_count = Column(Integer)
-    circuit_length_km = Column(Float)
-    lap_record = Column(Float)  # Seconds
-    circuit_type = Column(JSON)  # List: ["high_speed", "street", ...]
-    safety_car_probability = Column(Float, default=0.5)
-    rain_probability_typical = Column(Float, default=0.2)
-    overtaking_difficulty = Column(Float, default=0.5)  # 0=easy, 1=hard
-    drs_zones = Column(Integer, default=2)
-    elevation_change_m = Column(Integer)
-    first_grand_prix = Column(Integer)
-    round_2026 = Column(Integer)
-    race_date = Column(String)
-    sprint_weekend = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    races = relationship("Race", back_populates="circuit")
-
-
 class Race(Base):
-    """Race events."""
     __tablename__ = "races"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    circuit_id = Column(String, ForeignKey("circuits.id"))
-    season = Column(Integer)
-    round = Column(Integer)
-    race_name = Column(String)
-    race_date = Column(String)
-    sprint_weekend = Column(Boolean, default=False)
-    completed = Column(Boolean, default=False)
-    weather_conditions = Column(JSON)  # Dict with weather data
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    circuit = relationship("Circuit", back_populates="races")
-    results = relationship("RaceResult", back_populates="race")
-    predictions = relationship("Prediction", back_populates="race")
+    circuit_id = Column(String(64), nullable=False, index=True)
+    season = Column(Integer, nullable=False, index=True)
+    completed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-
-class RaceResult(Base):
-    """Historical race results for drivers."""
-    __tablename__ = "race_results"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    race_id = Column(Integer, ForeignKey("races.id"))
-    driver_id = Column(String, ForeignKey("drivers.id"))
-    grid_position = Column(Integer)
-    final_position = Column(Integer)
-    points = Column(Float, default=0.0)
-    fastest_lap = Column(Boolean, default=False)
-    status = Column(String)  # "Finished", "DNF", "DNF - Engine", etc.
-    laps_completed = Column(Integer)
-    race_time_seconds = Column(Float)
-    tire_strategy = Column(JSON)  # List of compounds used
-    pit_stops = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    race = relationship("Race", back_populates="results")
-    driver = relationship("Driver", back_populates="results")
-
-
-class ConstructorResult(Base):
-    """Historical race results for constructors."""
-    __tablename__ = "constructor_results"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    race_id = Column(Integer, ForeignKey("races.id"))
-    constructor_id = Column(String, ForeignKey("constructors.id"))
-    points = Column(Float, default=0.0)
-    driver1_position = Column(Integer)
-    driver2_position = Column(Integer)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    race = relationship("Race")
-    constructor = relationship("Constructor", back_populates="results")
+    predictions = relationship("Prediction", back_populates="race", cascade="all, delete-orphan")
 
 
 class Prediction(Base):
-    """Stored predictions for accuracy tracking."""
     __tablename__ = "predictions"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    race_id = Column(Integer, ForeignKey("races.id"))
-    driver_id = Column(String, ForeignKey("drivers.id"))
-    predicted_position = Column(Float)
-    win_probability = Column(Float)
-    top3_probability = Column(Float)
-    top10_probability = Column(Float)
-    dnf_probability = Column(Float)
-    composite_score = Column(Float)
-    model_version = Column(String, default="v3.0")
-    actual_position = Column(Integer, nullable=True)  # Filled after race
-    actual_result = Column(String, nullable=True)
-    brier_score = Column(Float, nullable=True)  # Computed post-race
-    created_at = Column(DateTime, default=datetime.utcnow)
+    race_id = Column(Integer, ForeignKey("races.id"), nullable=False, index=True)
+    driver_id = Column(String(64), nullable=False, index=True)
+    predicted_position = Column(Integer, nullable=False)
+    win_probability = Column(Float, nullable=False)
+    top3_probability = Column(Float, nullable=False)
+    top10_probability = Column(Float, nullable=False)
+    dnf_probability = Column(Float, nullable=False)
+    composite_score = Column(Float, nullable=False)
+    model_version = Column(String(32), nullable=False)
+    actual_position = Column(Integer, nullable=True)
+    actual_result = Column(String(32), nullable=True)
+    brier_score = Column(Float, nullable=True)
     evaluated_at = Column(DateTime, nullable=True)
-    
-    # Relationships
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
     race = relationship("Race", back_populates="predictions")
-    driver = relationship("Driver", back_populates="predictions")
 
 
-class ELOHistory(Base):
-    """Historical ELO ratings after each race."""
-    __tablename__ = "elo_history"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    driver_id = Column(String, ForeignKey("drivers.id"))
-    race_id = Column(Integer, ForeignKey("races.id"))
-    elo_rating = Column(Float)
-    qualifying_elo = Column(Float)
-    wet_weather_elo = Column(Float)
-    race_date = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    driver = relationship("Driver", back_populates="elo_history")
-    race = relationship("Race")
+class Driver(Base):
+    __tablename__ = "drivers"
+
+    id = Column(String(64), primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    team = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
-class ModelWeight(Base):
-    """Optimized feature weights from Optuna tuning."""
-    __tablename__ = "model_weights"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    weight_name = Column(String, nullable=False, unique=True)
-    weight_value = Column(Float, nullable=False)
-    optimized_at = Column(DateTime, default=datetime.utcnow)
-    optuna_study_id = Column(Integer)
-    validation_score = Column(Float)  # Brier score or log-loss
-    notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+def create_database() -> None:
+    """Create the SQLite metadata tables."""
+    Base.metadata.create_all(engine)
 
 
-class CalibrationParameter(Base):
-    """Platt calibration parameters per outcome type."""
-    __tablename__ = "calibration_parameters"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    outcome_type = Column(String, nullable=False)  # "win", "top3", "top10", "dnf"
-    parameter_a = Column(Float, default=1.0)
-    parameter_b = Column(Float, default=0.0)
-    fitted_at = Column(DateTime, default=datetime.utcnow)
-    training_races = Column(Integer)
-    brier_score_before = Column(Float)
-    brier_score_after = Column(Float)
-    notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+def migrate_from_static() -> None:
+    """Create the database and migrate driver/circuit metadata from static data modules."""
+    from data.driver_data import get_all_drivers
+    from data.circuit_data import CIRCUITS
 
-
-# ── Database Initialization ───────────────────────────────────────────────────
-
-def init_db():
-    """Create all tables."""
-    Base.metadata.create_all(bind=engine)
-
-
-def get_db():
-    """Get database session (dependency injection for FastAPI)."""
+    create_database()
     db = SessionLocal()
     try:
-        yield db
-    finally:
-        db.close()
+        existing_drivers = {driver.id for driver in db.query(Driver).all()}
 
+        for driver in get_all_drivers():
+            if driver["id"] not in existing_drivers:
+                db.add(Driver(
+                    id=driver["id"],
+                    name=driver.get("name", driver["id"]).strip(),
+                    team=driver.get("team", "unknown"),
+                ))
 
-def migrate_from_static():
-    """
-    Migrate data from static Python modules to database.
-    Idempotent: can be run multiple times without errors.
-    """
-    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-    from data.driver_data import get_all_drivers as static_drivers
-    from data.circuit_data import get_all_circuits as static_circuits
-    from data.season_2026 import DRIVER_STANDINGS_AFTER_R5, CONSTRUCTOR_STANDINGS_AFTER_R5
-    
-    init_db()
-    db = SessionLocal()
-    
-    try:
-        # Migrate circuits (idempotent with upsert)
-        for circuit in static_circuits():
-            stmt = sqlite_insert(Circuit).values(
-                id=circuit.get("id"),
-                name=circuit.get("name"),
-                city=circuit.get("city"),
-                country=circuit.get("country"),
-                lap_count=circuit.get("lap_count"),
-                circuit_length_km=circuit.get("lap_distance_km"),
-                safety_car_probability=circuit.get("safety_car_probability", 0.5),
-                rain_probability_typical=circuit.get("rain_probability_typical", 0.2),
-                overtaking_difficulty=float(circuit.get("overtaking_difficulty", 5)) / 10.0,
-                drs_zones=circuit.get("drs_zones", 2),
-                circuit_type=circuit.get("circuit_type", []),
-                round_2026=circuit.get("round_2026"),
-                race_date=circuit.get("race_date"),
-                sprint_weekend=circuit.get("sprint_weekend", False),
-                updated_at=datetime.utcnow(),
-            ).on_conflict_do_update(
-                index_elements=["id"],
-                set_={
-                    "name": circuit.get("name"),
-                    "city": circuit.get("city"),
-                    "country": circuit.get("country"),
-                    "updated_at": datetime.utcnow(),
-                }
-            )
-            db.execute(stmt)
-        
-        # Migrate constructors (idempotent with upsert)
-        constructor_ids = set()
-        for driver in static_drivers():
-            if driver.get("team") and driver["team"] not in constructor_ids:
-                constructor_ids.add(driver["team"])
-        
-        for const_id in constructor_ids:
-            stmt = sqlite_insert(Constructor).values(
-                id=const_id,
-                name=const_id.replace("_", " ").title(),
-                updated_at=datetime.utcnow(),
-            ).on_conflict_do_update(
-                index_elements=["id"],
-                set_={"name": const_id.replace("_", " ").title(), "updated_at": datetime.utcnow()}
-            )
-            db.execute(stmt)
-        
-        # Migrate drivers (idempotent with upsert)
-        for driver in static_drivers():
-            stmt = sqlite_insert(Driver).values(
-                id=driver["id"],
-                name=driver["name"],
-                number=driver.get("number"),
-                team=driver.get("team"),
-                elo_rating=driver.get("elo", 1500.0),
-                wet_skill=driver.get("wet_skill", 7.0),
-                experience_races=driver.get("experience_races", 0),
-                dnf_rate_career=driver.get("dnf_rate_career", 0.15),
-                dnf_rate_recent=driver.get("dnf_rate_recent", 0.15),
-                qualifying_delta_avg=driver.get("qualifying_delta_avg", 0.0),
-                championship_points_2026=driver.get("championship_points_2026", 0.0),
-                active=driver.get("active", True),
-                track_type_fit=driver.get("track_type_fit", {}),
-                updated_at=datetime.utcnow(),
-            ).on_conflict_do_update(
-                index_elements=["id"],
-                set_={
-                    "name": driver["name"],
-                    "elo_rating": driver.get("elo", 1500.0),
-                    "updated_at": datetime.utcnow(),
-                }
-            )
-            db.execute(stmt)
-        
+        existing_races = {
+            (race.circuit_id, race.season)
+            for race in db.query(Race).all()
+        }
+        for circuit in CIRCUITS.values():
+            key = (circuit["id"], 2026)
+            if key not in existing_races:
+                db.add(Race(
+                    circuit_id=circuit["id"],
+                    season=2026,
+                    completed=False,
+                ))
+
         db.commit()
-        logger.info("✓ Migration completed successfully (idempotent).")
-        print("✓ Migration completed successfully!")
-        
-    except Exception as e:
-        db.rollback()
-        logger.error(f"✗ Migration failed: {e}")
-        print(f"✗ Migration failed: {e}")
-        raise
     finally:
         db.close()
-
-
-if __name__ == "__main__":
-    print("Initializing F1 Predictor Database...")
-    migrate_from_static()

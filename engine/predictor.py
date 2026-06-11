@@ -21,6 +21,7 @@ class PredictionRequest:
     seed: Optional[int] = None
     output_format: str = "full"
     grid_overrides: Dict[str, int] = field(default_factory=dict)
+    vectorized: bool = True
 
 
 # PREDICTION CACHING (P1 Priority - Performance Optimization)
@@ -142,6 +143,7 @@ def predict(request: PredictionRequest) -> dict:
         n_simulations=request.n_simulations,
         seed=request.seed,
         grid_overrides=request.grid_overrides or {},
+        vectorized=request.vectorized,
     )
 
     # NEW: Apply probability hierarchy enforcement (3.5)

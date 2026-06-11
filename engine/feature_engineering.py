@@ -16,7 +16,7 @@ FEATURE-4 ADDITION:
 """
 
 import math
-from typing import Optional
+from typing import Any, Dict, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,10 +24,13 @@ logger = logging.getLogger(__name__)
 from config.settings import CONSTRUCTOR_STRENGTH, FEATURE_WEIGHTS, RECENCY_DECAY, RECENCY_WINDOW
 from data.driver_data import get_driver, get_all_drivers, get_drivers_for_team, calculate_circuit_performance_modifier
 from data.circuit_data import get_circuit, circuit_favors_team
+from data.fastf1_integration import FASTF1_AVAILABLE, extract_ml_features
+from data.calendar_2026 import get_race_by_circuit
 from data.season_2026 import get_driver_last_n_results, DRIVER_STANDINGS_AFTER_R5
 
 N_DRIVERS = 22
 DNF_POSITION_PENALTY = N_DRIVERS + 5  # 27 — beyond last-place finish
+_FASTF1_FEATURE_CACHE = {}
 
 
 # ── ELO ────────────────────────────────────────────────────────────────────────
@@ -335,6 +338,66 @@ def estimate_dnf_probability(driver_id: str, circuit_id: Optional[str] = None) -
         return 0.15
 
 
+def _load_fastf1_features_for_race(circuit_id: str, season: int = 2026) -> Optional[Dict[str, Any]]:
+    """Load and cache FastF1 extracted features for a given race."""
+    if not FASTF1_AVAILABLE:
+        return None
+
+    race = get_race_by_circuit(circuit_id)
+    if not race:
+        return None
+
+    race_name = race.get("name")
+    if not race_name:
+        return None
+
+    cache_key = f"{season}:{race_name}"
+    if cache_key in _FASTF1_FEATURE_CACHE:
+        return _FASTF1_FEATURE_CACHE[cache_key]
+
+    try:
+        features = extract_ml_features(season, race_name)
+        _FASTF1_FEATURE_CACHE[cache_key] = features
+        return features
+    except Exception as e:
+        logger.warning(f"FastF1 feature extraction failed for {race_name}: {e}")
+        _FASTF1_FEATURE_CACHE[cache_key] = None
+        return None
+
+
+def _get_fastf1_adjustment(driver_id: str, circuit_id: str, season: int = 2026) -> float:
+    """Return a small score adjustment from FastF1 extracted race features."""
+    features = _load_fastf1_features_for_race(circuit_id, season)
+    if not features:
+        return 0.0
+
+    driver_short = get_driver(driver_id).get("short", "").upper()
+    driver_data = features.get("driver_features", {}).get(driver_short)
+    if not driver_data:
+        return 0.0
+
+    avg_lap = driver_data.get("avg_lap_time")
+    lap_std = driver_data.get("lap_time_std")
+    pit_stops = driver_data.get("pit_stops", 1)
+    dnf_flag = driver_data.get("dnf", False)
+
+    if avg_lap is None or lap_std is None:
+        return 0.0
+
+    field_laps = [v.get("avg_lap_time") for v in features.get("driver_features", {}).values() if v.get("avg_lap_time")]
+    if not field_laps:
+        return 0.0
+
+    best_lap = min(field_laps)
+    lap_score = max(0.0, min(1.0, best_lap / avg_lap))
+    consistency_score = max(0.0, min(1.0, 1.0 - min(1.0, lap_std / 3.0)))
+    pit_penalty = min(0.15, max(0.0, (pit_stops - 1) * 0.05))
+    dnf_penalty = 0.08 if dnf_flag else 0.0
+
+    adjustment = (lap_score * 0.5 + consistency_score * 0.3 - pit_penalty - dnf_penalty) * 0.12
+    return max(-0.1, min(0.15, adjustment))
+
+
 # ── Composite score ────────────────────────────────────────────────────────────
 
 def compute_composite_score(
@@ -360,6 +423,7 @@ def compute_composite_score(
         "safety_car_upside":    compute_safety_car_upside(driver_id, circuit_id),
         # FIX: no longer hardcoded to 0.5
         "grid_position":        compute_grid_position_score(driver_id, actual_grid_pos),
+        "fastf1_adjustment":   _get_fastf1_adjustment(driver_id, circuit_id),
     }
     composite = sum(FEATURE_WEIGHTS.get(k, 0.0) * v for k, v in features.items())
     

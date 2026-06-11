@@ -87,10 +87,29 @@ def simulate_race_vectorized(
     # Generate SC occurrence for each simulation independently
     sc_occurs = rng.random(n_runs) < sc_prob  # shape (n_runs,)
     
-    # Grid rank from pre-noise composite scores (stable across simulations)
-    grid_ranks = np.argsort(-composite_scores)  # shape (n_drivers,)
+# Grid positions derived from actual grid overrides if provided,
+    # otherwise use composite score ranking as a pre-race grid proxy.
+    grid_positions = np.full(n_drivers, n_drivers + 1, dtype=int)
+    if grid_overrides:
+        occupied = set()
+        for idx, did in enumerate(driver_ids):
+            if did in grid_overrides:
+                pos = int(grid_overrides[did])
+                grid_positions[idx] = max(1, min(n_drivers, pos))
+                occupied.add(grid_positions[idx])
+        remaining_positions = [p for p in range(1, n_drivers + 1) if p not in occupied]
+        remaining_positions.sort()
+        remaining_indices = [i for i, pos in enumerate(grid_positions) if pos == n_drivers + 1]
+        remaining_indices.sort(key=lambda idx: -composite_scores[idx])
+        for pos, idx in zip(remaining_positions, remaining_indices):
+            grid_positions[idx] = pos
+    else:
+        order = np.argsort(-composite_scores)
+        grid_positions[order] = np.arange(1, n_drivers + 1)
+
+    grid_ranks = grid_positions - 1
     midfield = np.zeros(n_drivers, dtype=bool)
-    midfield[grid_ranks[5:15]] = True  # original grid positions 6-15
+    midfield[np.where((grid_ranks >= 5) & (grid_ranks <= 14))[0]] = True
     
     # Generate boost factors: shape (n_runs, n_drivers)
     boosts = rng.uniform(1.03, 1.10, size=(n_runs, n_drivers))
@@ -118,15 +137,27 @@ def simulate_race_vectorized(
     # Top 3 counts: driver finished P1-P3
     top3_counts = np.sum((finishing_positions >= 1) & (finishing_positions <= 3), axis=0)
     
+    # Top 5 counts: driver finished P1-P5
+    top5_counts = np.sum((finishing_positions >= 1) & (finishing_positions <= 5), axis=0)
+
     # Top 10 counts: driver finished P1-P10
     top10_counts = np.sum((finishing_positions >= 1) & (finishing_positions <= 10), axis=0)
     
     # DNF counts
     dnf_counts = np.sum(dnf_rolled, axis=0)
     
-    # Expected position (mean finishing position)
-    # Mask out DNFs
+    # Mask out DNFs for position and points calculations
     valid_finishes = ~dnf_rolled
+    
+    # Points distribution from positional results
+    points_map = np.zeros(n_drivers, dtype=int)
+    points_map[:10] = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
+    points_earned = np.sum(
+        np.where(valid_finishes, points_map[finishing_positions - 1], 0),
+        axis=0,
+    )
+    
+    # Expected position (mean finishing position)
     position_sums = np.sum(
         np.where(valid_finishes, finishing_positions, 0),
         axis=0
@@ -160,13 +191,16 @@ def simulate_race_vectorized(
         stats[driver_id] = {
             "win_probability": float(win_counts[idx] / n_runs),
             "top3_probability": float(top3_counts[idx] / n_runs),
+            "top5_probability": float(top5_counts[idx] / n_runs),
             "top10_probability": float(top10_counts[idx] / n_runs),
             "dnf_probability": float(dnf_counts[idx] / n_runs),
             "expected_position": float(expected_positions[idx]),
+            "expected_points": float(points_earned[idx]),
             "position_distribution": position_distributions[idx],
             "position_std": float(pos_std[idx]),
             "win_count": int(win_counts[idx]),
             "top3_count": int(top3_counts[idx]),
+            "top5_count": int(top5_counts[idx]),
             "top10_count": int(top10_counts[idx]),
             "dnf_count": int(dnf_counts[idx]),
         }

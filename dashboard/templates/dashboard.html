@@ -3,753 +3,2330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 Predictor v3.0 Dashboard</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <title>F1 Predictor 2026 - Official Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --f1-red: #E10600;
+            --f1-red-dark: #b30500;
+            --f1-dark: #15151e;
+            --f1-black: #000000;
+            --f1-white: #FFFFFF;
+            --f1-gray: #38383f;
+            --f1-light-gray: #f3f3f3;
+            --gradient-primary: linear-gradient(135deg, #E10600 0%, #ff1a1a 50%, #E10600 100%);
+            --gradient-dark: linear-gradient(135deg, #1a1a2e 0%, #15151e 50%, #0f0f1a 100%);
+            --gradient-card: linear-gradient(135deg, rgba(225, 6, 0, 0.08) 0%, rgba(225, 6, 0, 0.02) 100%);
+            --shadow-glow: 0 0 40px rgba(225, 6, 0, 0.4);
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Titillium Web', sans-serif;
+            background: var(--gradient-dark);
+            color: var(--f1-white);
             min-height: 100vh;
-            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
         }
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(225, 6, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(225, 6, 0, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
+
+        /* Animated Background Lines */
+        .bg-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-line {
+            position: absolute;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, rgba(225, 6, 0, 0.3), transparent);
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-100px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(calc(100vh + 100px)); opacity: 0; }
+        }
+
+        /* Header */
         .header {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 20px 40px;
+            border-bottom: 3px solid var(--f1-red);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 30px rgba(225, 6, 0, 0.3);
+            position: relative;
+            z-index: 100;
         }
-        .header h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin-bottom: 10px;
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
         }
-        .header p {
-            color: #666;
-            font-size: 1.2em;
+
+        .logo-icon {
+            width: 70px;
+            height: 70px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 32px;
+            color: var(--f1-white);
+            box-shadow: var(--shadow-glow);
+            position: relative;
+            overflow: hidden;
         }
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shine 3s ease-in-out infinite;
         }
-        .card h2 {
-            color: #764ba2;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
+
+        @keyframes shine {
+            0%, 100% { transform: translateX(-100%) rotate(45deg); }
+            50% { transform: translateX(100%) rotate(45deg); }
         }
-        .card h3 {
-            color: #667eea;
-            margin: 15px 0 10px 0;
-            font-size: 1.3em;
+
+        .logo-text h1 {
+            font-size: 32px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin: 0;
+            background: linear-gradient(135deg, var(--f1-white) 0%, var(--f1-red) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .grid {
+
+        .logo-text p {
+            font-size: 14px;
+            color: #999;
+            margin: 5px 0 0 0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Landing Page */
+        .landing-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 110px);
+            padding: 60px 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .landing-title {
+            text-align: center;
+            margin-bottom: 80px;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .landing-title h2 {
+            font-size: 64px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--f1-white) 0%, var(--f1-red) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 4px;
+            text-shadow: 0 0 40px rgba(225, 6, 0, 0.5);
+        }
+
+        .landing-title p {
+            font-size: 24px;
+            color: #aaa;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .day-selector {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .two-column {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .three-column {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #333;
-            font-weight: 600;
-        }
-        .form-group input, .form-group select {
+            gap: 40px;
+            max-width: 1400px;
             width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
         }
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
+
+        .day-card {
+            background: var(--gradient-card);
+            border: 2px solid rgba(225, 6, 0, 0.3);
+            border-radius: 20px;
+            padding: 50px 40px;
             cursor: pointer;
-            transition: transform 0.2s;
-            width: 100%;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
         }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+
+        .day-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
         }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+
+        .day-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(225, 6, 0, 0.2) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
         }
-        .stat-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
+
+        .day-card:hover {
+            transform: translateY(-15px) scale(1.02);
+            border-color: var(--f1-red);
+            box-shadow: var(--shadow-glow), var(--shadow-card);
+        }
+
+        .day-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .day-card:hover::after {
+            opacity: 1;
+        }
+
+        .day-icon {
+            font-size: 80px;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 20px rgba(225, 6, 0, 0.5));
+            position: relative;
+            z-index: 1;
+        }
+
+        .day-card h3 {
+            font-size: 36px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            color: var(--f1-white);
+            position: relative;
+            z-index: 1;
+            letter-spacing: 2px;
+        }
+
+        .day-card .day-label {
+            font-size: 20px;
+            color: var(--f1-red);
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .day-card p {
+            font-size: 18px;
+            color: #bbb;
+            line-height: 1.8;
+            position: relative;
+            z-index: 1;
+        }
+
+        .day-badge {
+            display: inline-block;
+            background: var(--gradient-primary);
+            color: var(--f1-white);
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 25px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 15px rgba(225, 6, 0, 0.4);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Prediction Pages */
+        .prediction-page {
+            display: none;
+            padding: 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .prediction-page.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+            padding-bottom: 25px;
+            border-bottom: 3px solid rgba(225, 6, 0, 0.3);
+        }
+
+        .back-button {
+            background: rgba(225, 6, 0, 0.1);
+            border: 2px solid var(--f1-red);
+            color: var(--f1-white);
+            padding: 14px 28px;
             border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Titillium Web', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .back-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--gradient-primary);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .back-button:hover::before {
+            left: 0;
+        }
+
+        .back-button:hover {
+            transform: translateX(-5px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .page-title {
+            font-size: 48px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .page-title span {
+            color: var(--f1-red);
+            text-shadow: 0 0 20px rgba(225, 6, 0, 0.5);
+        }
+
+        /* Form Container */
+        .form-container {
+            background: var(--gradient-card);
+            border: 2px solid rgba(225, 6, 0, 0.3);
+            border-radius: 20px;
+            padding: 50px;
+            margin-bottom: 50px;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-card);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 35px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            color: var(--f1-red);
+            letter-spacing: 2px;
+        }
+
+        .form-group select,
+        .form-group input {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(225, 6, 0, 0.3);
+            color: var(--f1-white);
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-family: 'Titillium Web', sans-serif;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--f1-red);
+            box-shadow: 0 0 20px rgba(225, 6, 0, 0.4);
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .predict-button {
+            background: var(--gradient-primary);
+            border: none;
+            color: var(--f1-white);
+            padding: 20px 50px;
+            border-radius: 12px;
+            font-family: 'Titillium Web', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            letter-spacing: 3px;
+            box-shadow: 0 8px 30px rgba(225, 6, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .predict-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .predict-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .predict-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(225, 6, 0, 0.7);
+        }
+
+        .predict-button:active {
+            transform: translateY(-1px);
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+            animation: slideUp 0.6s ease;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .results-header h3 {
+            font-size: 42px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .result-card {
+            background: var(--gradient-card);
+            border: 2px solid rgba(225, 6, 0, 0.3);
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--gradient-primary);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .result-card:hover {
+            border-color: var(--f1-red);
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-glow), var(--shadow-card);
+        }
+
+        .result-card:hover::before {
+            transform: scaleY(1);
+        }
+
+        .result-card h4 {
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            color: var(--f1-red);
+            letter-spacing: 2px;
+        }
+
+        .result-value {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--f1-white);
+            text-shadow: 0 0 10px rgba(225, 6, 0, 0.3);
+        }
+
+        /* Charts Section */
+        .charts-section {
+            margin-top: 50px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+        }
+
+        .chart-container {
+            background: var(--gradient-card);
+            border: 2px solid rgba(225, 6, 0, 0.3);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-card);
+        }
+
+        .chart-container h4 {
+            font-size: 22px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            color: var(--f1-red);
+            letter-spacing: 2px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Download Button */
+        .download-section {
+            margin-top: 40px;
             text-align: center;
         }
-        .stat-box h3 {
-            font-size: 2em;
-            margin-bottom: 5px;
+
+        .download-button {
+            background: var(--gradient-primary);
+            border: none;
+            color: var(--f1-white);
+            padding: 18px 45px;
+            border-radius: 12px;
+            font-family: 'Titillium Web', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 2px;
+            box-shadow: 0 6px 25px rgba(225, 6, 0, 0.5);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
         }
-        .prediction-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+
+        .download-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 35px rgba(225, 6, 0, 0.7);
         }
-        .prediction-table th {
-            background: #667eea;
-            color: white;
-            padding: 12px;
-            text-align: left;
-        }
-        .prediction-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-        .prediction-table tr:hover {
-            background: #f5f5f5;
-        }
-        .chart-container {
-            margin-top: 20px;
-            min-height: 400px;
-        }
+
         .loading {
             display: none;
             text-align: center;
-            padding: 20px;
+            padding: 60px;
         }
+
         .loading.active {
             display: block;
         }
-        .progress-bar {
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            height: 25px;
-            margin: 5px 0;
+
+        .spinner {
+            width: 80px;
+            height: 80px;
+            border: 5px solid rgba(225, 6, 0, 0.2);
+            border-top-color: var(--f1-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+            box-shadow: 0 0 30px rgba(225, 6, 0, 0.5);
         }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            transition: width 0.3s;
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        .info-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
+
+        .loading p {
+            font-size: 20px;
+            color: #aaa;
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
-        @media (max-width: 1200px) {
-            .two-column, .three-column {
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 15px 20px;
+            }
+
+            .logo-text h1 {
+                font-size: 24px;
+            }
+
+            .landing-title h2 {
+                font-size: 42px;
+            }
+
+            .day-selector {
                 grid-template-columns: 1fr;
+            }
+
+            .prediction-page {
+                padding: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+
+            .page-title {
+                font-size: 32px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏎️ F1 Predictor  Dashboard</h1>
-            <p>Advanced Race Prediction System with Machine Learning & Monte Carlo Simulations</p>
-        </div>
+    <!-- Animated Background -->
+    <div class="bg-lines" id="bgLines"></div>
 
-        <div class="stats">
-            <div class="stat-box">
-                <h3>v3.0</h3>
-                <p>Version</p>
-            </div>
-            <div class="stat-box">
-                <h3 id="total-predictions">0</h3>
-                <p>Predictions Made</p>
-            </div>
-            <div class="stat-box">
-                <h3 id="accuracy-score">--</h3>
-                <p>Accuracy (Brier)</p>
-            </div>
-            <div class="stat-box">
-                <h3>20x</h3>
-                <p>Speedup</p>
-            </div>
-            <div class="stat-box">
-                <h3>2026</h3>
-                <p>Season</p>
-            </div>
-            <div class="stat-box">
-                <h3>10,000+</h3>
-                <p>Simulations</p>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">F1</div>
+            <div class="logo-text">
+                <h1>Predictor 2026</h1>
+                <p>Official Prediction Dashboard</p>
             </div>
         </div>
+    </div>
 
-        <div class="grid">
-            <div class="card">
-                <h2>🎯 Race Prediction</h2>
-                <form id="predict-form">
-                    <div class="form-group">
-                        <label>Circuit:</label>
-                        <select id="circuit" required>
-                            <option value="canada">Canada</option>
-                            <option value="monaco">Monaco</option>
-                            <option value="britain">Silverstone</option>
-                            <option value="monza">Monza</option>
-                            <option value="spa">Spa</option>
-                            <option value="hungary">Hungary</option>
-                            <option value="belgium">Belgium</option>
-                            <option value="netherlands">Netherlands</option>
-                            <option value="italy">Italy</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Rain Probability (0-1):</label>
-                        <input type="number" id="rain" min="0" max="1" step="0.05" value="0.2">
-                    </div>
-                    <div class="form-group">
-                        <label>Simulations:</label>
-                        <input type="number" id="sims" value="10000" min="1000" max="100000">
-                    </div>
-                    <button type="submit" class="btn">Run Prediction</button>
-                </form>
+    <!-- Landing Page -->
+    <div id="landingPage" class="landing-page">
+        <div class="landing-title">
+            <h2>Race Weekend Predictions</h2>
+            <p>Select your session to begin</p>
+        </div>
+
+        <div class="day-selector">
+            <div class="day-card" onclick="showPage('practice')">
+                <div class="day-icon">🏁</div>
+                <div class="day-label">Friday</div>
+                <h3>Practice Sessions</h3>
+                <p>Predict practice session results including FP1, FP2, and FP3 performance analysis with lap time forecasts</p>
+                <div class="day-badge">FP1 • FP2 • FP3</div>
             </div>
 
-            <div class="card">
-                <h2>⚔️ H2H Comparison</h2>
-                <form id="h2h-form">
-                    <div class="form-group">
-                        <label>Driver 1:</label>
-                        <input type="text" id="driver1" placeholder="verstappen" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Driver 2:</label>
-                        <input type="text" id="driver2" placeholder="hamilton" required>
-                    </div>
-                    <button type="submit" class="btn">Compare Drivers</button>
-                </form>
+            <div class="day-card" onclick="showPage('qualifying')">
+                <div class="day-icon">⚡</div>
+                <div class="day-label">Saturday</div>
+                <h3>Qualifying</h3>
+                <p>Forecast qualifying positions, Q1/Q2/Q3 eliminations, pole position predictions, and grid penalties</p>
+                <div class="day-badge">Q1 • Q2 • Q3</div>
             </div>
 
-            <div class="card">
-                <h2>🏢 Constructor Analysis</h2>
+            <div class="day-card" onclick="showPage('race')">
+                <div class="day-icon">🏆</div>
+                <div class="day-label">Sunday</div>
+                <h3>Grand Prix</h3>
+                <p>Full race predictions with podium forecasts, fastest lap, championship points, and detailed analytics</p>
+                <div class="day-badge">RACE DAY</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Practice Page -->
+    <div id="practicePage" class="prediction-page">
+        <div class="page-header">
+            <button class="back-button" onclick="showLanding()">← Back</button>
+            <h2 class="page-title"><span>Friday</span> Practice Sessions</h2>
+        </div>
+
+        <div class="form-container">
+            <div class="form-grid">
                 <div class="form-group">
-                    <label>Select Circuit:</label>
-                    <select id="constructor-circuit">
-                        <option value="canada">Canada</option>
-                        <option value="monaco">Monaco</option>
-                        <option value="britain">Silverstone</option>
-                        <option value="monza">Monza</option>
-                        <option value="spa">Spa</option>
+                    <label>Grand Prix</label>
+                    <select id="practiceRace">
+                        <option value="">Select Race...</option>
                     </select>
                 </div>
-                <button id="load-constructors" class="btn">Load Constructor Predictions</button>
+                <div class="form-group">
+                    <label>Session</label>
+                    <select id="practiceSession">
+                        <option value="FP1">FP1 - Free Practice 1</option>
+                        <option value="FP2">FP2 - Free Practice 2</option>
+                        <option value="FP3">FP3 - Free Practice 3</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Simulations</label>
+                    <input type="number" id="practiceSims" value="10000" min="1000" max="50000" step="1000">
+                </div>
             </div>
+            <button class="predict-button" onclick="runPrediction('practice')">Run Practice Prediction</button>
         </div>
 
-        <div class="card">
-            <h2>📊 Prediction Results</h2>
-            <div id="loading" class="loading">
-                <p>Running predictions... This may take a moment.</p>
-            </div>
-            <div id="results"></div>
-            <div id="download-section" style="margin-top: 20px; display: none;">
-                <button onclick="downloadReport()" class="btn" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-                    📄 Download Full HTML Report
-                </button>
-            </div>
+        <div id="practiceLoading" class="loading">
+            <div class="spinner"></div>
+            <p>Running simulations...</p>
         </div>
 
-        <div class="two-column">
-            <div class="card">
-                <h2>📈 Win Probability Distribution</h2>
-                <div id="winChart" class="chart-container"></div>
+        <div id="practiceResults" class="results-section">
+            <div class="results-header">
+                <h3>Practice Session Results</h3>
             </div>
+            <div id="practiceResultsContent" class="results-grid"></div>
+            <div class="charts-section" id="practiceCharts"></div>
+        </div>
+    </div>
 
-            <div class="card">
-                <h2>🎯 Top 3 Finish Probability</h2>
-                <div id="top3Chart" class="chart-container"></div>
-            </div>
+    <!-- Qualifying Page -->
+    <div id="qualifyingPage" class="prediction-page">
+        <div class="page-header">
+            <button class="back-button" onclick="showLanding()">← Back</button>
+            <h2 class="page-title"><span>Saturday</span> Qualifying</h2>
         </div>
 
-        <div class="two-column">
-            <div class="card">
-                <h2>🏎️ Expected Finish Positions</h2>
-                <div id="positionChart" class="chart-container"></div>
+        <div class="form-container">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Grand Prix</label>
+                    <select id="qualifyingRace">
+                        <option value="">Select Race...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Qualifying Format</label>
+                    <select id="qualifyingFormat">
+                        <option value="standard">Standard (Q1/Q2/Q3)</option>
+                        <option value="sprint">Sprint Qualifying</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Simulations</label>
+                    <input type="number" id="qualifyingSims" value="10000" min="1000" max="50000" step="1000">
+                </div>
             </div>
-
-            <div class="card">
-                <h2>💯 Expected Points per Driver</h2>
-                <div id="pointsChart" class="chart-container"></div>
-            </div>
+            <button class="predict-button" onclick="runPrediction('qualifying')">Run Qualifying Prediction</button>
         </div>
 
-        <div class="card">
-            <h2>📉 DNF Risk Analysis</h2>
-            <div id="dnfTable"></div>
+        <div id="qualifyingLoading" class="loading">
+            <div class="spinner"></div>
+            <p>Running simulations...</p>
         </div>
 
-        <div class="two-column">
-            <div class="card">
-                <h2>🏆 Constructor Standings Prediction</h2>
-                <div id="constructorTable"></div>
+        <div id="qualifyingResults" class="results-section">
+            <div class="results-header">
+                <h3>Qualifying Predictions</h3>
             </div>
+            <div id="qualifyingResultsContent" class="results-grid"></div>
+            <div class="charts-section" id="qualifyingCharts"></div>
+        </div>
+    </div>
 
-            <div class="card">
-                <h2>🔥 Top Performers & Insights</h2>
-                <div id="topPerformers"></div>
-            </div>
+    <!-- Race Page -->
+    <div id="racePage" class="prediction-page">
+        <div class="page-header">
+            <button class="back-button" onclick="showLanding()">← Back</button>
+            <h2 class="page-title"><span>Sunday</span> Grand Prix</h2>
         </div>
 
-        <div class="two-column">
-            <div class="card">
-                <h2>🏁 Teammate Battles</h2>
-                <div id="teammateBattles"></div>
+        <div class="form-container">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Grand Prix</label>
+                    <select id="raceRace">
+                        <option value="">Select Race...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Weather Conditions</label>
+                    <select id="raceWeather">
+                        <option value="dry">Dry</option>
+                        <option value="wet">Wet</option>
+                        <option value="mixed">Mixed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Simulations</label>
+                    <input type="number" id="raceSims" value="10000" min="1000" max="50000" step="1000">
+                </div>
             </div>
-
-            <div class="card">
-                <h2>📊 Position Distribution Heatmap</h2>
-                <div id="heatmapChart" class="chart-container"></div>
-            </div>
+            <button class="predict-button" onclick="runPrediction('race')">Run Race Prediction</button>
         </div>
 
-        <div class="card">
-            <h2>⚔️ H2H Results</h2>
-            <div id="h2hResults"></div>
+        <div id="raceLoading" class="loading">
+            <div class="spinner"></div>
+            <p>Running simulations...</p>
         </div>
 
-        <div class="footer" style="text-align: center; margin-top: 40px; color: white; font-size: 0.9em;">
-            <p>F1 Predictor v3.0 Dashboard · Monte Carlo Simulation · Advanced ML Models</p>
-            <p style="margin-top: 10px;">© 2026 F1 Prediction System | Real-time Race Analytics</p>
+        <div id="raceResults" class="results-section">
+            <div class="results-header">
+                <h3>Race Day Predictions</h3>
+            </div>
+            <div id="raceResultsContent" class="results-grid"></div>
+            <div class="charts-section" id="raceCharts"></div>
+            <div class="download-section" id="raceDownload"></div>
         </div>
     </div>
 
     <script>
-        // Race prediction form
-        document.getElementById('predict-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoading();
-            
-            const data = {
-                circuit_id: document.getElementById('circuit').value,
-                rain_probability: parseFloat(document.getElementById('rain').value),
-                n_simulations: parseInt(document.getElementById('sims').value)
-            };
+        // Create animated background lines
+        function createBgLines() {
+            const container = document.getElementById('bgLines');
+            for (let i = 0; i < 20; i++) {
+                const line = document.createElement('div');
+                line.className = 'bg-line';
+                line.style.left = Math.random() * 100 + '%';
+                line.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                line.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(line);
+            }
+        }
 
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+        // Populate race dropdowns
+        function populateRaces() {
+            const races = [
+                "Australian Grand Prix",
+                "Chinese Grand Prix", 
+                "Japanese Grand Prix",
+                "Bahrain Grand Prix",
+                "Saudi Arabian Grand Prix",
+                "Miami Grand Prix",
+                "Emilia Romagna Grand Prix",
+                "Monaco Grand Prix",
+                "Spanish Grand Prix",
+                "Canadian Grand Prix",
+                "Austrian Grand Prix",
+                "British Grand Prix",
+                "Belgian Grand Prix",
+                "Hungarian Grand Prix",
+                "Dutch Grand Prix",
+                "Italian Grand Prix",
+                "Azerbaijan Grand Prix",
+                "Singapore Grand Prix",
+                "United States Grand Prix",
+                "Mexico City Grand Prix",
+                "São Paulo Grand Prix",
+                "Las Vegas Grand Prix",
+                "Qatar Grand Prix",
+                "Abu Dhabi Grand Prix"
+            ];
+
+            ['practiceRace', 'qualifyingRace', 'raceRace'].forEach(id => {
+                const select = document.getElementById(id);
+                races.forEach(race => {
+                    const option = document.createElement('option');
+                    option.value = race;
+                    option.textContent = race;
+                    select.appendChild(option);
                 });
-                const result = await response.json();
-                displayResults(result);
-            } catch (error) {
-                showError(error.message);
-            }
-        });
+            });
+        }
 
-        // H2H form
-        document.getElementById('h2h-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoading();
-            
-            const data = {
-                driver1: document.getElementById('driver1').value,
-                driver2: document.getElementById('driver2').value,
-                circuit_id: document.getElementById('circuit').value,
-                n_simulations: 10000
-            };
+        // Navigation functions
+        function showLanding() {
+            document.getElementById('landingPage').style.display = 'flex';
+            document.querySelectorAll('.prediction-page').forEach(page => {
+                page.classList.remove('active');
+            });
+        }
+
+        function showPage(page) {
+            document.getElementById('landingPage').style.display = 'none';
+            document.querySelectorAll('.prediction-page').forEach(p => {
+                p.classList.remove('active');
+            });
+            document.getElementById(page + 'Page').classList.add('active');
+        }
+
+        // Prediction function
+        async function runPrediction(type) {
+            const loadingEl = document.getElementById(type + 'Loading');
+            const resultsEl = document.getElementById(type + 'Results');
+            const resultsContent = document.getElementById(type + 'ResultsContent');
+
+            // Show loading
+            loadingEl.classList.add('active');
+            resultsEl.classList.remove('active');
 
             try {
-                const response = await fetch('/h2h', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                displayH2H(result);
-            } catch (error) {
-                showError(error.message);
-            }
-        });
-
-        // Constructor analysis
-        document.getElementById('load-constructors').addEventListener('click', async () => {
-            const circuit = document.getElementById('constructor-circuit').value;
-            try {
-                const response = await fetch(`/constructors/${circuit}`);
-                const result = await response.json();
-                displayConstructors(result);
-            } catch (error) {
-                showError(error.message);
-            }
-        });
-
-        function showLoading() {
-            document.getElementById('loading').classList.add('active');
-            document.getElementById('results').innerHTML = '';
-        }
-
-        function displayResults(data) {
-            document.getElementById('loading').classList.remove('active');
-            
-            // Defensive check: ensure predictions array exists
-            if (!data || !data.predictions || !Array.isArray(data.predictions)) {
-                console.error('Invalid prediction data:', data);
-                document.getElementById('results').innerHTML = '<p style="color: red; font-weight: bold;">Error: Invalid prediction data received. Please try again.</p>';
-                return;
-            }
-            
-            // Display predictions table
-            let html = '<table class="prediction-table">';
-            html += '<tr><th>Pos</th><th>Driver</th><th>Team</th><th>Win %</th><th>Top 3 %</th><th>Top 5 %</th><th>Top 10 %</th><th>DNF %</th><th>Expected Points</th><th>Confidence</th></tr>';
-            
-            data.predictions.forEach((pred, idx) => {
-                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1);
-                html += `<tr>
-                    <td>${medal}</td>
-                    <td><strong>${pred.driver_name || pred.driver || 'Unknown'}</strong></td>
-                    <td>${pred.team || 'Unknown'}</td>
-                    <td>${(pred.win_pct || 0).toFixed(1)}%</td>
-                    <td>${(pred.top3_pct || 0).toFixed(1)}%</td>
-                    <td>${(pred.top5_pct || 0).toFixed(1)}%</td>
-                    <td>${(pred.top10_pct || 0).toFixed(1)}%</td>
-                    <td>${(pred.dnf_pct || 0).toFixed(1)}%</td>
-                    <td>${(pred.expected_points || 0).toFixed(1)}</td>
-                    <td>${pred.confidence || 'N/A'}</td>
-                </tr>`;
-            });
-            
-            html += '</table>';
-            document.getElementById('results').innerHTML = html;
-            
-            // Update prediction count
-            document.getElementById('total-predictions').textContent = 
-                parseInt(document.getElementById('total-predictions').textContent) + 1;
-            
-            // Create charts
-            createCharts(data.predictions);
-            
-            // Create DNF table
-            createDNFTable(data.predictions);
-            
-            // Create constructor table
-            createConstructorTable(data.predictions);
-            
-            // Create top performers
-            createTopPerformers(data.predictions);
-            
-            // Create teammate battles
-            createTeammateBattles(data.predictions);
-            
-            // Create heatmap
-            createHeatmap(data.predictions);
-            
-            // Show download button
-            const downloadSection = document.getElementById('download-section');
-            if (downloadSection) {
-                downloadSection.style.display = 'block';
-            }
-        }
-
-        function createCharts(predictions) {
-            const drivers = predictions.slice(0, 20).map(p => p.driver_name || p.driver);
-            const winProbs = predictions.slice(0, 20).map(p => p.win_pct || 0);
-            const top3Probs = predictions.slice(0, 20).map(p => p.top3_pct || 0);
-            const positions = predictions.slice(0, 20).map(p => p.predicted_position || 0);
-            const points = predictions.slice(0, 20).map(p => p.expected_points || 0);
-            
-            // Win chart
-            Plotly.newPlot('winChart', [{
-                x: drivers,
-                y: winProbs,
-                type: 'bar',
-                marker: { color: 'rgb(102, 126, 234)' }
-            }], {
-                title: 'Win Probability by Driver (%)',
-                xaxis: { title: 'Driver', tickangle: -45 },
-                yaxis: { title: 'Win Probability (%)' },
-                margin: { b: 100 }
-            });
-            
-            // Top 3 chart
-            Plotly.newPlot('top3Chart', [{
-                x: drivers,
-                y: top3Probs,
-                type: 'bar',
-                marker: { color: 'rgb(118, 75, 162)' }
-            }], {
-                title: 'Top 3 Finish Probability (%)',
-                xaxis: { title: 'Driver', tickangle: -45 },
-                yaxis: { title: 'Top 3 Probability (%)' },
-                margin: { b: 100 }
-            });
-            
-            // Position chart
-            Plotly.newPlot('positionChart', [{
-                x: drivers,
-                y: positions,
-                type: 'bar',
-                marker: { color: 'rgb(255, 99, 132)' }
-            }], {
-                title: 'Expected Finish Position',
-                xaxis: { title: 'Driver', tickangle: -45 },
-                yaxis: { title: 'Position', autorange: 'reversed' },
-                margin: { b: 100 }
-            });
-            
-            // Points chart
-            Plotly.newPlot('pointsChart', [{
-                x: drivers,
-                y: points,
-                type: 'bar',
-                marker: { color: 'rgb(54, 162, 235)' }
-            }], {
-                title: 'Expected Points per Driver',
-                xaxis: { title: 'Driver', tickangle: -45 },
-                yaxis: { title: 'Expected Points' },
-                margin: { b: 100 }
-            });
-        }
-
-        function createDNFTable(predictions) {
-            let html = '<table class="prediction-table">';
-            html += '<tr><th>Driver</th><th>Team</th><th>DNF %</th><th>Risk Level</th><th>Risk Indicator</th></tr>';
-            
-            predictions.slice(0, 15).forEach(pred => {
-                const dnf = pred.dnf_pct || 0;
-                const risk = dnf < 5 ? '🟢 Low' : dnf < 10 ? '🟡 Medium' : '🔴 High';
-                const color = dnf < 5 ? '#28a745' : dnf < 10 ? '#ffc107' : '#dc3545';
+                // Get form values
+                const raceSelect = document.getElementById(type + 'Race');
+                const simsInput = document.getElementById(type + 'Sims');
                 
-                html += `<tr>
-                    <td><strong>${pred.driver_name || pred.driver}</strong></td>
-                    <td>${pred.team}</td>
-                    <td>${dnf.toFixed(1)}%</td>
-                    <td>${risk}</td>
-                    <td>
-                        <div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 25px;">
-                            <div style="height: 100%; width: ${dnf * 2}%; background: ${color};"></div>
-                        </div>
-                    </td>
-                </tr>`;
-            });
-            
-            html += '</table>';
-            document.getElementById('dnfTable').innerHTML = html;
-        }
+                const race = raceSelect.value;
+                const sims = parseInt(simsInput.value) || 10000;
 
-        function createConstructorTable(predictions) {
-            const constructors = {};
-            predictions.forEach(pred => {
-                const team = pred.team;
-                if (!constructors[team]) {
-                    constructors[team] = { win_pct: 0, points: 0, count: 0 };
+                console.log(`Running ${type} prediction for:`, race, 'with', sims, 'simulations');
+
+                if (!race) {
+                    alert('Please select a Grand Prix from the dropdown menu');
+                    loadingEl.classList.remove('active');
+                    return;
                 }
-                constructors[team].win_pct += pred.win_pct || 0;
-                constructors[team].points += pred.expected_points || 0;
-                constructors[team].count++;
-            });
-            
-            const sorted = Object.entries(constructors)
-                .sort((a, b) => b[1].win_pct - a[1].win_pct)
-                .slice(0, 10);
-            
-            let html = '<table class="prediction-table">';
-            html += '<tr><th>Pos</th><th>Constructor</th><th>Combined Win %</th><th>Total Expected Points</th></tr>';
-            
-            sorted.forEach(([team, data], idx) => {
-                html += `<tr>
-                    <td>${idx + 1}</td>
-                    <td><strong>${team.replace('_', ' ').toUpperCase()}</strong></td>
-                    <td>${data.win_pct.toFixed(1)}%</td>
-                    <td>${data.points.toFixed(1)}</td>
-                </tr>`;
-            });
-            
-            html += '</table>';
-            document.getElementById('constructorTable').innerHTML = html;
-        }
 
-        function createTopPerformers(predictions) {
-            const winner = predictions[0];
-            const darkHorses = predictions.filter(p => (p.top3_pct || 0) > 20 && (p.predicted_position || 99) > 3);
-            const safeBets = predictions.filter(p => (p.top10_pct || 0) > 80);
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">';
-            
-            html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                <h3>Most Likely Winner</h3>
-                <p style="font-size: 1.2em; margin: 10px 0;"><strong>${winner.driver_name || winner.driver}</strong></p>
-                <p>Win Probability: ${winner.win_pct?.toFixed(1) || 0}%</p>
-            </div>`;
-            
-            if (darkHorses.length > 0) {
-                const dh = darkHorses[0];
-                html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                    <h3>Dark Horse</h3>
-                    <p style="font-size: 1.2em; margin: 10px 0;"><strong>${dh.driver_name || dh.driver}</strong></p>
-                    <p>Top 3: ${dh.top3_pct?.toFixed(1) || 0}%</p>
-                </div>`;
-            }
-            
-            if (safeBets.length > 0) {
-                const sb = safeBets[0];
-                html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                    <h3>Safest Bet for Points</h3>
-                    <p style="font-size: 1.2em; margin: 10px 0;"><strong>${sb.driver_name || sb.driver}</strong></p>
-                    <p>Top 10: ${sb.top10_pct?.toFixed(1) || 0}%</p>
-                </div>`;
-            }
-            
-            html += '</div>';
-            document.getElementById('topPerformers').innerHTML = html;
-        }
+                // Call API endpoint
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        race: race,
+                        session_type: type.toUpperCase(),
+                        simulations: sims,
+                        weather: type === 'race' ? document.getElementById('raceWeather').value : undefined
+                    })
+                });
 
-        function createTeammateBattles(predictions) {
-            const teams = {};
-            predictions.forEach(pred => {
-                const team = pred.team;
-                if (!teams[team]) teams[team] = [];
-                teams[team].push(pred);
-            });
-            
-            let html = '<table class="prediction-table">';
-            html += '<tr><th>Constructor</th><th>Driver 1</th><th>Win %</th><th>Driver 2</th><th>Win %</th><th>Advantage</th></tr>';
-            
-            Object.entries(teams).forEach(([team, drivers]) => {
-                if (drivers.length >= 2) {
-                    const [d1, d2] = drivers;
-                    const advantage = (d1.win_pct || 0) - (d2.win_pct || 0);
-                    const leader = advantage > 0 ? d1 : d2;
-                    const advantageText = `${leader.driver_name || leader.driver} (+${Math.abs(advantage).toFixed(1)}%)`;
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (data.success) {
+                    // Display results
+                    displayResults(type, data.results);
+                    resultsEl.classList.add('active');
                     
-                    html += `<tr>
-                        <td><strong>${team.replace('_', ' ').toUpperCase()}</strong></td>
-                        <td>${d1.driver_name || d1.driver}</td>
-                        <td>${d1.win_pct?.toFixed(1) || 0}%</td>
-                        <td>${d2.driver_name || d2.driver}</td>
-                        <td>${d2.win_pct?.toFixed(1) || 0}%</td>
-                        <td>${advantageText}</td>
-                    </tr>`;
+                    // Debug logging for chart data
+                    console.log('Chart data received:', data.results.chart_data);
+                    if (data.results.chart_data) {
+                        console.log('Available chart keys:', Object.keys(data.results.chart_data));
+                        Object.keys(data.results.chart_data).forEach(key => {
+                            const value = data.results.chart_data[key];
+                            if (Array.isArray(value)) {
+                                console.log(`  ${key}: ${value.length} items`);
+                                if (value.length > 0) {
+                                    console.log(`    First item:`, value[0]);
+                                }
+                            } else if (typeof value === 'object') {
+                                console.log(`  ${key}: object with keys`, Object.keys(value));
+                            } else {
+                                console.log(`  ${key}:`, value);
+                            }
+                        });
+                    }
+                    
+                    // Generate charts based on session type with real data
+                    if (type === 'practice' && data.results.chart_data) {
+                        generatePracticeCharts(data.results.chart_data);
+                    } else if (type === 'qualifying' && data.results.chart_data) {
+                        generateQualifyingCharts(data.results.chart_data);
+                    } else if (type === 'race' && data.results.chart_data) {
+                        generateRaceCharts(data.results.chart_data);
+                        showDownloadButton(data.results.report_url);
+                    }
+                } else {
+                    alert('Prediction failed: ' + (data.error || 'Unknown error'));
+                    console.error('Prediction error:', data.error);
                 }
-            });
-            
-            html += '</table>';
-            document.getElementById('teammateBattles').innerHTML = html;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error running prediction: ' + error.message);
+            } finally {
+                loadingEl.classList.remove('active');
+            }
         }
 
-        function createHeatmap(predictions) {
-            const z = [];
-            const y = [];
-            predictions.slice(0, 10).forEach(pred => {
-                y.push(pred.driver_name || pred.driver);
-                const row = pred.position_distribution || Array(20).fill(0);
-                z.push(row.slice(0, 20));
-            });
+        function displayResults(type, results) {
+            const container = document.getElementById(type + 'ResultsContent');
             
-            Plotly.newPlot('heatmapChart', [{
-                z: z,
-                x: Array.from({length: 20}, (_, i) => `P${i+1}`),
-                y: y,
-                type: 'heatmap',
-                colorscale: 'Viridis'
-            }], {
-                title: 'Position Distribution (Top 10 Drivers)',
-                xaxis: { title: 'Position' },
-                yaxis: { title: 'Driver' }
-            });
+            let html = '';
+            
+            if (type === 'practice') {
+                html = `
+                    <div class="result-card">
+                        <h4>Fastest Driver</h4>
+                        <div class="result-value">${results.fastest_driver || 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Top 3 Predicted</h4>
+                        <div class="result-value">${results.top_3 ? results.top_3.join(', ') : 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Average Lap Time</h4>
+                        <div class="result-value">${results.avg_lap_time || 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Model Confidence</h4>
+                        <div class="result-value">${results.confidence ? results.confidence.toFixed(1) + '%' : 'N/A'}</div>
+                    </div>
+                `;
+            } else if (type === 'qualifying') {
+                html = `
+                    <div class="result-card">
+                        <h4>Pole Position</h4>
+                        <div class="result-value">${results.pole_position || 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Front Row</h4>
+                        <div class="result-value">${results.front_row ? results.front_row.join(' • ') : 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Q3 Drivers</h4>
+                        <div class="result-value">${results.q3_drivers ? results.q3_drivers.length : 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Predicted Pole Time</h4>
+                        <div class="result-value">${results.pole_time || 'N/A'}</div>
+                    </div>
+                `;
+            } else if (type === 'race') {
+                html = `
+                    <div class="result-card">
+                        <h4>Race Winner</h4>
+                        <div class="result-value">${results.winner || 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Podium</h4>
+                        <div class="result-value">${results.podium ? results.podium.join(' → ') : 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Fastest Lap</h4>
+                        <div class="result-value">${results.fastest_lap || 'N/A'}</div>
+                    </div>
+                    <div class="result-card">
+                        <h4>Win Probability</h4>
+                        <div class="result-value">${results.win_probability ? results.win_probability.toFixed(1) + '%' : 'N/A'}</div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
         }
 
-        function displayH2H(data) {
-            document.getElementById('loading').classList.remove('active');
+        function generatePracticeCharts(chartData) {
+            const chartsContainer = document.getElementById('practiceCharts');
             
-            let html = '<div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">';
-            html += `<h3 style="color: #764ba2;">Head-to-Head Results</h3>`;
-            html += `<p style="margin: 10px 0;"><strong>${data.driver1}</strong> finishes ahead: <strong style="color: #667eea; font-size: 1.5em;">${data.driver1_finishes_ahead_pct}%</strong></p>`;
-            html += `<p style="margin: 10px 0;"><strong>${data.driver2}</strong> finishes ahead: <strong style="color: #667eea; font-size: 1.5em;">${data.driver2_finishes_ahead_pct}%</strong></p>`;
-            html += `<p style="margin: 10px 0;">Average positions: ${data.driver1} (${data.driver1_avg_position.toFixed(1)}), ${data.driver2} (${data.driver2_avg_position.toFixed(1)})</p>`;
+            // Ensure data exists with defaults
+            const lapTimes = (chartData.lap_time_comparison || []).slice(0, 10);
+            const consistency = (chartData.consistency_ratings || []).slice(0, 10);
             
-            // H2H visualization
-            html += '<div style="margin-top: 20px;">';
-            html += `<p><strong>${data.driver1}</strong></p>`;
-            html += `<div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 30px;">`;
-            html += `<div style="height: 100%; width: ${data.driver1_finishes_ahead_pct}%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);"></div>`;
-            html += `</div>`;
-            html += `<p style="margin-top: 15px;"><strong>${data.driver2}</strong></p>`;
-            html += `<div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 30px;">`;
-            html += `<div style="height: 100%; width: ${data.driver2_finishes_ahead_pct}%; background: linear-gradient(90deg, #764ba2 0%, #667eea 100%);"></div>`;
-            html += `</div>`;
-            html += '</div>';
-            html += '</div>';
-            
-            document.getElementById('h2hResults').innerHTML = html;
-        }
-
-        function displayConstructors(data) {
-            let html = '<table class="prediction-table">';
-            html += '<tr><th>Constructor</th><th>Win Probability</th><th>Top 3 Probability</th><th>Expected Points</th></tr>';
-            
-            data.constructors.forEach(constructor => {
-                html += `<tr>
-                    <td><strong>${constructor.constructor.replace('_', ' ').toUpperCase()}</strong></td>
-                    <td>${constructor.win_probability?.toFixed(1) || 0}%</td>
-                    <td>${constructor.top3_probability?.toFixed(1) || 0}%</td>
-                    <td>${constructor.points_expected?.toFixed(1) || 0}</td>
-                </tr>`;
-            });
-            
-            html += '</table>';
-            document.getElementById('constructorTable').innerHTML = html;
-        }
-
-        function showError(message) {
-            document.getElementById('loading').classList.remove('active');
-            document.getElementById('results').innerHTML = `<p style="color: red; font-weight: bold;">Error: ${message}</p>`;
-        }
-
-        function downloadReport() {
-            const circuit = document.getElementById('circuit').value;
-            if (!circuit) {
-                alert('Please select a circuit first');
+            if (lapTimes.length === 0 && consistency.length === 0) {
+                chartsContainer.innerHTML = '<div class="result-card"><h4>No Chart Data Available</h4><p>Practice session data is being processed...</p></div>';
                 return;
             }
             
-            // Show loading message
-            const downloadBtn = event.target;
-            const originalText = downloadBtn.innerHTML;
-            downloadBtn.innerHTML = '⏳ Generating report...';
-            downloadBtn.disabled = true;
-            
-            // Trigger download
-            window.location.href = `/download-report/${circuit}`;
-            
-            // Restore button after 2 seconds
-            setTimeout(() => {
-                downloadBtn.innerHTML = originalText;
-                downloadBtn.disabled = false;
-            }, 2000);
+            chartsContainer.innerHTML = `
+                <div class="chart-container">
+                    <h4>🏎️ Lap Time Comparison (Top 10)</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="lapTimeChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>📊 Consistency & Reliability Ratings</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="consistencyChart"></canvas>
+                    </div>
+                </div>
+            `;
+
+            // Lap Time Comparison Chart
+            if (lapTimes.length > 0) {
+                const drivers = lapTimes.map(d => d.driver);
+                const gaps = lapTimes.map(d => d.gap_to_fastest || 0);
+                const teams = lapTimes.map(d => d.team || 'Unknown');
+
+                const lapTimeCtx = document.getElementById('lapTimeChart').getContext('2d');
+                new Chart(lapTimeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: drivers,
+                        datasets: [{
+                            label: 'Gap to Fastest (seconds)',
+                            data: gaps,
+                            backgroundColor: gaps.map((_, i) => 
+                                i === 0 ? 'rgba(225, 6, 0, 0.9)' : 
+                                i < 3 ? 'rgba(225, 6, 0, 0.7)' : 
+                                'rgba(225, 6, 0, 0.4)'
+                            ),
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12,
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        return 'Team: ' + teams[context.dataIndex];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            y: {
+                                ticks: { color: '#fff', font: { family: 'Titillium Web', weight: 'bold' } },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Consistency Chart
+            if (consistency.length > 0) {
+                const consDrivers = consistency.map(d => d.driver);
+                const consScores = consistency.map(d => d.consistency || 0);
+                const relScores = consistency.map(d => d.reliability || 0);
+
+                const consCtx = document.getElementById('consistencyChart').getContext('2d');
+                new Chart(consCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: consDrivers,
+                        datasets: [
+                            {
+                                label: 'Consistency (%)',
+                                data: consScores,
+                                borderColor: '#E10600',
+                                backgroundColor: 'rgba(225, 6, 0, 0.2)',
+                                borderWidth: 2,
+                                pointBackgroundColor: '#E10600'
+                            },
+                            {
+                                label: 'Reliability (%)',
+                                data: relScores,
+                                borderColor: '#00ff88',
+                                backgroundColor: 'rgba(0, 255, 136, 0.2)',
+                                borderWidth: 2,
+                                pointBackgroundColor: '#00ff88'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#fff', font: { family: 'Titillium Web' } }
+                            }
+                        },
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: { 
+                                    color: '#fff',
+                                    backdropColor: 'transparent',
+                                    font: { family: 'Titillium Web' }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                pointLabels: {
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 11, weight: 'bold' }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         }
+
+        function generateQualifyingCharts(chartData) {
+            const chartsContainer = document.getElementById('qualifyingCharts');
+            
+            // Ensure data exists with defaults
+            const positions = (chartData.qualifying_positions || []).slice(0, 15);
+            const riskData = chartData.elimination_risk || { q1_at_risk: [], q2_at_risk: [], safe_in_q3: [] };
+            
+            if (positions.length === 0) {
+                chartsContainer.innerHTML = '<div class="result-card"><h4>No Chart Data Available</h4><p>Qualifying session data is being processed...</p></div>';
+                return;
+            }
+            
+            chartsContainer.innerHTML = `
+                <div class="chart-container">
+                    <h4>🎯 Qualifying Position Probabilities</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="qualPosChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>⚠️ Elimination Risk Analysis</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="elimRiskChart"></canvas>
+                    </div>
+                </div>
+            `;
+
+            // Qualifying Position Chart
+            if (positions.length > 0) {
+                const posDrivers = positions.map(p => p.driver);
+                const probabilities = positions.map(p => p.probability || 0);
+
+                const qualPosCtx = document.getElementById('qualPosChart').getContext('2d');
+                new Chart(qualPosCtx, {
+                    type: 'line',
+                    data: {
+                        labels: posDrivers,
+                        datasets: [{
+                            label: 'Qualifying Probability (%)',
+                            data: probabilities,
+                            borderColor: '#E10600',
+                            backgroundColor: 'rgba(225, 6, 0, 0.15)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#E10600',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 11, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Elimination Risk Chart
+            const elimCtx = document.getElementById('elimRiskChart').getContext('2d');
+            new Chart(elimCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Q1 At Risk', 'Q2 At Risk', 'Safe in Q3'],
+                    datasets: [{
+                        label: 'Number of Drivers',
+                        data: [
+                            riskData.q1_at_risk.length,
+                            riskData.q2_at_risk.length,
+                            riskData.safe_in_q3.length
+                        ],
+                        backgroundColor: [
+                            'rgba(255, 0, 0, 0.7)',
+                            'rgba(255, 165, 0, 0.7)',
+                            'rgba(0, 255, 0, 0.7)'
+                        ],
+                        borderColor: ['#ff0000', '#ffa500', '#00ff00'],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                            grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                        },
+                        x: {
+                            ticks: { 
+                                color: '#fff',
+                                font: { family: 'Titillium Web', weight: 'bold' }
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateRaceCharts(chartData) {
+            const chartsContainer = document.getElementById('raceCharts');
+            
+            // Ensure all data arrays exist with defaults
+            const winProbs = (chartData.win_probabilities || []).slice(0, 10);
+            const podiumProbs = (chartData.podium_probabilities || []).slice(0, 10);
+            const finishPositions = (chartData.expected_finish_positions || []).slice(0, 15);
+            const pointsData = (chartData.points_distribution || []).slice(0, 10);
+            const dnfData = (chartData.dnf_risk_analysis || []).slice(0, 10);
+            const constructorData = (chartData.constructor_standings || []).slice(0, 8);
+            const weatherData = chartData.weather_impact || {};
+            const modelData = chartData.model_performance || {};
+            
+            if (winProbs.length === 0) {
+                chartsContainer.innerHTML = '<div class="result-card"><h4>No Chart Data Available</h4><p>Race prediction data is being processed...</p></div>';
+                return;
+            }
+            
+            chartsContainer.innerHTML = `
+                <div class="chart-container">
+                    <h4>🏆 Win Probability Distribution</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="winProbChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>🎯 Top 3 Podium Probability</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="podiumChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>🏎️ Expected Finish Positions</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="finishPosChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>💯 Expected Points Distribution</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="pointsChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>📉 DNF Risk Analysis</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="dnfChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>🏢 Constructor Standings Prediction</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="constructorChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>🌧️ Weather Impact Analysis</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="weatherChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>📈 Model Performance Metrics</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="modelChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>🎯 Position Distribution Heatmap</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="heatmapChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>📊 Cumulative Probability Analysis</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="cumulativeChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>⚡ Overtaking Potential</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="overtakingChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>🔧 Tire Strategy Simulation</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="tireChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4>👥 Teammate Battle Analysis</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="teammateChart"></canvas>
+                    </div>
+                </div>
+            `;
+
+            // Win Probability Chart
+            if (winProbs.length > 0) {
+                const winDrivers = winProbs.map(d => d.driver);
+                const winPercentages = winProbs.map(d => d.probability || 0);
+                const teams = winProbs.map(d => d.team || 'Unknown');
+
+                const winProbCtx = document.getElementById('winProbChart').getContext('2d');
+                new Chart(winProbCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: winDrivers,
+                        datasets: [{
+                            label: 'Win Probability (%)',
+                            data: winPercentages,
+                            backgroundColor: winPercentages.map((_, i) => 
+                                `rgba(225, 6, 0, ${0.9 - i * 0.08})`
+                            ),
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12,
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        return 'Team: ' + teams[context.dataIndex];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web' },
+                                    callback: function(value) { return value + '%'; }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 12, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Podium Probability Chart
+            if (podiumProbs.length > 0) {
+                const podiumDrivers = podiumProbs.map(d => d.driver);
+                const podiumChances = podiumProbs.map(d => d.podium_chance || 0);
+
+                const podiumCtx = document.getElementById('podiumChart').getContext('2d');
+                new Chart(podiumCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: podiumDrivers,
+                        datasets: [{
+                            label: 'Podium Probability (%)',
+                            data: podiumChances,
+                            backgroundColor: podiumChances.map((_, i) => 
+                                i < 3 ? 'rgba(225, 6, 0, 0.9)' : 
+                                i < 6 ? 'rgba(225, 6, 0, 0.6)' : 
+                                'rgba(225, 6, 0, 0.3)'
+                            ),
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web' },
+                                    callback: function(value) { return value + '%'; }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            y: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Expected Finish Positions Chart
+            if (finishPositions.length > 0) {
+                const finishDrivers = finishPositions.map(p => p.driver);
+                const expectedPositions = finishPositions.map(p => p.expected_position || (p.position || 0));
+
+                const finishCtx = document.getElementById('finishPosChart').getContext('2d');
+                new Chart(finishCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Expected Finish Position',
+                            data: finishDrivers.map((driver, i) => ({
+                                x: i + 1,
+                                y: expectedPositions[i],
+                                driver: driver
+                            })),
+                            backgroundColor: 'rgba(225, 6, 0, 0.7)',
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            pointRadius: 8,
+                            pointHoverRadius: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12,
+                                callbacks: {
+                                    title: function(items) {
+                                        return items[0].raw.driver;
+                                    },
+                                    label: function(context) {
+                                        return 'Expected: P' + context.raw.y.toFixed(1);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Grid Position',
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 14, weight: 'bold' }
+                                },
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            y: {
+                                reverse: true,
+                                title: {
+                                    display: true,
+                                    text: 'Expected Finish',
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 14, weight: 'bold' }
+                                },
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Points Distribution Chart
+            if (pointsData.length > 0) {
+                const pointsDrivers = pointsData.map(p => p.driver);
+                const expectedPoints = pointsData.map(p => p.expected_points || 0);
+
+                const pointsCtx = document.getElementById('pointsChart').getContext('2d');
+                new Chart(pointsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: pointsDrivers,
+                        datasets: [{
+                            label: 'Expected Points',
+                            data: expectedPoints,
+                            backgroundColor: expectedPoints.map(pts => 
+                                pts >= 25 ? 'rgba(225, 6, 0, 0.9)' :
+                                pts >= 15 ? 'rgba(225, 6, 0, 0.7)' :
+                                pts >= 8 ? 'rgba(225, 6, 0, 0.5)' :
+                                'rgba(225, 6, 0, 0.3)'
+                            ),
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 11, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // DNF Risk Chart
+            if (dnfData.length > 0) {
+                const dnfDrivers = dnfData.map(d => d.driver);
+                const dnfProbabilities = dnfData.map(d => d.dnf_probability || 0);
+
+                const dnfCtx = document.getElementById('dnfChart').getContext('2d');
+                new Chart(dnfCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: dnfDrivers,
+                        datasets: [{
+                            label: 'DNF Probability (%)',
+                            data: dnfProbabilities,
+                            backgroundColor: dnfProbabilities.map(prob => 
+                                prob > 20 ? 'rgba(255, 0, 0, 0.8)' :
+                                prob > 10 ? 'rgba(255, 165, 0, 0.8)' :
+                                'rgba(0, 255, 0, 0.8)'
+                            ),
+                            borderColor: dnfProbabilities.map(prob => 
+                                prob > 20 ? '#ff0000' :
+                                prob > 10 ? '#ffa500' :
+                                '#00ff00'
+                            ),
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web' },
+                                    callback: function(value) { return value + '%'; }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 11, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Constructor Standings Chart
+            if (constructorData.length > 0) {
+                const constructors = constructorData.map(c => c.team);
+                const constructorPoints = constructorData.map(c => c.points || 0);
+
+                const constructorCtx = document.getElementById('constructorChart').getContext('2d');
+                new Chart(constructorCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: constructors,
+                        datasets: [{
+                            label: 'Predicted Points',
+                            data: constructorPoints,
+                            backgroundColor: constructorPoints.map((_, i) => 
+                                `rgba(225, 6, 0, ${0.9 - i * 0.1})`
+                            ),
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 12, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Weather Impact Chart
+            const rainProb = weatherData.rain_probability || 0;
+            const safetyCarProb = weatherData.safety_car_likelihood || 0;
+            const dryProb = Math.max(0, 100 - ((rainProb + safetyCarProb) / 2));
+
+            const weatherCtx = document.getElementById('weatherChart').getContext('2d');
+            new Chart(weatherCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Rain Probability', 'Safety Car Likelihood', 'Dry Conditions'],
+                    datasets: [{
+                        data: [rainProb, safetyCarProb, dryProb],
+                        backgroundColor: [
+                            'rgba(0, 150, 255, 0.8)',
+                            'rgba(255, 165, 0, 0.8)',
+                            'rgba(0, 255, 0, 0.8)'
+                        ],
+                        borderColor: ['#0096ff', '#ffa500', '#00ff00'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { 
+                                color: '#fff',
+                                font: { family: 'Titillium Web', size: 13, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#E10600',
+                            borderWidth: 2,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.parsed.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Model Performance Chart
+            const modelMetrics = [
+                modelData.overall_confidence || 0,
+                modelData.convergence_rate || 0,
+                modelData.historical_accuracy || 0,
+                Math.min((modelData.simulation_count || 10000) / 1000, 100),
+                (1 - (modelData.prediction_variance || 0)) * 100
+            ];
+
+            const modelCtx = document.getElementById('modelChart').getContext('2d');
+            new Chart(modelCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Confidence', 'Convergence', 'Historical Accuracy', 'Simulations (k)', 'Low Variance'],
+                    datasets: [{
+                        label: 'Model Metrics',
+                        data: modelMetrics,
+                        borderColor: '#E10600',
+                        backgroundColor: 'rgba(225, 6, 0, 0.2)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#E10600',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#fff', font: { family: 'Titillium Web' } }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { 
+                                color: '#fff',
+                                backdropColor: 'transparent',
+                                font: { family: 'Titillium Web' }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: {
+                                color: '#fff',
+                                font: { family: 'Titillium Web', size: 12, weight: 'bold' }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Position Distribution Heatmap
+            const heatmapData = chartData.position_heatmap || [];
+            if (heatmapData.length > 0) {
+                const heatmapDrivers = heatmapData.map(h => h.driver);
+                const heatmapPositions = heatmapData[0].positions || [];
+                
+                const heatmapDatasets = heatmapData.slice(0, 8).map((h, idx) => ({
+                    label: h.driver,
+                    data: h.probabilities || [],
+                    borderColor: `hsl(${idx * 45}, 70%, 50%)`,
+                    backgroundColor: `hsla(${idx * 45}, 70%, 50%, 0.1)`,
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3
+                }));
+
+                const heatmapCtx = document.getElementById('heatmapChart').getContext('2d');
+                new Chart(heatmapCtx, {
+                    type: 'line',
+                    data: {
+                        labels: heatmapPositions.map(p => 'P' + p),
+                        datasets: heatmapDatasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#fff', font: { family: 'Titillium Web', size: 11 } }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Probability (%)',
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', weight: 'bold' }
+                                },
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Finishing Position',
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', weight: 'bold' }
+                                },
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Cumulative Probability Analysis
+            const cumulativeData = chartData.cumulative_probability || [];
+            if (cumulativeData.length > 0) {
+                const cumDrivers = cumulativeData.slice(0, 10).map(c => c.driver);
+                const top3Prob = cumulativeData.slice(0, 10).map(c => c.cumulative_top3);
+                const top5Prob = cumulativeData.slice(0, 10).map(c => c.cumulative_top5);
+                const top10Prob = cumulativeData.slice(0, 10).map(c => c.cumulative_top10);
+
+                const cumulativeCtx = document.getElementById('cumulativeChart').getContext('2d');
+                new Chart(cumulativeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: cumDrivers,
+                        datasets: [
+                            {
+                                label: 'Top 3 (%)',
+                                data: top3Prob,
+                                backgroundColor: 'rgba(225, 6, 0, 0.8)',
+                                borderColor: '#E10600',
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Top 5 (%)',
+                                data: top5Prob,
+                                backgroundColor: 'rgba(225, 6, 0, 0.6)',
+                                borderColor: '#E10600',
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Top 10 (%)',
+                                data: top10Prob,
+                                backgroundColor: 'rgba(225, 6, 0, 0.4)',
+                                borderColor: '#E10600',
+                                borderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#fff', font: { family: 'Titillium Web' } }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web' },
+                                    callback: function(value) { return value + '%'; }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 11, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Overtaking Potential
+            const overtakingData = chartData.overtaking_analysis || [];
+            if (overtakingData.length > 0) {
+                const overtakeDrivers = overtakingData.slice(0, 12).map(o => o.driver);
+                const overtakeRatings = overtakingData.slice(0, 12).map(o => o.overtaking_rating);
+
+                const overtakingCtx = document.getElementById('overtakingChart').getContext('2d');
+                new Chart(overtakingCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: overtakeDrivers,
+                        datasets: [{
+                            label: 'Overtaking Ability (%)',
+                            data: overtakeRatings,
+                            backgroundColor: overtakeRatings.map(rating => 
+                                rating > 75 ? 'rgba(0, 255, 0, 0.7)' :
+                                rating > 50 ? 'rgba(255, 165, 0, 0.7)' :
+                                'rgba(255, 0, 0, 0.7)'
+                            ),
+                            borderColor: overtakeRatings.map(rating => 
+                                rating > 75 ? '#00ff00' :
+                                rating > 50 ? '#ffa500' :
+                                '#ff0000'
+                            ),
+                            borderWidth: 2,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web' },
+                                    callback: function(value) { return value + '%'; }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            y: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Tire Strategy Simulation
+            const tireData = chartData.tire_strategies || [];
+            if (tireData.length > 0) {
+                const tireDrivers = tireData.map(t => t.driver);
+                const pitStops = tireData.map(t => t.optimal_stops);
+                const strategyReliability = tireData.map(t => t.strategy_reliability);
+
+                const tireCtx = document.getElementById('tireChart').getContext('2d');
+                new Chart(tireCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: tireDrivers,
+                        datasets: [
+                            {
+                                label: 'Optimal Pit Stops',
+                                data: pitStops,
+                                backgroundColor: 'rgba(0, 150, 255, 0.7)',
+                                borderColor: '#0096ff',
+                                borderWidth: 2,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Strategy Reliability (%)',
+                                data: strategyReliability,
+                                backgroundColor: 'rgba(225, 6, 0, 0.7)',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#fff', font: { family: 'Titillium Web' } }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Pit Stops',
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', weight: 'bold' }
+                                },
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Reliability (%)',
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', weight: 'bold' }
+                                },
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { drawOnChartArea: false }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 11, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Teammate Battle Analysis
+            const teammateData = chartData.teammate_battles || [];
+            if (teammateData.length > 0) {
+                const battleTeams = teammateData.map(t => t.team);
+                const driver1Points = teammateData.map(t => t.driver1_points);
+                const driver2Points = teammateData.map(t => t.driver2_points);
+
+                const teammateCtx = document.getElementById('teammateChart').getContext('2d');
+                new Chart(teammateCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: battleTeams,
+                        datasets: [
+                            {
+                                label: 'Driver 1 Points',
+                                data: driver1Points,
+                                backgroundColor: 'rgba(225, 6, 0, 0.8)',
+                                borderColor: '#E10600',
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Driver 2 Points',
+                                data: driver2Points,
+                                backgroundColor: 'rgba(0, 150, 255, 0.8)',
+                                borderColor: '#0096ff',
+                                borderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#fff', font: { family: 'Titillium Web' } }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#E10600',
+                                borderWidth: 2,
+                                padding: 12
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#fff', font: { family: 'Titillium Web' } },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#fff',
+                                    font: { family: 'Titillium Web', size: 12, weight: 'bold' }
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function showDownloadButton(reportUrl) {
+            const downloadSection = document.getElementById('raceDownload');
+            downloadSection.innerHTML = `
+                <button class="download-button" onclick="window.open('${reportUrl}', '_blank')">
+                    📊 Download Full HTML Report
+                </button>
+            `;
+        }
+
+        // Initialize
+        createBgLines();
+        populateRaces();
     </script>
 </body>
 </html>

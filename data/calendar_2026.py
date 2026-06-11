@@ -13,6 +13,10 @@ from typing import Optional, Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
+# Apply cache fix BEFORE importing fastf1 to avoid RequestsCookieJar NameError on Python 3.14
+from data._fastf1_cache_fix import apply_fastf1_cache_fix  # noqa: E402, F401
+apply_fastf1_cache_fix()
+
 # Try to import FastF1
 try:
     import fastf1
@@ -72,6 +76,12 @@ def sync_calendar_from_fastf1(season: int = 2026) -> Dict[str, Any]:
     if not FASTF1_AVAILABLE:
         logger.warning("FastF1 not available. Cannot sync calendar.")
         return {"synced": 0, "added": 0, "errors": ["FastF1 not installed"]}
+    
+    # For future seasons, skip FastF1 sync — data doesn't exist yet
+    current_year = datetime.now().year
+    if season > current_year:
+        logger.info(f"Season {season} is in the future — skipping FastF1 calendar sync.")
+        return {"synced": 0, "added": 0, "errors": []}
     
     try:
         # Fetch official schedule from FastF1
@@ -161,7 +171,7 @@ def get_fastf1_session(round_or_name: Any, session_type: str = 'R'):
         session_type: Session type ('P1', 'P2', 'P3', 'Q', 'S', 'R')
     
     Returns:
-        FastF1 session object
+        FastF1 session object or None if data not available
     """
     if not FASTF1_AVAILABLE:
         raise ImportError("FastF1 not installed. Install with: pip install fastf1")
@@ -181,11 +191,20 @@ def get_fastf1_session(round_or_name: Any, session_type: str = 'R'):
     # fastf1.get_session expects year, identifier (name or round), session
     try:
         session = fastf1.get_session(2026, race['name'], session_type)
-        session.load()
+        # Load with minimal data to avoid network issues
+        session.load(telemetry=False, weather=False, messages=False)
         return session
     except Exception as e:
-        logger.error(f"Failed to load session for {race['name']} {session_type}: {e}")
-        raise
+        # Check if this is a "session not available" error (future race)
+        error_msg = str(e).lower()
+        if 'no data for this session' in error_msg or 'sessionnotavailable' in str(type(e)).lower():
+            logger.info(f"Future race data not available yet: 2026 {race['name']} {session_type}")
+            return None
+        
+        logger.warning(f"Failed to load session for {race['name']} {session_type}: {e}")
+        # For future races, this is expected - return None instead of crashing
+        logger.info(f"Future race data not available yet: 2026 {race['name']}")
+        return None
 
 
 # ── Calendar Query Functions ────────────────────────────────────────────────────
@@ -204,6 +223,14 @@ def get_next_race() -> Optional[dict]:
 def get_race_by_round(round_number: int) -> Optional[dict]:
     """Return a specific round."""
     return next((r for r in CALENDAR_2026 if r["round"] == round_number), None)
+
+
+def get_race_by_circuit(circuit_id: str) -> Optional[dict]:
+    """Return the local race dictionary for a given circuit ID."""
+    return next(
+        (r for r in CALENDAR_2026 if r["circuit"] == circuit_id or r["name"].lower().replace(' ', '_') == circuit_id),
+        None,
+    )
 
 
 def get_sprint_weekends() -> list:

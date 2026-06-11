@@ -14,21 +14,31 @@ Integrates fastf1 library for:
 - ML feature extraction
 """
 
+import json
 import logging
-from typing import Optional, Dict, List
+from pathlib import Path
+from typing import Optional, Dict, List, Any
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# Apply cache fix BEFORE importing fastf1 to avoid RequestsCookieJar NameError on Python 3.14
+from data._fastf1_cache_fix import apply_fastf1_cache_fix, configure_fastf1_offline_mode  # noqa: E402, F401
+apply_fastf1_cache_fix()
+configure_fastf1_offline_mode()
+
 # Try to import FastF1
+FASTF1_AVAILABLE = False
+SessionNotAvailableError = None
+
 try:
     import fastf1
     from fastf1 import plotting
+    from fastf1.exceptions import SessionNotAvailableError
     FASTF1_AVAILABLE = True
     plotting.setup_mpl()
 except ImportError:
     logger.warning("fastf1 library not installed. Install with: pip install fastf1")
-    FASTF1_AVAILABLE = False
 
 
 def get_session(season: int, race_name: str, session_type: str = 'R'):
@@ -41,17 +51,35 @@ def get_session(season: int, race_name: str, session_type: str = 'R'):
         session_type: 'P1', 'P2', 'P3', 'Q', 'S', 'SQ', 'R'
     
     Returns:
-        fastf1.core.Session object
+        fastf1.core.Session object or None if data not available
+    
+    Raises:
+        ImportError: If fastf1 is not installed
     """
     if not FASTF1_AVAILABLE:
         raise ImportError("fastf1 library required. Install: pip install fastf1")
     
     try:
         session = fastf1.get_session(season, race_name, session_type)
-        session.load()
+        # Load with minimal data to avoid network issues for future races
+        session.load(telemetry=False, weather=False, messages=False)
         return session
     except Exception as e:
-        logger.error(f"Failed to load session: {e}")
+        # Check if this is a "session not available" error (future race)
+        if SessionNotAvailableError and isinstance(e, SessionNotAvailableError):
+            logger.info(f"Future race data not available yet: {season} {race_name} {session_type}")
+            return None
+        
+        error_msg = str(e).lower()
+        if 'no data for this session' in error_msg:
+            logger.info(f"Future race data not available yet: {season} {race_name} {session_type}")
+            return None
+
+        logger.warning(f"Failed to load session {season} {race_name} {session_type}: {e}")
+        # For future races, this is expected - return None instead of raising
+        if season >= 2026:
+            logger.info(f"Future race data not available yet: {season} {race_name}")
+            return None
         raise
 
 
@@ -332,6 +360,12 @@ def load_entire_season(season: int, session_type: str = 'R') -> List[Dict]:
     if not FASTF1_AVAILABLE:
         raise ImportError("fastf1 library required")
     
+    # For future seasons (2026+), return empty list since data doesn't exist yet
+    current_year = datetime.now().year
+    if season > current_year:
+        logger.info(f"Season {season} is in the future — no FastF1 data available yet.")
+        return []
+    
     season_data = []
     
     try:
@@ -363,7 +397,13 @@ def load_entire_season(season: int, session_type: str = 'R') -> List[Dict]:
             logger.info(f"✓ Loaded: Round {race_info['round']} - {race_info['race_name']}")
             
         except Exception as e:
-            logger.warning(f"✗ Failed to load: {event['EventName']} - {e}")
+            # Log connection errors at debug level to reduce noise for future seasons
+            error_str = str(e).lower()
+            if 'connection' in error_str or 'dns' in error_str or 'getaddrinfo' in error_str:
+                logger.debug(f"✗ Connection error for {event['EventName']} (expected for future/partial seasons): {e}")
+            else:
+                logger.warning(f"✗ Failed to load: {event['EventName']} - {e}")
+            
             season_data.append({
                 'round': int(event['RoundNumber']),
                 'race_name': event['EventName'],
@@ -471,6 +511,126 @@ def extract_ml_features(season: int, race_name: str) -> Dict:
         'strategy_features': strategy_features,
     }
 
+def _serialize_value(value: Any) -> Any:
+    if isinstance(value, (bool, int, float, str)) or value is None:
+        return value
+    if isinstance(value, (datetime,)):
+        return value.isoformat()
+    try:
+        return value.item()
+    except Exception:
+        return str(value)
+
+
+def _dataframe_to_records(df):
+    records = []
+    for _, row in df.iterrows():
+        record = {k: _serialize_value(v) for k, v in row.items()}
+        records.append(record)
+    return records
+
+
+def sync_all_historical_data(seasons: List[int], output_dir: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Sync historical FastF1 data for the given seasons and persist structured JSON.
+
+    Args:
+        seasons: List of years to sync.
+        output_dir: Optional directory path to save JSON exports.
+
+    Returns:
+        Summary dictionary with synced seasons, files, and errors.
+    """
+    if not FASTF1_AVAILABLE:
+        raise ImportError("fastf1 library required. Install with: pip install fastf1")
+
+    output_dir = Path(output_dir or Path(__file__).resolve().parents[1] / "historical")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    summary = {
+        "seasons_synced": 0,
+        "files": [],
+        "errors": [],
+    }
+
+    current_year = datetime.now().year
+
+    for season in seasons:
+        # Skip future seasons — no FastF1 data available yet
+        if season > current_year:
+            logger.info(f"Skipping future season {season} — no FastF1 data available.")
+            continue
+
+        try:
+            season_data = []
+            schedule = fastf1.get_event_schedule(season)
+            for _, event in schedule.iterrows():
+                if 'Test' in event['EventName']:
+                    continue
+
+                race_info = {
+                    'round': int(event['RoundNumber']),
+                    'race_name': event['EventName'],
+                    'circuit': event['Location'],
+                    'date': str(event['EventDate']),
+                    'results': [],
+                    'winner': None,
+                    'error': None,
+                }
+
+                try:
+                    session = fastf1.get_session(season, event['EventName'], 'R')
+                    session.load(telemetry=False, weather=False, messages=False)
+                    race_info['winner'] = session.results.iloc[0]['Abbreviation'] if len(session.results) > 0 else None
+                    race_info['results'] = _dataframe_to_records(session.results)
+                except Exception as inner_err:
+                    error_str = str(inner_err).lower()
+                    if 'connection' in error_str or 'dns' in error_str or 'getaddrinfo' in error_str:
+                        logger.debug(f"Connection error for {event['EventName']} (expected): {inner_err}")
+                    else:
+                        logger.warning(f"Failed to load {event['EventName']}: {inner_err}")
+                    race_info['error'] = str(inner_err)
+
+                season_data.append(race_info)
+
+            path = output_dir / f"fastf1_season_{season}.json"
+            with path.open('w', encoding='utf-8') as f:
+                json.dump(season_data, f, indent=2)
+
+            summary['seasons_synced'] += 1
+            summary['files'].append(str(path))
+        except Exception as err:
+            summary['errors'].append(f"{season}: {err}")
+
+    return summary
+
+
+def get_historical_circuit_stats(season: int, circuit_name: str) -> Dict[str, Any]:
+    """
+    Return basic historical stats for a single circuit from FastF1.
+
+    Args:
+        season: Year to inspect.
+        circuit_name: Circuit or event name.
+
+    Returns:
+        Dictionary with summary stats for the circuit.
+    """
+    if not FASTF1_AVAILABLE:
+        raise ImportError("fastf1 library required. Install with: pip install fastf1")
+
+    schedule = fastf1.get_event_schedule(season)
+    circuit_rows = schedule[schedule['EventName'].str.contains(circuit_name, case=False, na=False)]
+    if circuit_rows.empty:
+        raise ValueError(f"Circuit not found in FastF1 schedule: {circuit_name}")
+
+    stats = {
+        'season': season,
+        'event': circuit_rows.iloc[0]['EventName'],
+        'location': circuit_rows.iloc[0]['Location'],
+        'round': int(circuit_rows.iloc[0]['RoundNumber']),
+    }
+    return stats
 # ── EXPORT ──────────────────────────────────────────────────────────────────────
 
 __all__ = [
@@ -485,6 +645,8 @@ __all__ = [
     "compare_drivers_telemetry",          # NEW
     "load_entire_season",                 # NEW
     "extract_ml_features",                # NEW
+    "sync_all_historical_data",           # NEW
+    "get_historical_circuit_stats",       # NEW
 ]
 
 if __name__ == "__main__":

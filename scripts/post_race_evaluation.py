@@ -1,46 +1,25 @@
-"""
-Post-Race Evaluation Script for F1 Prediction System.
-
-This script evaluates prediction accuracy after a race using various metrics.
-"""
+"""Post-race evaluation helper for F1 Predictor."""
 
 import json
-from typing import Dict, Any
+import sys
+
+from engine.prediction_tracker import run_post_race_evaluation
 
 
-def run_post_race_evaluation(race: str, actual_results: Dict[str, int]) -> Dict[str, Any]:
-    """
-    Evaluate prediction accuracy after a race.
-    
-    Args:
-        race: Circuit ID
-        actual_results: Dictionary mapping driver IDs to their actual finishing positions
-                       e.g., {"verstappen": 1, "hamilton": 2, "leclerc": 3}
-    
-    Returns:
-        Dictionary containing evaluation metrics
-    """
-    from engine.prediction_tracker import PredictionTracker
-    
-    print(f"Evaluating race: {race}")
-    print(f"Actual results: {actual_results}")
-    
-    tracker = PredictionTracker()
-    try:
-        return tracker.evaluate_race(race, actual_results)
-    finally:
-        tracker.close()
+def main() -> None:
+    if len(sys.argv) != 3:
+        print("Usage: python scripts/post_race_evaluation.py <race_id> <results.json>")
+        sys.exit(1)
+
+    race_id = sys.argv[1]
+    results_path = sys.argv[2]
+
+    with open(results_path, "r", encoding="utf-8") as f:
+        actual_results = json.load(f)
+
+    result = run_post_race_evaluation(race_id, actual_results)
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
-    # Example usage
-    sample_results = {
-        "verstappen": 1,
-        "hamilton": 2,
-        "leclerc": 3,
-        "sainz": 4,
-        "norris": 5
-    }
-    
-    result = run_post_race_evaluation("monaco", sample_results)
-    print(json.dumps(result, indent=2))
+    main()
