@@ -841,6 +841,32 @@ def _build_f1_themed_html(
         "RACE": "Grand Prix"
     }.get(session_type, "Race Weekend")
     
+    # Podium HTML block (avoid nested inline f-strings)
+    podium_html = ""
+    if session_type == 'RACE':
+        if podium:
+            podium_html = f"""
+        <div class='podium-section'>
+            <div class='podium-title'>Predicted Podium</div>
+            <div class='podium-grid'>
+                <div class='podium-spot second'>
+                    <div class='podium-position'>🥈</div>
+                    <div class='podium-driver'>{podium[1] if len(podium) > 1 else 'TBD'}</div>
+                </div>
+                <div class='podium-spot first'>
+                    <div class='podium-position'>🥇</div>
+                    <div class='podium-driver'>{podium[0] if len(podium) > 0 else 'TBD'}</div>
+                </div>
+                <div class='podium-spot third'>
+                    <div class='podium-position'>🥉</div>
+                    <div class='podium-driver'>{podium[2] if len(podium) > 2 else 'TBD'}</div>
+                </div>
+            </div>
+        </div>
+        """
+        else:
+            podium_html = ""
+    
     # Build driver rows
     driver_rows_html = ""
     for i, pred in enumerate(predictions[:10]):  # Top 10
@@ -1136,23 +1162,7 @@ def _build_f1_themed_html(
             </div>
         </div>
 
-        {"<div class='podium-section'>" if session_type == 'RACE' else ""}
-        {"<div class='podium-title'>Predicted Podium</div>" if session_type == 'RACE' else ""}
-        {f"<div class='podium-grid'>
-            <div class='podium-spot second'>
-                <div class='podium-position'>🥈</div>
-                <div class='podium-driver'>{podium[1] if len(podium) > 1 else 'TBD'}</div>
-            </div>
-            <div class='podium-spot first'>
-                <div class='podium-position'>🥇</div>
-                <div class='podium-driver'>{podium[0] if podium else 'TBD'}</div>
-            </div>
-            <div class='podium-spot third'>
-                <div class='podium-position'>🥉</div>
-                <div class='podium-driver'>{podium[2] if len(podium) > 2 else 'TBD'}</div>
-            </div>
-        </div>" if session_type == 'RACE' and podium else ""}
-        {"</div>" if session_type == 'RACE' else ""}
+            {podium_html}
 
         <h2 class="section-title">Top 10 Predictions</h2>
         {driver_rows_html}

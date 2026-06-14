@@ -15,6 +15,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+from typing import Dict
 import json
 import logging
 import os
@@ -310,6 +311,12 @@ def format_prediction_results(result: Dict, session_type: str) -> Dict:
             "avg_lap_time": f"{int(avg_lap // 60)}:{avg_lap % 60:05.2f}",
             "confidence": meta.get('overall_model_confidence', 0) * 100,
             "session_type": "Practice",
+            "meta": {
+                "safety_car_probability": meta.get('safety_car_probability', 0),
+                "rain_probability": meta.get('rain_probability', 0),
+                "overall_model_confidence": meta.get('overall_model_confidence', 0),
+                "n_simulations": meta.get('n_simulations', None)
+            },
             "chart_data": {
                 "lap_time_comparison": [
                     {
@@ -346,6 +353,12 @@ def format_prediction_results(result: Dict, session_type: str) -> Dict:
             "pole_time": "1:18.234",
             "confidence": meta.get('overall_model_confidence', 0) * 100,
             "session_type": "Qualifying",
+            "meta": {
+                "safety_car_probability": meta.get('safety_car_probability', 0),
+                "rain_probability": meta.get('rain_probability', 0),
+                "overall_model_confidence": meta.get('overall_model_confidence', 0),
+                "n_simulations": meta.get('n_simulations', None)
+            },
             "chart_data": {
                 "qualifying_positions": [
                     {
@@ -375,7 +388,10 @@ def format_prediction_results(result: Dict, session_type: str) -> Dict:
         win_prob = winner.get('win_pct', 0)
         
         # Get top 10 for points
-        points_finishers = predictions[:10]
+        points_finishers = [
+            {**p, 'position': i + 1, 'predicted_position': i + 1}
+            for i, p in enumerate(predictions[:10])
+        ]
         
         # DNF risk analysis - use dnf_pct field
         dnf_risk = [
@@ -483,6 +499,12 @@ def format_prediction_results(result: Dict, session_type: str) -> Dict:
             "confidence": meta.get('overall_model_confidence', 0) * 100,
             "session_type": "Race",
             "report_url": None,
+            "meta": {
+                "safety_car_probability": meta.get('safety_car_probability', 0),
+                "rain_probability": meta.get('rain_probability', 0),
+                "overall_model_confidence": meta.get('overall_model_confidence', 0),
+                "n_simulations": meta.get('n_simulations', 0)
+            },
             
             # Comprehensive chart data - ALL FIELDS MUST BE POPULATED
             "chart_data": {
@@ -855,6 +877,291 @@ def get_drivers():
         drivers = get_all_drivers()
         return jsonify({"drivers": drivers})
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/constructors/live', methods=['GET'])
+@limiter.limit("30 per hour")
+def get_live_constructors():
+    """Fetch live constructor and driver standings from Ergast API."""
+    try:
+        import requests
+        
+        logger.info("Fetching live constructor standings from Ergast API...")
+        
+        # Ergast API has migrated to api.jolpi.ca
+        # Try multiple endpoints in order of preference
+        api_endpoints = [
+            "https://api.jolpi.ca/ergast/f1/current/constructorStandings.json",
+            "https://ergast.com/api/f1/current/constructorStandings.json",
+            "http://ergast.com/api/f1/current/constructorStandings.json",
+        ]
+        
+        driver_endpoints = [
+            "https://api.jolpi.ca/ergast/f1/current/driverStandings.json",
+            "https://ergast.com/api/f1/current/driverStandings.json",
+            "http://ergast.com/api/f1/current/driverStandings.json",
+        ]
+        
+        constructor_data = None
+        driver_data = None
+        
+        # Try constructor endpoints
+        for url in api_endpoints:
+            try:
+                logger.info(f"Trying constructor URL: {url}")
+                response = requests.get(url, timeout=15)
+                if response.status_code == 200:
+                    constructor_data = response.json()
+                    logger.info(f"✓ Successfully fetched constructor data from {url}")
+                    break
+                else:
+                    logger.warning(f"✗ Status {response.status_code} from {url}")
+            except Exception as e:
+                logger.warning(f"✗ Failed to fetch from {url}: {e}")
+                continue
+        
+        # Try driver endpoints
+        for url in driver_endpoints:
+            try:
+                logger.info(f"Trying driver URL: {url}")
+                response = requests.get(url, timeout=15)
+                if response.status_code == 200:
+                    driver_data = response.json()
+                    logger.info(f"✓ Successfully fetched driver data from {url}")
+                    break
+                else:
+                    logger.warning(f"✗ Status {response.status_code} from {url}")
+            except Exception as e:
+                logger.warning(f"✗ Failed to fetch from {url}: {e}")
+                continue
+        
+        if not constructor_data or not driver_data:
+            logger.error("Failed to fetch data from all Ergast API endpoints")
+            return jsonify({
+                "success": False,
+                "error": "Unable to connect to F1 data source. The Ergast API may be temporarily unavailable.",
+                "fallback": True
+            }), 503
+        
+        # Parse constructor standings
+        standings_list = constructor_data['MRData']['StandingsTable']['StandingsLists']
+        if not standings_list:
+            raise ValueError("No standings data available")
+            
+        constructors = []
+        for standing in standings_list[0]['ConstructorStandings']:
+            constructor = standing['Constructor']
+            constructors.append({
+                'position': int(standing['position']),
+                'team_id': constructor['constructorId'],
+                'name': constructor['name'],
+                'nationality': constructor.get('nationality', 'Unknown'),
+                'points': float(standing['points']),
+                'wins': int(standing.get('wins', 0))
+            })
+        
+        # Parse driver standings with team info
+        driver_standings_list = driver_data['MRData']['StandingsTable']['StandingsLists']
+        drivers = []
+        for standing in driver_standings_list[0]['DriverStandings']:
+            driver = standing['Driver']
+            constructor = standing['Constructors'][0] if standing['Constructors'] else {}
+            
+            drivers.append({
+                'position': int(standing['position']),
+                'driver_id': driver['driverId'],
+                'permanent_number': driver.get('permanentNumber', ''),
+                'code': driver.get('code', ''),
+                'given_name': driver.get('givenName', ''),
+                'family_name': driver.get('familyName', ''),
+                'nationality': driver.get('nationality', 'Unknown'),
+                'points': float(standing['points']),
+                'wins': int(standing.get('wins', 0)),
+                'team_id': constructor.get('constructorId', ''),
+                'team_name': constructor.get('name', 'Unknown')
+            })
+        
+        # Group drivers by team
+        team_drivers = {}
+        for driver in drivers:
+            team_id = driver['team_id']
+            if team_id not in team_drivers:
+                team_drivers[team_id] = []
+            team_drivers[team_id].append(driver)
+        
+        # Enrich constructor data with driver info
+        for constructor in constructors:
+            team_id = constructor['team_id']
+            constructor['drivers'] = team_drivers.get(team_id, [])
+            constructor['driver_count'] = len(constructor['drivers'])
+        
+        # Calculate advanced analytics
+        # 1. Points gap analysis
+        if len(constructors) >= 2:
+            points_gaps = []
+            for i in range(len(constructors) - 1):
+                gap = constructors[i]['points'] - constructors[i+1]['points']
+                points_gaps.append({
+                    'position': f"P{constructors[i]['position']}-P{constructors[i+1]['position']}",
+                    'gap': round(gap, 1),
+                    'teams': f"{constructors[i]['name']} vs {constructors[i+1]['name']}"
+                })
+        else:
+            points_gaps = []
+        
+        # 2. Win distribution
+        total_wins = sum(c['wins'] for c in constructors)
+        win_distribution = []
+        for c in constructors:
+            win_pct = (c['wins'] / total_wins * 100) if total_wins > 0 else 0
+            win_distribution.append({
+                'team': c['name'],
+                'wins': c['wins'],
+                'percentage': round(win_pct, 1)
+            })
+        
+        # 3. Driver contribution per team
+        driver_contributions = []
+        for constructor in constructors:
+            team_drivers_list = constructor.get('drivers', [])
+            if len(team_drivers_list) == 2:
+                d1 = team_drivers_list[0]
+                d2 = team_drivers_list[1]
+                total_team_points = d1['points'] + d2['points']
+                if total_team_points > 0:
+                    driver_contributions.append({
+                        'team': constructor['name'],
+                        'driver1': f"{d1['code'] or d1['family_name']}",
+                        'driver1_points': d1['points'],
+                        'driver1_pct': round((d1['points'] / total_team_points) * 100, 1),
+                        'driver2': f"{d2['code'] or d2['family_name']}",
+                        'driver2_points': d2['points'],
+                        'driver2_pct': round((d2['points'] / total_team_points) * 100, 1)
+                    })
+        
+        # 4. Average points per position
+        position_groups = {}
+        for c in constructors:
+            pos_group = ((c['position'] - 1) // 2) * 2 + 1  # Group by pairs
+            if pos_group not in position_groups:
+                position_groups[pos_group] = []
+            position_groups[pos_group].append(c['points'])
+        
+        avg_by_position = []
+        for pos_group in sorted(position_groups.keys()):
+            pts = position_groups[pos_group]
+            avg_by_position.append({
+                'position_range': f"P{pos_group}-P{pos_group+1}",
+                'avg_points': round(sum(pts) / len(pts), 1),
+                'teams': len(pts)
+            })
+        
+        # 5. Performance tiers
+        max_points = max(c['points'] for c in constructors) if constructors else 1
+        for c in constructors:
+            pct_of_leader = (c['points'] / max_points * 100) if max_points > 0 else 0
+            if pct_of_leader >= 80:
+                c['tier'] = 'Top Tier'
+                c['tier_color'] = '#10b981'
+            elif pct_of_leader >= 50:
+                c['tier'] = 'Mid Field'
+                c['tier_color'] = '#f59e0b'
+            else:
+                c['tier'] = 'Back Marker'
+                c['tier_color'] = '#ef4444'
+        
+        # 6. Team Performance Radar Metrics (normalized 0-100 scale)
+        team_radar_data = []
+        for constructor in constructors[:5]:  # Top 5 teams only for clarity
+            team_drivers_list = constructor.get('drivers', [])
+            
+            # Calculate metrics
+            total_points = constructor['points']
+            wins = constructor['wins']
+            driver_count = constructor['driver_count']
+            
+            # Points per driver (efficiency metric)
+            points_per_driver = total_points / driver_count if driver_count > 0 else 0
+            
+            # Win rate (percentage of races won)
+            win_rate = (wins / 5) * 100 if len(constructors) > 0 else 0  # Assuming ~5 races so far
+            
+            # Consistency score (based on both drivers scoring points)
+            if len(team_drivers_list) == 2:
+                d1_pts = team_drivers_list[0]['points']
+                d2_pts = team_drivers_list[1]['points']
+                total_driver_pts = d1_pts + d2_pts
+                consistency = min((min(d1_pts, d2_pts) / max(d1_pts, d2_pts)) * 100, 100) if max(d1_pts, d2_pts) > 0 else 0
+            else:
+                consistency = 0
+            
+            # Normalized scores (0-100)
+            max_possible_points = max_points * 2  # Theoretical max if both drivers scored like leader
+            normalized_points = (total_points / max_possible_points * 100) if max_possible_points > 0 else 0
+            
+            team_radar_data.append({
+                'team': constructor['name'],
+                'team_id': constructor['team_id'],
+                'metrics': {
+                    'Championship Points': round(normalized_points, 1),
+                    'Race Wins': round(win_rate, 1),
+                    'Points Efficiency': round((points_per_driver / max_points * 100), 1) if max_points > 0 else 0,
+                    'Driver Balance': round(consistency, 1),
+                    'Competitiveness': round(pct_of_leader, 1)
+                }
+            })
+        
+        logger.info(f"Successfully processed {len(constructors)} constructors and {len(drivers)} drivers")
+        
+        return jsonify({
+            "success": True,
+            "season": constructor_data['MRData']['StandingsTable'].get('season', 'current'),
+            "round": constructor_data['MRData']['StandingsTable'].get('round', 'latest'),
+            "constructors": constructors,
+            "drivers": drivers,
+            "total_teams": len(constructors),
+            "total_drivers": len(drivers),
+            "analytics": {
+                "points_gaps": points_gaps,
+                "win_distribution": win_distribution,
+                "driver_contributions": driver_contributions,
+                "avg_by_position": avg_by_position,
+                "performance_tiers": [
+                    {"team": c['name'], "tier": c['tier'], "color": c['tier_color'], "points": c['points']}
+                    for c in constructors
+                ],
+                "team_radar_data": team_radar_data
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching live constructor data: {e}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "fallback": True
+        }), 500
+
+
+@app.route('/images/<path:filename>')
+def serve_image(filename):
+    """Serve local images from the dashboard template folder.
+
+    This keeps the hero images in `dashboard/templates` accessible without
+    moving them into a separate static directory.
+    """
+    try:
+        # Simple allowlist to avoid exposing arbitrary files
+        if not filename.startswith('f1_image') or '..' in filename or '/' in filename.replace('\\', '/'):
+            return jsonify({"error": "Invalid image"}), 400
+        templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+        img_path = os.path.join(templates_dir, filename)
+        if not os.path.exists(img_path):
+            return jsonify({"error": "Not found"}), 404
+        return send_file(img_path)
+    except Exception as e:
+        logger.error(f"Error serving image {filename}: {e}")
         return jsonify({"error": str(e)}), 500
 
 
