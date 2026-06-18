@@ -682,6 +682,96 @@ def calculate_circuit_performance_modifier(driver_id: str, circuit_id: str) -> f
     return base_modifier
 
 
+# ── Live Data Refresh ────────────────────────────────────────────────────────────
+
+def refresh_driver_stats_from_api() -> Dict[str, Dict[str, Any]]:
+    """
+    Refresh driver stats from Jolpica-F1 API.
+    
+    Fetches current championship standings and recent race results,
+    then returns an updated DRIVERS dict with fresh:
+    - championship_points_2026
+    - wins_2026
+    - recent_form
+    - dnf_rate_recent
+    - championship_position
+    
+    This function does NOT modify the global DRIVERS dict — it returns
+    a copy with updated values. The caller decides whether to apply them.
+    
+    Returns:
+        Dict[driver_id → updated driver profile dict]
+    """
+    import copy
+    from data.live_updater import LiveUpdater
+    
+    updater = LiveUpdater()
+    
+    # Fetch fresh standings
+    standings_update = updater.fetch_driver_standings_update()
+    standings = standings_update.get("standings", {})
+    
+    # Fetch recent results for form/DNF
+    results_update = updater.fetch_recent_results(num_races=6)
+    driver_form = results_update.get("driver_form", {})
+    driver_dnf = results_update.get("driver_dnf", {})
+    
+    # Build updated DRIVERS copy
+    updated = copy.deepcopy(DRIVERS)
+    
+    for driver_id, driver_data in updated.items():
+        # Update championship stats from live standings
+        if driver_id in standings:
+            live = standings[driver_id]
+            driver_data["championship_points_2026"] = int(live.get("points", 0))
+            driver_data["wins_2026"] = int(live.get("wins", 0))
+            driver_data["championship_position"] = live.get("position", 0)
+        
+        # Update recent form from live results
+        if driver_id in driver_form:
+            form = driver_form[driver_id]
+            if form:
+                driver_data["recent_form"] = form
+        
+        # Update DNF rate from live results
+        if driver_id in driver_dnf:
+            dnf_info = driver_dnf[driver_id]
+            driver_data["dnf_rate_recent"] = dnf_info.get("dnf_rate", driver_data.get("dnf_rate_recent", 0.0))
+    
+    return updated
+
+
+def apply_live_driver_stats():
+    """
+    Apply live driver stats to the global DRIVERS dict.
+    
+    WARNING: This modifies the global DRIVERS dict in-place.
+    Only call this when you want to permanently update driver data
+    for the current session.
+    
+    Returns:
+        Number of drivers updated
+    """
+    global DRIVERS
+    
+    updated = refresh_driver_stats_from_api()
+    if not updated:
+        return 0
+    
+    count = 0
+    for driver_id, new_data in updated.items():
+        if driver_id in DRIVERS:
+            # Only update specific fields, preserve everything else
+            for key in ["championship_points_2026", "wins_2026", "championship_position",
+                        "recent_form", "dnf_rate_recent"]:
+                if key in new_data:
+                    DRIVERS[driver_id][key] = new_data[key]
+            count += 1
+    
+    logger.info(f"Applied live stats to {count} drivers")
+    return count
+
+
 # ── EXPORT ──────────────────────────────────────────────────────────────────────
 
 __all__ = [
@@ -689,5 +779,7 @@ __all__ = [
     "get_driver", 
     "get_all_drivers", 
     "get_drivers_for_team", 
-    "calculate_circuit_performance_modifier"
+    "calculate_circuit_performance_modifier",
+    "refresh_driver_stats_from_api",       # NEW — fetch fresh stats from Jolpica
+    "apply_live_driver_stats",             # NEW — apply live stats to global DRIVERS
 ]

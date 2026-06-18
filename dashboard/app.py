@@ -68,33 +68,7 @@ def require_api_key(f):
 def test_mapping():
     """Test endpoint to verify race name mapping."""
     from data.circuit_data import CIRCUITS
-    
-    RACE_NAME_MAPPING = {
-        "Australian Grand Prix": "australia",
-        "Chinese Grand Prix": "china",
-        "Japanese Grand Prix": "japan",
-        "Bahrain Grand Prix": "bahrain",
-        "Saudi Arabian Grand Prix": "saudi_arabia",
-        "Miami Grand Prix": "miami",
-        "Emilia Romagna Grand Prix": "italy",
-        "Monaco Grand Prix": "monaco",
-        "Spanish Grand Prix": "spain",
-        "Canadian Grand Prix": "canada",
-        "Austrian Grand Prix": "austria",
-        "British Grand Prix": "britain",
-        "Belgian Grand Prix": "belgium",
-        "Hungarian Grand Prix": "hungary",
-        "Dutch Grand Prix": "netherlands",
-        "Italian Grand Prix": "madrid",
-        "Azerbaijan Grand Prix": "azerbaijan",
-        "Singapore Grand Prix": "singapore",
-        "United States Grand Prix": "usa",
-        "Mexico City Grand Prix": "mexico",
-        "São Paulo Grand Prix": "brazil",
-        "Las Vegas Grand Prix": "las_vegas",
-        "Qatar Grand Prix": "qatar",
-        "Abu Dhabi Grand Prix": "uae",
-    }
+    from data.race_mapping import RACE_NAME_MAPPING
     
     # Verify all mappings work
     results = {}
@@ -122,7 +96,7 @@ def index():
 
 
 @app.route('/api/predict', methods=['POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("30 per minute")  # Q-4 FIX: Was "10 per minute" — too strict for auto-running dashboard UI
 def api_predict():
     """Unified prediction endpoint for all session types."""
     try:
@@ -150,34 +124,7 @@ def api_predict():
         # Call prediction engine directly
         from engine.predictor import predict, PredictionRequest
         from data.circuit_data import CIRCUITS
-        
-        # Create mapping from display names to circuit IDs
-        RACE_NAME_MAPPING = {
-            "Australian Grand Prix": "australia",
-            "Chinese Grand Prix": "china",
-            "Japanese Grand Prix": "japan",
-            "Bahrain Grand Prix": "bahrain",
-            "Saudi Arabian Grand Prix": "saudi_arabia",
-            "Miami Grand Prix": "miami",
-            "Emilia Romagna Grand Prix": "italy",
-            "Monaco Grand Prix": "monaco",
-            "Spanish Grand Prix": "spain",
-            "Canadian Grand Prix": "canada",
-            "Austrian Grand Prix": "austria",
-            "British Grand Prix": "britain",
-            "Belgian Grand Prix": "belgium",
-            "Hungarian Grand Prix": "hungary",
-            "Dutch Grand Prix": "netherlands",
-            "Italian Grand Prix": "madrid",
-            "Azerbaijan Grand Prix": "azerbaijan",
-            "Singapore Grand Prix": "singapore",
-            "United States Grand Prix": "usa",
-            "Mexico City Grand Prix": "mexico",
-            "São Paulo Grand Prix": "brazil",
-            "Las Vegas Grand Prix": "las_vegas",
-            "Qatar Grand Prix": "qatar",
-            "Abu Dhabi Grand Prix": "uae",
-        }
+        from data.race_mapping import RACE_NAME_MAPPING
         
         # Find circuit ID from race name
         circuit_id = RACE_NAME_MAPPING.get(race_name)
@@ -212,11 +159,17 @@ def api_predict():
         logger.info(f"Running prediction for circuit_id: {circuit_id}")
         
         # Build prediction request based on session type
+        # A-1 FIX: Accept grid_positions from request for post-qualifying mode
+        grid_positions = data.get('grid_positions', {})
+        qualifying_done = bool(grid_positions)
+        
         request_obj = PredictionRequest(
             circuit_id=circuit_id,
             rain_probability=0.3 if weather == 'wet' else (0.5 if weather == 'mixed' else 0.1),
             n_simulations=simulations,
-            seed=None
+            seed=None,
+            grid_overrides=grid_positions,
+            qualifying_completed=qualifying_done,
         )
         
         # Run prediction
@@ -435,13 +388,14 @@ def format_prediction_results(result: Dict, session_type: str) -> Dict:
             })
         
         # Cumulative probability analysis - use top3_pct, top5_pct, top10_pct
+        # M-3 FIX: Use actual probability data instead of hardcoded nonsense values
         cumulative_prob = [
             {
                 'driver': p.get('driver', 'Unknown'),
                 'cumulative_top3': p.get('top3_pct', 0),
                 'cumulative_top5': p.get('top5_pct', 0),
                 'cumulative_top10': p.get('top10_pct', 0),
-                'cumulative_points': 80 if p.get('expected_points', 0) > 10 else (50 if p.get('expected_points', 0) > 5 else 20)
+                'cumulative_points': round(p.get('expected_points', 0), 1),  # M-3 FIX: Direct value
             }
             for p in sorted(predictions, key=lambda x: x.get('top3_pct', 0), reverse=True)[:15]
         ]
@@ -646,61 +600,130 @@ def predict_page():
     return render_template('dashboard.html')
 
 
-@app.route('/h2h', methods=['POST'])
-def h2h_page():
-    """Head-to-head comparison page."""
+@app.route('/api/h2h', methods=['POST'])
+@limiter.limit("20 per hour")
+def api_h2h():
+    """Driver vs Driver head-to-head analysis.
+
+    Returns a JSON shape that the dashboard H2H JS can render reliably.
+    """
     try:
-        # Call prediction engine directly
-        from engine.probability_model import predict_race
-        
-        data = request.json
-        sim_result = predict_race(
-            circuit_id=data.get('circuit_id'),
-            rain_probability=data.get('rain_probability'),
-            n_simulations=data.get('n_simulations', 10000),
-        )
-        
-        predictions = {p["driver_id"]: p for p in sim_result["predictions"]}
+        data = request.json or {}
+
+        # race selector in UI uses circuit name (e.g. 'Australian Grand Prix')
+        race_name = data.get('race')
+        circuit_id = data.get('circuit_id')
+        if not circuit_id and race_name:
+            from data.race_mapping import RACE_NAME_MAPPING
+            circuit_id = RACE_NAME_MAPPING.get(race_name)
+
+        if not circuit_id:
+            return jsonify({"success": False, "error": "circuit_id or race is required"}), 422
+
         driver1 = data.get('driver1')
         driver2 = data.get('driver2')
-        
+        if not driver1 or not driver2 or driver1 == driver2:
+            return jsonify({"success": False, "error": "Select two different drivers"}), 422
+
+        n_simulations = data.get('simulations', data.get('n_simulations', 10000))
+        try:
+            n_simulations = int(n_simulations)
+        except Exception:
+            n_simulations = 10000
+
+        weather = data.get('weather', 'dry')
+        rain_probability = 0.1 if weather == 'dry' else (0.3 if weather == 'mixed' else 0.5)
+
+        # Run race simulation (engine already supports rain/sims)
+        from engine.probability_model import predict_race, simulate_h2h
+
+        # Run full race simulation once for win/top3 + distributions
+        sim_result = predict_race(
+            circuit_id=circuit_id,
+            rain_probability=rain_probability,
+            n_simulations=n_simulations,
+        )
+
+        predictions = {p.get("driver_id"): p for p in sim_result.get("predictions", [])}
         if driver1 not in predictions or driver2 not in predictions:
-            return jsonify({"error": "Drivers not found"}), 400
-        
+            return jsonify({"success": False, "error": "Drivers not found in simulation results"}), 400
+
         d1_pred = predictions[driver1]
         d2_pred = predictions[driver2]
-        
-        # Calculate H2H probabilities
-        pos_dist_1 = d1_pred.get("position_distribution", [])
-        pos_dist_2 = d2_pred.get("position_distribution", [])
-        
+
+        # Pairwise ahead probability from joint simulation ordering
+        h2h_sim = simulate_h2h(
+            circuit_id=circuit_id,
+            driver1_id=driver1,
+            driver2_id=driver2,
+            rain_probability=rain_probability,
+            n_runs=n_simulations,
+            seed=None,
+        )
+        p_sim_ahead = float(h2h_sim.get("driver1_ahead_probability_no_tie", 0.5))
+
+        # ELO H2H prior
+        from engine.multi_dimensional_elo import get_elo_system
+        elo = get_elo_system()
+        elo_comp = elo.compare_drivers(driver1, driver2, dimension="race")
+        p_elo_ahead = float(elo_comp.get("win_probability", 0.5)) if elo_comp else 0.5
+
+        # Blend: when sims are high, trust joint simulation more.
+        w = min(1.0, max(0.0, n_simulations / 20000.0))
+        p_final_ahead = (w * p_sim_ahead) + ((1 - w) * p_elo_ahead)
+        p_final_ahead = max(0.0, min(1.0, p_final_ahead))
+
+        d1_win = float(d1_pred.get("win_probability", 0.0))
+        d2_win = float(d2_pred.get("win_probability", 0.0))
+        d1_top3 = float(d1_pred.get("top3_probability", 0.0))
+        d2_top3 = float(d2_pred.get("top3_probability", 0.0))
+
+        # Keep position_distribution for UI chart (still marginals, but “ahead” uses joint)
+        pos_dist_1 = d1_pred.get("position_distribution", []) or []
+        pos_dist_2 = d2_pred.get("position_distribution", []) or []
+
         total_1 = sum(pos_dist_1) if pos_dist_1 else 1
         total_2 = sum(pos_dist_2) if pos_dist_2 else 1
-        
-        prob_dist_1 = [count / total_1 for count in pos_dist_1]
-        prob_dist_2 = [count / total_2 for count in pos_dist_2]
-        
-        p_d1_ahead = 0.0
-        for pos1 in range(len(prob_dist_1)):
-            for pos2 in range(len(prob_dist_2)):
-                if pos1 < pos2:
-                    p_d1_ahead += prob_dist_1[pos1] * prob_dist_2[pos2]
-        
-        result = {
-            "driver1": driver1,
-            "driver2": driver2,
-            "driver1_finishes_ahead_pct": round(p_d1_ahead * 100, 1),
-            "driver2_finishes_ahead_pct": round((1 - p_d1_ahead) * 100, 1),
-            "driver1_avg_position": d1_pred.get("expected_position_float", d1_pred.get("predicted_position", 99)),
-            "driver2_avg_position": d2_pred.get("expected_position_float", d2_pred.get("predicted_position", 99)),
-        }
-        
-        return jsonify(result), 200
+
+        prob_dist_1 = [count / total_1 for count in pos_dist_1] if pos_dist_1 else []
+        prob_dist_2 = [count / total_2 for count in pos_dist_2] if pos_dist_2 else []
+
+        return jsonify({
+            "success": True,
+            "circuit_id": circuit_id,
+            "drivers": {
+                "driver1": driver1,
+                "driver2": driver2,
+            },
+            "summary": {
+                "winner": driver1 if d1_win >= d2_win else driver2,
+                "win_margin_pct": round(abs(d1_win - d2_win) * 100, 1),
+                "confidence_pct": round(max(d1_win, d2_win) * 100, 1),
+                "simulations": n_simulations,
+            },
+            "duel": {
+                "driver1_finishes_ahead_pct": round(p_final_ahead * 100, 1),
+                "driver2_finishes_ahead_pct": round((1 - p_final_ahead) * 100, 1),
+                "driver1_win_pct": round(d1_win * 100, 1),
+                "driver2_win_pct": round(d2_win * 100, 1),
+                "driver1_podium_pct": round(d1_top3 * 100, 1),
+                "driver2_podium_pct": round(d2_top3 * 100, 1),
+                "ahead_blend": {
+                    "p_sim": round(p_sim_ahead, 4),
+                    "p_elo": round(p_elo_ahead, 4),
+                    "weight_sim": round(w, 4),
+                    "p_final": round(p_final_ahead, 4),
+                },
+            },
+            "position_distribution": {
+                "driver1": prob_dist_1,
+                "driver2": prob_dist_2,
+            }
+        }), 200
     except Exception as e:
-        logger.error(f"H2H error: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"H2H error: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 
 @app.route('/constructors/<circuit_id>')
@@ -1163,6 +1186,443 @@ def serve_image(filename):
     except Exception as e:
         logger.error(f"Error serving image {filename}: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+# ── Database Management ──────────────────────────────────────────────────────
+
+@app.route('/api/database/migrate', methods=['POST'])
+def api_migrate_db():
+    """Initialize database and migrate static data."""
+    try:
+        from database.models import migrate_from_static, SessionLocal, Driver, Race
+        
+        # Run migration (returns None)
+        migrate_from_static()
+        
+        # Count actual records created
+        db = SessionLocal()
+        try:
+            driver_count = db.query(Driver).count()
+            race_count = db.query(Race).count()
+            
+            return jsonify({
+                "status": "success",
+                "message": f"Database migration completed - {driver_count} drivers, {race_count} races",
+                "tables_created": ["drivers", "races", "predictions"],
+                "records_migrated": driver_count + race_count
+            })
+        finally:
+            db.close()
+    
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── Weight Optimization ──────────────────────────────────────────────────────
+
+@app.route('/api/optimize/weights', methods=['POST'])
+def api_optimize_weights():
+    """Run Optuna optimization on feature weights."""
+    try:
+        import subprocess
+        import sys
+        
+        data = request.json
+        n_trials = data.get('trials', 100)
+        
+        # Run optimization script
+        result = subprocess.run(
+            [sys.executable, 'scripts/optimize_weights_v3.py', 
+             '--trials', str(n_trials)],
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 minute timeout
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                "status": "success",
+                "message": "Optimization completed",
+                "output": result.stdout,
+                "trials_completed": n_trials
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": result.stderr or "Optimization failed"
+            }), 500
+    
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "status": "error",
+            "message": "Optimization timed out (10 min limit)"
+        }), 500
+    except Exception as e:
+        logger.error(f"Optimization failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── Backtesting ───────────────────────────────────────────────────────────────
+
+@app.route('/api/backtest/run', methods=['POST'])
+def api_run_backtest():
+    """Execute temporal cross-validation backtest."""
+    try:
+        import subprocess
+        import sys
+        
+        data = request.json
+        seasons = data.get('seasons', [2025])
+        sims = data.get('sims', 10000)
+        
+        # Build command
+        cmd = [sys.executable, 'scripts/backtest_2025_season.py', '--sims', str(sims)]
+        for season in seasons:
+            cmd.extend(['--seasons', str(season)])
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        
+        if result.returncode == 0:
+            return jsonify({
+                "status": "success",
+                "message": "Backtest completed",
+                "output": result.stdout,
+                "seasons_tested": seasons
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": result.stderr or "Backtest failed"
+            }), 500
+    
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "status": "error",
+            "message": "Backtest timed out (30 min limit)"
+        }), 500
+    except Exception as e:
+        logger.error(f"Backtest failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── Calibration ───────────────────────────────────────────────────────────────
+
+@app.route('/api/calibration/run', methods=['POST'])
+def api_run_calibration():
+    """Execute Platt scaling calibration."""
+    try:
+        import subprocess
+        import sys
+        
+        data = request.json
+        season = data.get('season', 2026)
+        
+        result = subprocess.run(
+            [sys.executable, 'scripts/calibrate_probabilities.py',
+             '--season', str(season)],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                "status": "success",
+                "message": "Calibration completed",
+                "output": result.stdout,
+                "season": season
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": result.stderr or "Calibration failed"
+            }), 500
+    
+    except Exception as e:
+        logger.error(f"Calibration failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── Race Evaluation ───────────────────────────────────────────────────────────
+
+@app.route('/api/evaluate/race', methods=['POST'])
+def api_evaluate_race():
+    """Evaluate predictions against actual race results."""
+    try:
+        from engine.prediction_tracker import PredictionTracker
+        
+        data = request.json
+        circuit_id = data['circuit_id']
+        results = data['results']  # Dict of driver_id -> position
+        
+        tracker = PredictionTracker()
+        evaluation = tracker.evaluate_race(circuit_id, results)
+        
+        return jsonify({
+            "status": "success",
+            "circuit": circuit_id,
+            "metrics": evaluation
+        })
+    
+    except Exception as e:
+        logger.error(f"Evaluation failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/api/template/generate', methods=['POST'])
+def api_generate_template():
+    """Generate race results template."""
+    try:
+        from data.driver_data import get_all_drivers
+        
+        drivers = get_all_drivers()
+        template = {driver['id']: 0 for driver in drivers}
+        
+        return jsonify({
+            "status": "success",
+            "template": template
+        })
+    
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── FastF1 Sync ───────────────────────────────────────────────────────────────
+
+@app.route('/api/sync/fastf1', methods=['POST'])
+def api_sync_fastf1():
+    """Sync historical data from FastF1 library."""
+    try:
+        import subprocess
+        import sys
+        
+        data = request.json
+        seasons = data.get('seasons', [2024, 2025])
+        
+        cmd = [sys.executable, '-c', 
+               f'from data.fastf1_integration import sync_seasons; sync_seasons({seasons})']
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        
+        return jsonify({
+            "status": "success",
+            "message": "FastF1 sync completed",
+            "output": result.stdout,
+            "seasons_synced": seasons
+        })
+    
+    except Exception as e:
+        logger.error(f"FastF1 sync failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── Quality Check ─────────────────────────────────────────────────────────────
+
+@app.route('/api/quality/check', methods=['GET'])
+def api_quality_check():
+    """Run data quality checks."""
+    try:
+        import subprocess
+        import sys
+        
+        result = subprocess.run(
+            [sys.executable, 'scripts/data_quality_report.py'],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        return jsonify({
+            "status": "success",
+            "passed": result.returncode == 0,
+            "output": result.stdout,
+            "errors": result.stderr if result.returncode != 0 else None
+        })
+    
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── Benchmark ─────────────────────────────────────────────────────────────────
+
+@app.route('/api/benchmark/run', methods=['POST'])
+def api_benchmark():
+    """Run performance benchmark."""
+    try:
+        from engine.vectorized_simulation import compare_performance
+        
+        data = request.json
+        circuit = data.get('circuit', 'canada')
+        sims = data.get('sims', 5000)
+        
+        result = compare_performance(circuit, n_runs=sims, seed=42)
+        
+        return jsonify({
+            "status": "success",
+            "benchmark": result
+        })
+    
+    except Exception as e:
+        logger.error(f"Benchmark failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── Accuracy Report ───────────────────────────────────────────────────────────
+
+@app.route('/api/accuracy/report', methods=['GET'])
+def api_accuracy_report():
+    """Get comprehensive accuracy report."""
+    try:
+        from engine.prediction_tracker import PredictionTracker
+        
+        tracker = PredictionTracker()
+        report = tracker.get_accuracy_report()
+        
+        # FIX: Transform report to match frontend expectations
+        # Backend returns: total_predictions, avg_brier_score, win_prediction_brier, top3_prediction_brier, avg_position_error, calibration
+        # Frontend expects: total_races, overall_accuracy, winner_accuracy, mean_position_error, podium_accuracy
+        
+        # Handle case where no data exists
+        if "message" in report:
+            return jsonify({
+                "status": "success",
+                "report": {
+                    "total_races": 0,
+                    "overall_accuracy": 0.0,
+                    "winner_accuracy": 0.0,
+                    "mean_position_error": 0.0,
+                    "podium_accuracy": 0.0,
+                }
+            })
+        
+        # Calculate derived metrics from Brier scores (lower Brier = higher accuracy)
+        avg_brier = report.get('avg_brier_score', 1.0)
+        win_brier = report.get('win_prediction_brier', 1.0)
+        top3_brier = report.get('top3_prediction_brier', 1.0)
+        
+        # Convert Brier scores to accuracy percentages (Brier score of 0 = 100% accuracy, 1 = 0% accuracy)
+        overall_accuracy = max(0, (1 - avg_brier) * 100)
+        winner_accuracy = max(0, (1 - win_brier) * 100)
+        podium_accuracy = max(0, (1 - top3_brier) * 100)
+        
+        # Estimate number of races (predictions / ~20 drivers per race)
+        total_predictions = report.get('total_predictions', 0)
+        total_races = max(1, total_predictions // 20)
+        
+        return jsonify({
+            "status": "success",
+            "report": {
+                "total_races": total_races,
+                "overall_accuracy": round(overall_accuracy, 1),
+                "winner_accuracy": round(winner_accuracy, 1),
+                "mean_position_error": report.get('avg_position_error', 0.0),
+                "podium_accuracy": round(podium_accuracy, 1),
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ── System Setup Wizard ───────────────────────────────────────────────────────
+
+@app.route('/api/setup/initialize', methods=['POST'])
+def api_initialize_system():
+    """Complete system initialization in one click."""
+    steps = []
+    
+    try:
+        # Step 1: Migrate database
+        from database.models import migrate_from_static
+        migrate_from_static()
+        
+        # Count records to provide feedback
+        from database.models import SessionLocal, Driver, Race
+        db = SessionLocal()
+        try:
+            driver_count = db.query(Driver).count()
+            race_count = db.query(Race).count()
+            steps.append({
+                "step": "database",
+                "status": "success",
+                "details": f"Created {driver_count} drivers and {race_count} races"
+            })
+        finally:
+            db.close()
+            
+    except Exception as e:
+        steps.append({
+            "step": "database",
+            "status": "error",
+            "details": str(e)
+        })
+        return jsonify({
+            "setup_complete": False,
+            "steps": steps,
+            "error": "Database migration failed"
+        }), 500
+    
+    try:
+        # Step 2: Quality check
+        from scripts.data_quality_report import run_quality_check
+        quality_result = run_quality_check()
+        
+        if quality_result.get('passed', False):
+            steps.append({
+                "step": "validation",
+                "status": "success",
+                "details": f"Data validation passed - {quality_result.get('error_count', 0)} errors, {quality_result.get('warning_count', 0)} warnings"
+            })
+        else:
+            error_list = quality_result.get('errors', [])
+            steps.append({
+                "step": "validation",
+                "status": "warning",
+                "details": f"Some issues found: {'; '.join(error_list[:3])}"  # Show first 3 errors
+            })
+    except Exception as e:
+        steps.append({
+            "step": "validation",
+            "status": "error",
+            "details": str(e)
+        })
+    
+    return jsonify({
+        "setup_complete": all(s["status"] != "error" for s in steps),
+        "steps": steps,
+        "next_actions": ["Make your first prediction!"]
+    })
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────

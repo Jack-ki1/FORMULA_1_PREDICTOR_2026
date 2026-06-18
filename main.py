@@ -275,24 +275,36 @@ def h2h(driver1: str, driver2: str, race: str, rain: float, sims: int):
         driver1_pred = predictions[driver1]
         driver2_pred = predictions[driver2]
         
-        # Calculate probability driver1 finishes ahead
-        pos_dist_1 = driver1_pred.get("position_distribution", [])
-        pos_dist_2 = driver2_pred.get("position_distribution", [])
-        
-        p_driver1_ahead = 0.0
-        for pos1 in range(len(pos_dist_1)):
-            for pos2 in range(len(pos_dist_2)):
-                if pos1 < pos2:
-                    p_driver1_ahead += pos_dist_1[pos1] * pos_dist_2[pos2]
-        
-        total = p_driver1_ahead + (1 - p_driver1_ahead)
-        p_driver1_ahead = p_driver1_ahead / total if total > 0 else 0.5
-        
+        # Pairwise ahead probability from joint simulation ordering + ELO blend
+        from engine.probability_model import simulate_h2h
+        from engine.multi_dimensional_elo import get_elo_system
+
+        # Joint simulation (preserves correlation between the two drivers)
+        h2h_sim = simulate_h2h(
+            circuit_id=race,
+            driver1_id=driver1,
+            driver2_id=driver2,
+            rain_probability=rain if rain is not None else None,
+            n_runs=sims,
+            seed=None,
+        )
+        p_sim_ahead = float(h2h_sim.get("driver1_ahead_probability_no_tie", 0.5))
+
+        # ELO head-to-head prior
+        elo = get_elo_system()
+        elo_comp = elo.compare_drivers(driver1, driver2, dimension="race")
+        p_elo_ahead = float(elo_comp.get("win_probability", 0.5)) if elo_comp else 0.5
+
+        # Blend weight: more sims => rely more on joint simulation
+        w = min(1.0, max(0.0, sims / 20000.0))
+        p_final_ahead = (w * p_sim_ahead) + ((1 - w) * p_elo_ahead)
+        p_final_ahead = max(0.0, min(1.0, p_final_ahead))
+
         console.print(Panel(
-            f"[bold]{driver1_pred['driver_name']}[/] finishes ahead: [green]{round(p_driver1_ahead * 100, 2)}%[/]\n"
-            f"[bold]{driver2_pred['driver_name']}[/] finishes ahead: [yellow]{round((1 - p_driver1_ahead) * 100, 2)}%[/]\n\n"
+            f"[bold]{driver1_pred['driver_name']}[/] finishes ahead: [green]{round(p_final_ahead * 100, 2)}%[/]\n"
+            f"[bold]{driver2_pred['driver_name']}[/] finishes ahead: [yellow]{round((1 - p_final_ahead) * 100, 2)}%[/]\n\n"
             f"Avg positions: {driver1_pred['driver_name']} ({driver1_pred['expected_position_float']:.1f}), {driver2_pred['driver_name']} ({driver2_pred['expected_position_float']:.1f})\n"
-            f"[dim]Based on {sims:,} Monte Carlo simulations[/]",
+            f"[dim]Based on {sims:,} MC sims · blend: w_sim={round(w,4)} p_sim={round(p_sim_ahead,4)} p_elo={round(p_elo_ahead,4)}[/]",
             title="H2H Result",
         ))
         
@@ -310,9 +322,13 @@ def optimize_weights(trials: int, output: str):
     console.print(f"\n[bold cyan]Weight Optimization:[/] Running {trials} trials\n")
     
     try:
-        from scripts.optimize_weights_v3 import run_weight_optimization
-        best_weights = run_weight_optimization(n_trials=trials, save_path=output)
+        import importlib
+        module = importlib.import_module("scripts.optimize_weights_v3")
+        run_weight_optimization = getattr(module, "run_weight_optimization")
+        _ = run_weight_optimization(n_trials=trials, save_path=output)
         console.print(f"\n[green]✓ Optimized weights saved → {output}[/]")
+    except ModuleNotFoundError as e:
+        console.print(f"[red]Optimization module not found:[/] {e}"); sys.exit(1)
     except Exception as e:
         console.print(f"[red]Optimization failed:[/] {e}"); sys.exit(1)
 
@@ -571,13 +587,101 @@ def circuits():
 # ── backtest ───────────────────────────────────────────────────────────────────
 
 @cli.command()
-@click.option("--seasons", "-s", multiple=True, type=int, default=[2025])
-def backtest(seasons):
+@click.option("--seasons", "-s", multiple=True, type=int, default=[2025], help="Seasons to backtest")
+@click.option("--sims", "-n", type=int, default=10000, help="Number of simulations per race")
+def backtest(seasons, sims):
     """Run temporal cross-validation backtest across historical seasons."""
-    console.print(f"\n[bold cyan]Backtesting:[/] {list(seasons)}\n")
-    console.print("[yellow]⚠[/] Requires historical snapshots in data/historical/<year>/")
-    console.print("[dim]See data/historical/README.md for the expected format.[/]")
-    console.print("[dim]Run scripts/backtest_2025_season.py for a demo.[/]\n")
+    console.print(f"\n[bold cyan]Backtesting:[/] {list(seasons)} with {sims:,} simulations\n")
+    
+    try:
+        import subprocess
+        seasons_args = " ".join([str(s) for s in seasons])
+        result = subprocess.run(
+            [sys.executable, "scripts/backtest_2025_season.py", 
+             "--seasons"] + list(map(str, seasons)) + ["--sims", str(sims)],
+            check=False
+        )
+        if result.returncode != 0:
+            console.print("[yellow]⚠ Backtest completed with warnings[/]")
+    except Exception as e:
+        console.print(f"[red]Backtest failed:[/] {e}"); sys.exit(1)
+
+
+# ── calibrate (NEW v3.1) ──────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--season", "-s", type=int, default=2026, help="Season to calibrate")
+def calibrate(season: int):
+    """Calibrate prediction probabilities using Platt scaling (NEW v3.1)."""
+    console.print(f"\n[bold cyan]Probability Calibration:[/] Season {season}\n")
+    
+    try:
+        import subprocess
+        import os
+        
+        # Set UTF-8 encoding for Windows compatibility
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        
+        result = subprocess.run(
+            [sys.executable, "scripts/calibrate_probabilities.py", 
+             "--season", str(season)],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=env,
+            encoding='utf-8'
+        )
+        
+        # Show output
+        if result.stdout:
+            console.print(result.stdout)
+        if result.stderr:
+            console.print(result.stderr, style="yellow")
+        
+        if result.returncode != 0:
+            if "no such table" in result.stderr or "Database not initialized" in result.stdout:
+                console.print("\n[yellow]Database not set up yet[/]")
+                console.print("\nTo use calibration, you need to:")
+                console.print("  1. [bold]Initialize database:[/] py main.py migrate-db")
+                console.print("  2. [bold]Store predictions:[/] py main.py predict --race <circuit> --store")
+                console.print("  3. [bold]After race:[/] py main.py evaluate-race --race <circuit> --results results.json")
+                console.print("  4. [bold]Then calibrate:[/] py main.py calibrate --season 2026")
+            else:
+                console.print("[yellow]Calibration completed with warnings[/]")
+    except Exception as e:
+        console.print(f"[red]Calibration failed:[/] {e}"); sys.exit(1)
+
+
+# ── generate-template (NEW v3.1) ───────────────────────────────────────────────
+
+@cli.command()
+@click.option("--race", "-r", required=True, help="Circuit ID (e.g., canada, monaco)")
+@click.option("--output", "-o", default=None, help="Output filename (default: <circuit>_results.json)")
+def generate_template(race: str, output: str):
+    """Generate a race results template for post-race evaluation (NEW v3.1)."""
+    console.print(f"\n[bold cyan]Generating Results Template:[/] {race.upper()}\n")
+    
+    try:
+        import subprocess
+        
+        cmd = [sys.executable, "scripts/generate_results_template.py", "--race", race]
+        if output:
+            cmd.extend(["--output", output])
+        
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        
+        if result.stdout:
+            console.print(result.stdout)
+        if result.stderr:
+            console.print(result.stderr, style="yellow")
+        
+        if result.returncode != 0:
+            console.print("[red]Template generation failed[/]")
+            sys.exit(1)
+            
+    except Exception as e:
+        console.print(f"[red]Failed to generate template:[/] {e}"); sys.exit(1)
 
 
 # ── benchmark (NEW v3.0) ──────────────────────────────────────────────────────

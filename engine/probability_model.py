@@ -32,23 +32,16 @@ logger = logging.getLogger(__name__)
 
 # BUG-01 FIX: Separate Platt scaling parameters per outcome type
 # Each outcome requires independent calibration to preserve discrimination power
-# NEW-01 CALIBRATION UPDATE: Adjusted for increased simulation variance (σ=0.15-0.23).
-# With realistic noise levels, raw win probabilities fall in 15-35% range for favorites.
-# Calibration should gently correct systematic biases without amplifying or compressing.
-#
-# IMPORTANT TRANSPARENCY NOTE:
-# These are PLACEHOLDER values (near-identity transforms) pending real calibration data
-# from 12+ races. Current parameters do NOT significantly alter raw simulation probabilities.
-# The Platt calibration system is INACTIVE and documented here for future implementation.
-# After sufficient historical data is collected (minimum 12 races), use:
+# M-1 FIX: Use identity parameters (A=1.0, B=0.0) until real calibration data is collected.
+# Previous placeholder values (A=1.05, B=-0.02) introduced systematic downward bias of 0.5–1.4%
+# on all win probabilities. After accumulating 12+ race results, fit real Platt parameters with:
 #   python main.py recalibrate --fit-platt
-# to fit proper parameters against actual race outcomes.
 # See README section "Platt Calibration Limitations" for detailed explanation.
 PLATT_PARAMS = {
-    "win":   {"A": 1.05, "B": -0.02},  # PLACEHOLDER: Near-identity, awaiting real calibration data
-    "top3":  {"A": 1.03, "B": -0.01},  # PLACEHOLDER: Minimal adjustment, not fitted
-    "top10": {"A": 1.02, "B":  0.00},  # PLACEHOLDER: Nearly identity transformation
-    "dnf":   {"A": 1.00, "B":  0.00},  # PLACEHOLDER: Identity until fitted on real DNF data
+    "win":   {"A": 1.0, "B": 0.0},  # M-1 FIX: True identity — no adjustment until calibrated
+    "top3":  {"A": 1.0, "B": 0.0},  # M-1 FIX: Identity
+    "top10": {"A": 1.0, "B": 0.0},  # M-1 FIX: Identity
+    "dnf":   {"A": 1.0, "B": 0.0},  # M-1 FIX: Identity
 }
 
 SIMULATION_RUNS = 5000
@@ -224,23 +217,21 @@ def simulate_race(
         tire_model = None
         driver_strategies = {}
 
-    # FIX: noise scaled by circuit chaos (SC probability)
-    # NEW-01 CALIBRATION FIX: Previous noise levels were far too low, causing unrealistic
-    # win concentrations (e.g., 77% for one driver). Real F1 races have massive uncertainty
-    # from qualifying variance, strategy, incidents, weather, and driver errors.
-    # 
-    # Research from betting markets shows even dominant favorites rarely exceed 25-35% win prob.
-    # Las Vegas 2025: Verstappen (clear favorite) = ~27%
-    # 
-    # To achieve realistic distributions with typical composite score spreads of 0.15-0.25
-    # between top drivers, we need σ ≈ 0.15-0.20, not the previous 0.06-0.07.
-    # This ensures the favorite wins ~20-35% rather than 60-80%.
-    #
-    # Formula: base_noise + sc_prob * chaos_multiplier
-    # Canada (SC=0.82): σ ≈ 0.15 + 0.82*0.10 = 0.23 (high chaos circuit)
-    # Monaco (SC=0.78): σ ≈ 0.15 + 0.78*0.10 = 0.23 (street circuit volatility)
-    # Monza (SC=0.30):  σ ≈ 0.15 + 0.30*0.10 = 0.18 (lower chaos but still significant)
-    circuit_noise_sigma = 0.15 + sc_prob * 0.10
+    # A-6 FIX: Circuit-type noise variance — differentiate noise by circuit characteristics.
+    # Street circuits: higher variance (walls, debris, safety cars)
+    # High-speed permanent circuits: lower variance (consistent conditions)
+    # Technical circuits: more driver-dependent variance
+    # Wet weather adds significant variance
+    base_noise = 0.12
+    circuit_types = circuit.get("circuit_type", [])
+    if "street" in circuit_types:
+        base_noise += 0.06   # Street circuits are chaotic
+    if "high_speed" in circuit_types:
+        base_noise -= 0.02   # High-speed = more predictable
+    if "technical" in circuit_types:
+        base_noise += 0.02   # Technical = more driver-dependent variance
+    sc_noise = sc_prob * 0.10
+    circuit_noise_sigma = round(base_noise + sc_noise, 3)
 
     # FIX: distance-adjusted DNF multiplier
     dnf_mult = _distance_dnf_multiplier(circuit_laps)
@@ -361,8 +352,11 @@ def simulate_race(
         ) / non_dnf
         
         # FEATURE-16: Calculate position standard deviation
-        mean_pos = position_sums[did] / n_runs
-        variance = (position_sq_sums[did] / n_runs) - (mean_pos ** 2)
+        # H-2 FIX: Use non-DNF count as denominator instead of total n_runs.
+        # Previously, position_sums only had non-DNF positions but divided by n_runs,
+        # making mean_pos ~20% lower than actual for drivers with high DNF rates.
+        mean_pos = position_sums[did] / max(n_runs - dnf_counts[did], 1)
+        variance = (position_sq_sums[did] / max(n_runs - dnf_counts[did], 1)) - (mean_pos ** 2)
         pos_std = math.sqrt(max(0, variance))
 
         stats[did] = {
@@ -389,6 +383,189 @@ def simulate_race(
     return {
         "stats": stats,
         "confidence_intervals": confidence_intervals,
+    }
+
+
+def simulate_h2h(
+    circuit_id: str,
+    driver1_id: str,
+    driver2_id: str,
+    rain_probability: Optional[float] = None,
+    n_runs: int = SIMULATION_RUNS,
+    seed: Optional[int] = None,
+    grid_overrides: Optional[dict] = None,
+    vectorized: bool = False,
+) -> dict:
+    """Head-to-head pairwise probabilities from *joint* simulation runs.
+
+    Returns probabilities that preserve correlation between the two drivers by using
+    the same simulated finishing order.
+
+    Output keys:
+      - driver1_ahead_probability
+      - driver2_ahead_probability
+      - tie_probability (both DNF or equal outcome proxy)
+      - driver1_expected_position, driver2_expected_position (DNF handled as worst)
+    """
+    # For now, reuse the non-vectorized simulate_race logic by running simulate_race
+    # with a lightweight interception inside the loop. Since simulate_race does not
+    # expose per-run ordering, we implement a dedicated loop here by copying the
+    # relevant ordering logic.
+
+    from engine.feature_engineering import compute_all_drivers
+    from data.driver_data import get_all_drivers, get_driver
+
+    circuit = _get_circuit(circuit_id)
+    sc_prob = circuit.get("safety_car_probability", 0.5)
+    circuit_laps = circuit.get("lap_count", 60)
+
+    drivers = get_all_drivers()
+    field_size = len(drivers)
+
+    if grid_overrides is None:
+        grid_overrides = {}
+
+    # Pre-compute driver features for all drivers so ordering stays consistent
+    driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
+
+    # Ensure requested drivers exist
+    feat_by_id = {d["driver_id"]: d for d in driver_features}
+    if driver1_id not in feat_by_id or driver2_id not in feat_by_id:
+        raise KeyError("Requested driver(s) not found in simulation driver set")
+
+    # Tire strategy model (optional)
+    try:
+        from engine.tire_strategy import TireStrategyModel
+        tire_model = TireStrategyModel(circuit_id, circuit_laps)
+        driver_strategies = {}
+        for d in driver_features:
+            driver_data = get_driver(d["driver_id"])
+            tire_mgmt = driver_data.get("tire_management", 7.0) / 10.0
+            strategy_type = "conservative" if tire_mgmt > 0.8 else "balanced" if tire_mgmt > 0.6 else "aggressive"
+            driver_strategies[d["driver_id"]] = {
+                "type": strategy_type,
+                "tire_sensitivity": 1.0 - tire_mgmt * 0.3,
+            }
+    except Exception:
+        tire_model = None
+        driver_strategies = {}
+
+    base_noise = 0.12
+    circuit_types = circuit.get("circuit_type", [])
+    if "street" in circuit_types:
+        base_noise += 0.06
+    if "high_speed" in circuit_types:
+        base_noise -= 0.02
+    if "technical" in circuit_types:
+        base_noise += 0.02
+    sc_noise = sc_prob * 0.10
+    circuit_noise_sigma = round(base_noise + sc_noise, 3)
+
+    dnf_mult = _distance_dnf_multiplier(circuit_laps)
+
+    # Ordering loop accumulators
+    d1_ahead = 0
+    d2_ahead = 0
+    ties = 0
+
+    d1_pos_sum = 0.0
+    d2_pos_sum = 0.0
+
+    # Points for DNF-as-worst expected position proxy
+    worst_pos = field_size + 5
+
+    rng = random.Random(seed) if seed is not None else random.Random()
+
+    for _ in range(n_runs):
+        # 1) store original grid rank proxy (index in driver_features ordering)
+        grid_ranks = {d["driver_id"]: i for i, d in enumerate(driver_features)}
+
+        jittered = []
+        for d in driver_features:
+            noise = rng.gauss(0, circuit_noise_sigma)
+            tire_adjustment = 0.0
+            did = d["driver_id"]
+
+            if tire_model and did in driver_strategies:
+                strat = driver_strategies[did]
+                if strat["type"] == "conservative":
+                    tire_adjustment = 0.02
+                elif strat["type"] == "aggressive":
+                    tire_adjustment = rng.uniform(-0.05, 0.08)
+                tire_adjustment *= strat.get("tire_sensitivity", 1.0)
+
+            score = max(0.001, d["composite_score"] + noise + tire_adjustment)
+
+            adj_dnf = min(d["dnf_probability"] * dnf_mult, 0.45)
+            dnf_rolled = rng.random() < adj_dnf
+            jittered.append((did, score, dnf_rolled))
+
+        jittered.sort(key=lambda x: x[1], reverse=True)
+
+        # 2) Safety car mid-field boost based on original grid rank indices P6-P15 proxy
+        if rng.random() < sc_prob:
+            boosted = []
+            for did, score, dnf in jittered:
+                original_grid_rank = grid_ranks[did]
+                if 5 <= original_grid_rank <= 14 and not dnf:
+                    score = score * rng.uniform(1.03, 1.10)
+                    if tire_model and did in driver_strategies and rng.random() < 0.3:
+                        score *= rng.uniform(1.02, 1.05)
+                boosted.append((did, score, dnf))
+            jittered = boosted
+
+        finishing = [(did, score) for did, score, dnf in jittered if not dnf]
+        finishing.sort(key=lambda x: x[1], reverse=True)
+        dnfs = [did for did, _score, dnf in jittered if dnf]
+
+        pos_by_driver = {}
+        for pos, (did, _score) in enumerate(finishing, start=1):
+            if pos <= field_size:
+                pos_by_driver[did] = pos
+
+        d1_dnf = driver1_id in dnfs
+        d2_dnf = driver2_id in dnfs
+
+        if (not d1_dnf) and (not d2_dnf):
+            p1 = pos_by_driver.get(driver1_id, worst_pos)
+            p2 = pos_by_driver.get(driver2_id, worst_pos)
+            if p1 < p2:
+                d1_ahead += 1
+            elif p2 < p1:
+                d2_ahead += 1
+            else:
+                ties += 1
+            d1_pos_sum += p1
+            d2_pos_sum += p2
+        elif d1_dnf and (not d2_dnf):
+            d2_ahead += 1
+            d1_pos_sum += worst_pos
+            d2_pos_sum += pos_by_driver.get(driver2_id, worst_pos)
+        elif d2_dnf and (not d1_dnf):
+            d1_ahead += 1
+            d1_pos_sum += pos_by_driver.get(driver1_id, worst_pos)
+            d2_pos_sum += worst_pos
+        else:
+            # both DNFs
+            ties += 1
+            d1_pos_sum += worst_pos
+            d2_pos_sum += worst_pos
+
+    p_d1_ahead = d1_ahead / n_runs
+    p_d2_ahead = d2_ahead / n_runs
+    p_tie = ties / n_runs
+
+    # Normalize ahead vs tie to keep UI behavior (no ties displayed)
+    denom = p_d1_ahead + p_d2_ahead
+    p_d1_ahead_no_tie = (p_d1_ahead / denom) if denom > 0 else 0.5
+
+    return {
+        "driver1_ahead_probability": p_d1_ahead,
+        "driver2_ahead_probability": p_d2_ahead,
+        "tie_probability": p_tie,
+        "driver1_ahead_probability_no_tie": p_d1_ahead_no_tie,
+        "driver1_expected_position": d1_pos_sum / n_runs,
+        "driver2_expected_position": d2_pos_sum / n_runs,
     }
 
 

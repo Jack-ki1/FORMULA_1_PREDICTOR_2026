@@ -266,7 +266,11 @@ class MultiDimensionalELO:
 _elo_system = None
 
 def get_elo_system() -> MultiDimensionalELO:
-    """Get or create the multi-dimensional ELO system singleton."""
+    """Get or create the multi-dimensional ELO system singleton.
+    
+    H-1 FIX: After initialization, replays all completed 2026 races to update ELO
+    ratings from static pre-season estimates to current form.
+    """
     global _elo_system
     if _elo_system is None:
         _elo_system = MultiDimensionalELO()
@@ -275,6 +279,27 @@ def get_elo_system() -> MultiDimensionalELO:
         from data.driver_data import get_all_drivers
         for driver in get_all_drivers():
             _elo_system.initialize_driver(driver["id"], base_rating=driver.get("elo", 1500))
+        
+        # H-1 FIX: Replay completed 2026 races to update ELO from static pre-season values
+        from data.season_2026 import SEASON_RESULTS_2026
+        for race in SEASON_RESULTS_2026:
+            # Skip races with no results (e.g., placeholder entries)
+            if not race.get("results"):
+                continue
+            
+            race_results = [
+                {
+                    "driver_id": r["driver"],
+                    "grid_pos": r["position"],    # Approximate; use actual quali data if available
+                    "finish_pos": r["position"],
+                }
+                for r in race["results"]
+                if r.get("status", "Finished") not in ("DNF", "DNS", "DSQ")
+            ]
+            
+            # Only update if we have at least 2 finishers
+            if len(race_results) >= 2:
+                _elo_system.update_ratings_after_race(race_results, weather_conditions="dry")
     
     return _elo_system
 

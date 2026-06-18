@@ -75,8 +75,12 @@ def configure_fastf1_offline_mode():
     try:
         import fastf1
         
+        # FIX: Ensure cache directory exists before enabling cache
+        cache_path = Path(fastf1.Cache.cache_dir) if hasattr(fastf1.Cache, 'cache_dir') else Path('.fastf1_cache')
+        cache_path.mkdir(parents=True, exist_ok=True)  # Create directory if it doesn't exist
+        
         # Enable offline mode - this tells FastF1 to rely on cached data
-        fastf1.Cache.enable_cache(use_requests_cache=True)
+        fastf1.Cache.enable_cache(cache_dir=str(cache_path), use_requests_cache=True)
         
         # Set a short timeout to fail fast on network issues
         import requests_cache

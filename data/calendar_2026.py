@@ -240,3 +240,135 @@ def get_sprint_weekends() -> list:
 
 def get_completed_races() -> list:
     return [r for r in CALENDAR_2026 if r["status"] == "completed"]
+
+
+# ── Jolpica Calendar Sync ──────────────────────────────────────────────────────
+
+def sync_calendar_from_jolpica() -> Dict[str, Any]:
+    """
+    Sync calendar status from Jolpica-F1 API schedule.
+    
+    Fetches the current season schedule from Jolpica and updates
+    CALENDAR_2026 race statuses based on actual race dates.
+    
+    This is more reliable than FastF1 for schedule sync because:
+    - It doesn't require loading session data
+    - It's faster (single API call)
+    - It works even when FastF1 data isn't available yet
+    
+    Returns:
+        Dict with sync results: updated, added, errors
+    """
+    global CALENDAR_2026
+    
+    try:
+        from data.jolpica_client import get_jolpica_client
+        client = get_jolpica_client()
+        
+        schedule = client.get_current_schedule()
+        if not schedule:
+            return {"updated": 0, "added": 0, "errors": ["No schedule data from Jolpica"]}
+        
+        today = datetime.now().date()
+        updated = 0
+        added = 0
+        errors = []
+        
+        # Update existing calendar entries
+        for jolpica_race in schedule:
+            round_num = jolpica_race["round"]
+            
+            # Find matching entry in our calendar
+            local_race = next((r for r in CALENDAR_2026 if r["round"] == round_num), None)
+            
+            if local_race:
+                # Update status based on date
+                try:
+                    race_date = datetime.strptime(jolpica_race["date"], "%Y-%m-%d").date()
+                    new_status = "completed" if race_date <= today else "upcoming"
+                    
+                    if local_race["status"] != new_status:
+                        local_race["status"] = new_status
+                        updated += 1
+                        logger.info(f"Calendar updated: Round {round_num} {local_race['name']} → {new_status}")
+                except (ValueError, KeyError) as e:
+                    errors.append(f"Round {round_num}: {e}")
+            else:
+                # Add missing race
+                try:
+                    race_date = datetime.strptime(jolpica_race["date"], "%Y-%m-%d").date()
+                    status = "completed" if race_date <= today else "upcoming"
+                    
+                    new_race = {
+                        "round": round_num,
+                        "circuit": jolpica_race.get("circuit_id", f"round_{round_num}"),
+                        "name": jolpica_race["race_name"],
+                        "date": jolpica_race["date"],
+                        "sprint": False,  # Jolpica doesn't provide sprint info
+                        "status": status,
+                    }
+                    CALENDAR_2026.append(new_race)
+                    added += 1
+                    logger.info(f"Calendar added: Round {round_num} {jolpica_race['race_name']}")
+                except Exception as e:
+                    errors.append(f"Round {round_num}: {e}")
+        
+        # Sort calendar by round number
+        CALENDAR_2026.sort(key=lambda r: r["round"])
+        
+        result = {
+            "updated": updated,
+            "added": added,
+            "errors": errors,
+            "source": "jolpica",
+            "total_races": len(CALENDAR_2026),
+        }
+        
+        logger.info(f"Calendar synced from Jolpica: {updated} updated, {added} added")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Failed to sync calendar from Jolpica: {e}")
+        return {"updated": 0, "added": 0, "errors": [str(e)], "source": "error"}
+
+
+def get_next_race_from_api() -> Optional[Dict[str, Any]]:
+    """
+    Get the next upcoming race from Jolpica API.
+    
+    More reliable than get_next_race() because it uses live schedule data.
+    
+    Returns:
+        Dict with next race info, or None if no upcoming races
+    """
+    try:
+        from data.jolpica_client import get_jolpica_client
+        client = get_jolpica_client()
+        
+        schedule = client.get_current_schedule()
+        if not schedule:
+            return None
+        
+        today = datetime.now().date()
+        
+        for race in schedule:
+            try:
+                race_date = datetime.strptime(race["date"], "%Y-%m-%d").date()
+                if race_date > today:
+                    return {
+                        "round": race["round"],
+                        "name": race["race_name"],
+                        "circuit": race.get("circuit_id", ""),
+                        "date": race["date"],
+                        "time": race.get("time", ""),
+                        "source": "jolpica",
+                    }
+            except (ValueError, KeyError):
+                continue
+        
+        return None
+        
+    except Exception as e:
+        logger.debug(f"Failed to get next race from API: {e}")
+        # Fallback to local data
+        return get_next_race()

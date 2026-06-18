@@ -150,10 +150,13 @@ def simulate_race_vectorized(
     valid_finishes = ~dnf_rolled
     
     # Points distribution from positional results
-    points_map = np.zeros(n_drivers, dtype=int)
-    points_map[:10] = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
+    # Q-2 FIX: Use safe dict lookup instead of array indexing to prevent
+    # silent wrong-index errors if n_drivers ever differs from points_map size
+    # (e.g., mid-season driver change, reserve driver substitution)
+    F1_POINTS = {1: 25, 2: 18, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 2, 10: 1}
+    points_vectorized = np.vectorize(lambda pos: F1_POINTS.get(int(pos), 0))
     points_earned = np.sum(
-        np.where(valid_finishes, points_map[finishing_positions - 1], 0),
+        np.where(valid_finishes, points_vectorized(finishing_positions), 0),
         axis=0,
     )
     
@@ -171,8 +174,9 @@ def simulate_race_vectorized(
         np.where(valid_finishes, finishing_positions ** 2, 0),
         axis=0
     )
-    mean_pos = position_sums / n_runs
-    variance = (position_sq_sums / n_runs) - (mean_pos ** 2)
+    # H-2 FIX: Use non-DNF count as denominator for consistent statistics
+    mean_pos = position_sums / non_dnf_counts
+    variance = (position_sq_sums / non_dnf_counts) - (mean_pos ** 2)
     pos_std = np.sqrt(np.maximum(0, variance))
     
     # Position distributions

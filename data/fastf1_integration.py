@@ -631,6 +631,119 @@ def get_historical_circuit_stats(season: int, circuit_name: str) -> Dict[str, An
         'round': int(circuit_rows.iloc[0]['RoundNumber']),
     }
     return stats
+
+
+# ── OpenF1 Supplement Functions ────────────────────────────────────────────────
+# These functions supplement FastF1 data with live data from the OpenF1 API.
+# They provide real-time weather, race control events, and telemetry cross-validation.
+
+def get_openf1_weather_supplement(year: int, meeting_name: str) -> Dict[str, Any]:
+    """
+    Get weather data from OpenF1 for a race weekend.
+    
+    Supplements FastF1 weather data with OpenF1's more granular
+    track temperature, humidity, wind, and rain data.
+    
+    Args:
+        year: Season year
+        meeting_name: Meeting name (e.g., "Monaco")
+    
+    Returns:
+        Dict with weather summary from OpenF1, or empty dict if unavailable
+    """
+    try:
+        from data.openf1_client import get_openf1_client
+        client = get_openf1_client()
+        return client.get_weather_summary_for_meeting(year, meeting_name)
+    except Exception as e:
+        logger.debug(f"OpenF1 weather supplement failed: {e}")
+        return {}
+
+
+def get_openf1_safety_car_data(year: int, meeting_name: str) -> Dict[str, Any]:
+    """
+    Get safety car and race control data from OpenF1.
+    
+    Provides more detailed safety car deployment info than FastF1,
+    including VSC periods, red flags, and penalty data.
+    
+    Args:
+        year: Season year
+        meeting_name: Meeting name
+    
+    Returns:
+        Dict with safety car summary, or empty dict if unavailable
+    """
+    try:
+        from data.openf1_client import get_openf1_client
+        client = get_openf1_client()
+        return client.get_safety_car_summary_for_meeting(year, meeting_name)
+    except Exception as e:
+        logger.debug(f"OpenF1 safety car supplement failed: {e}")
+        return {}
+
+
+def get_combined_weather_forecast(year: int, meeting_name: str) -> Dict[str, Any]:
+    """
+    Combine weather data from FastF1 (historical) and OpenF1 (live).
+    
+    Uses FastF1 for historical weather patterns and OpenF1 for
+    current conditions. Provides a unified weather profile for
+    prediction models.
+    
+    Args:
+        year: Season year
+        meeting_name: Meeting name
+    
+    Returns:
+        Dict with combined weather data from both sources
+    """
+    combined = {
+        "source": "combined",
+        "fastf1": {},
+        "openf1": {},
+    }
+    
+    # Get FastF1 weather (historical patterns)
+    try:
+        session = get_session(year, meeting_name, "Race")
+        if session:
+            session.load(telemetry=False, weather=True, messages=False)
+            if hasattr(session, 'weather_data') and session.weather_data is not None:
+                wd = session.weather_data
+                combined["fastf1"] = {
+                    "avg_air_temp": float(wd['AirTemp'].mean()) if 'AirTemp' in wd.columns else None,
+                    "avg_track_temp": float(wd['TrackTemp'].mean()) if 'TrackTemp' in wd.columns else None,
+                    "rained": bool(wd['Rainfall'].any()) if 'Rainfall' in wd.columns else False,
+                    "humidity": float(wd['Humidity'].mean()) if 'Humidity' in wd.columns else None,
+                    "wind_speed": float(wd['WindSpeed'].mean()) if 'WindSpeed' in wd.columns else None,
+                }
+    except Exception as e:
+        logger.debug(f"FastF1 weather failed: {e}")
+    
+    # Get OpenF1 weather (live/current)
+    try:
+        openf1_weather = get_openf1_weather_supplement(year, meeting_name)
+        if openf1_weather:
+            combined["openf1"] = openf1_weather
+    except Exception as e:
+        logger.debug(f"OpenF1 weather failed: {e}")
+    
+    # Merge: prefer OpenF1 for live data, FastF1 for historical
+    merged = {}
+    for key in ["avg_air_temp", "avg_track_temp", "rained", "humidity", "wind_speed"]:
+        openf1_val = combined["openf1"].get(key)
+        fastf1_val = combined["fastf1"].get(key)
+        merged[key] = openf1_val if openf1_val is not None else fastf1_val
+    
+    merged["sources"] = {
+        "fastf1": bool(combined["fastf1"]),
+        "openf1": bool(combined["openf1"]),
+    }
+    
+    return merged
+
+
 # ── EXPORT ──────────────────────────────────────────────────────────────────────
 
 __all__ = [
@@ -647,6 +760,9 @@ __all__ = [
     "extract_ml_features",                # NEW
     "sync_all_historical_data",           # NEW
     "get_historical_circuit_stats",       # NEW
+    "get_openf1_weather_supplement",       # NEW — OpenF1 weather data
+    "get_openf1_safety_car_data",          # NEW — OpenF1 race control data
+    "get_combined_weather_forecast",       # NEW — Combined FastF1 + OpenF1 weather
 ]
 
 if __name__ == "__main__":

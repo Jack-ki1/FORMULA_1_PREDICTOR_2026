@@ -13,6 +13,11 @@ FIXES vs v1:
   
 FEATURE-4 ADDITION:
   5. Driver-specific circuit history integrated as performance modifier in composite score.
+
+LIVE DATA INTEGRATION (v3.1):
+  6. When LIVE_DATA_ENABLED is True, the engine fetches fresh driver standings,
+     constructor strength, and recent form from Jolpica-F1 API. Falls back to
+     hardcoded data if the API is unavailable.
 """
 
 import math
@@ -21,7 +26,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from config.settings import CONSTRUCTOR_STRENGTH, FEATURE_WEIGHTS, RECENCY_DECAY, RECENCY_WINDOW
+from config.settings import (
+    CONSTRUCTOR_STRENGTH, FEATURE_WEIGHTS, RECENCY_DECAY, RECENCY_WINDOW,
+    LIVE_DATA_ENABLED, LIVE_OPENF1_ENABLED,
+)
 from data.driver_data import get_driver, get_all_drivers, get_drivers_for_team, calculate_circuit_performance_modifier
 from data.circuit_data import get_circuit, circuit_favors_team
 from data.fastf1_integration import FASTF1_AVAILABLE, extract_ml_features
@@ -31,6 +39,134 @@ from data.season_2026 import get_driver_last_n_results, DRIVER_STANDINGS_AFTER_R
 N_DRIVERS = 22
 DNF_POSITION_PENALTY = N_DRIVERS + 5  # 27 — beyond last-place finish
 _FASTF1_FEATURE_CACHE = {}
+
+# ── Live Data Cache ────────────────────────────────────────────────────────────
+# Caches live API data in memory to avoid repeated API calls during a prediction run.
+# Populated lazily on first access; cleared between prediction runs.
+_LIVE_DATA_CACHE: Dict[str, Any] = {
+    "driver_standings": None,
+    "constructor_standings": None,
+    "recent_results": None,
+    "initialized": False,
+}
+
+
+def _ensure_live_data():
+    """
+    Lazily fetch live data from Jolpica API on first access.
+    
+    Populates the in-memory cache with:
+    - Driver standings (position, points, wins)
+    - Constructor standings (position, points, wins)
+    - Recent race results (driver form, DNF rates)
+    
+    Falls back gracefully if the API is unavailable.
+    """
+    if _LIVE_DATA_CACHE["initialized"]:
+        return
+
+    if not LIVE_DATA_ENABLED:
+        _LIVE_DATA_CACHE["initialized"] = True
+        return
+
+    try:
+        from data.jolpica_client import get_jolpica_client
+        client = get_jolpica_client()
+
+        # Fetch driver standings
+        standings = client.get_standings_mapped()
+        if standings:
+            _LIVE_DATA_CACHE["driver_standings"] = standings
+            logger.info(f"Live data: loaded {len(standings)} driver standings from Jolpica")
+
+        # Fetch constructor standings
+        constructor = client.get_constructor_standings_mapped()
+        if constructor:
+            _LIVE_DATA_CACHE["constructor_standings"] = constructor
+            logger.info(f"Live data: loaded {len(constructor)} constructor standings from Jolpica")
+
+        # Fetch recent results for form/DNF
+        schedule = client.get_current_schedule()
+        if schedule:
+            from datetime import datetime
+            today = datetime.now().date()
+            completed = []
+            for race in schedule:
+                try:
+                    race_date = datetime.strptime(race["date"], "%Y-%m-%d").date()
+                    if race_date <= today:
+                        completed.append(race)
+                except (ValueError, KeyError):
+                    continue
+
+            # Get last 6 races for form calculation
+            recent = completed[-6:] if len(completed) >= 6 else completed
+            driver_form = {}
+            driver_starts = {}
+            driver_dnfs = {}
+
+            for race in recent:
+                try:
+                    season = datetime.strptime(race["date"], "%Y-%m-%d").year
+                except ValueError:
+                    season = datetime.now().year
+                result = client.get_race_results(season, race["round"])
+                if result and result.get("results"):
+                    # Map Ergast codes to our IDs
+                    from data.live_updater import _ERGAST_CODE_TO_OUR_ID
+                    for r in result["results"]:
+                        code = r.get("driver_code", "")
+                        our_id = _ERGAST_CODE_TO_OUR_ID.get(code, code.lower())
+                        pos = r.get("position", 0)
+                        status = r.get("status", "")
+
+                        if pos > 0:
+                            driver_form.setdefault(our_id, []).append(pos)
+                        driver_starts[our_id] = driver_starts.get(our_id, 0) + 1
+                        if "finished" not in status.lower() and pos == 0:
+                            driver_dnfs[our_id] = driver_dnfs.get(our_id, 0) + 1
+
+            _LIVE_DATA_CACHE["recent_results"] = {
+                "driver_form": {k: v[-6:] for k, v in driver_form.items()},
+                "driver_dnf": {
+                    did: {"dnf_rate": round(dnfs / driver_starts[did], 3) if driver_starts[did] > 0 else 0.0}
+                    for did, dnfs in driver_dnfs.items()
+                },
+            }
+            logger.info(f"Live data: loaded form for {len(driver_form)} drivers from {len(recent)} races")
+
+    except Exception as e:
+        logger.warning(f"Live data fetch failed (falling back to hardcoded data): {e}")
+
+    _LIVE_DATA_CACHE["initialized"] = True
+
+
+def get_live_driver_standings() -> Optional[Dict[str, Dict]]:
+    """Get live driver standings, or None if unavailable."""
+    _ensure_live_data()
+    return _LIVE_DATA_CACHE.get("driver_standings")
+
+
+def get_live_constructor_standings() -> Optional[Dict[str, Dict]]:
+    """Get live constructor standings, or None if unavailable."""
+    _ensure_live_data()
+    return _LIVE_DATA_CACHE.get("constructor_standings")
+
+
+def get_live_recent_results() -> Optional[Dict[str, Any]]:
+    """Get live recent results (form + DNF), or None if unavailable."""
+    _ensure_live_data()
+    return _LIVE_DATA_CACHE.get("recent_results")
+
+
+def clear_live_data_cache():
+    """Clear the in-memory live data cache (forces re-fetch on next access)."""
+    _LIVE_DATA_CACHE.update({
+        "driver_standings": None,
+        "constructor_standings": None,
+        "recent_results": None,
+        "initialized": False,
+    })
 
 
 # ── ELO ────────────────────────────────────────────────────────────────────────
@@ -103,8 +239,65 @@ def compute_elo_score(driver_id: str) -> float:
 
 # ── Constructor strength ───────────────────────────────────────────────────────
 
+def get_dynamic_constructor_strength() -> Dict[str, float]:
+    """A-3 FIX: Blend static pre-season estimates with actual 2026 constructor points.
+    
+    Blends 40% static (pre-season expertise) + 60% actual results.
+    Normalizes 2026 points to [0.10, 0.96] range.
+    
+    LIVE DATA (v3.1): When live constructor standings are available from Jolpica,
+    uses those instead of hardcoded CONSTRUCTOR_STANDINGS_AFTER_R5.
+    """
+    # Try live data first
+    live_constructors = get_live_constructor_standings()
+    if live_constructors:
+        try:
+            max_pts = max(v["points"] for v in live_constructors.values() if v["points"] > 0)
+            if max_pts > 0:
+                points_strength = {}
+                for team, data in live_constructors.items():
+                    if data["points"] > 0:
+                        points_strength[team] = 0.10 + (data["points"] / max_pts) * 0.86
+                    else:
+                        points_strength[team] = 0.10
+
+                blended = {}
+                for team, static_val in CONSTRUCTOR_STRENGTH.items():
+                    actual_val = points_strength.get(team, static_val)
+                    blended[team] = round(0.40 * static_val + 0.60 * actual_val, 3)
+                return blended
+        except Exception as e:
+            logger.debug(f"Live constructor strength failed, falling back: {e}")
+
+    # Fallback to hardcoded data
+    try:
+        from data.season_2026 import CONSTRUCTOR_STANDINGS_AFTER_R5
+        
+        # Normalize 2026 points to [0.10, 0.96] range
+        max_pts = max(s['points'] for s in CONSTRUCTOR_STANDINGS_AFTER_R5)
+        if max_pts <= 0:
+            return dict(CONSTRUCTOR_STRENGTH)
+        
+        points_strength = {
+            s['team']: 0.10 + (s['points'] / max_pts) * 0.86
+            for s in CONSTRUCTOR_STANDINGS_AFTER_R5
+        }
+        
+        # Blend: 40% static (pre-season expertise) + 60% actual results
+        blended = {}
+        for team, static_val in CONSTRUCTOR_STRENGTH.items():
+            actual_val = points_strength.get(team, static_val)
+            blended[team] = round(0.40 * static_val + 0.60 * actual_val, 3)
+        
+        return blended
+    except Exception:
+        return dict(CONSTRUCTOR_STRENGTH)
+
+
 def compute_constructor_strength(team_id: str, circuit_id: str) -> float:
-    base = CONSTRUCTOR_STRENGTH.get(team_id, 0.25)
+    # A-3 FIX: Use dynamic constructor strength blended with actual 2026 results
+    dynamic_strength = get_dynamic_constructor_strength()
+    base = dynamic_strength.get(team_id, CONSTRUCTOR_STRENGTH.get(team_id, 0.25))
     try:
         mult = circuit_favors_team(circuit_id, team_id)
     except Exception:
@@ -117,28 +310,61 @@ def compute_constructor_strength(team_id: str, circuit_id: str) -> float:
 def compute_recent_form_score(driver_id: str) -> float:
     """Exponentially-weighted average of last N finishing positions.
     
-    FIXED: get_driver_last_n_results returns List[int], not List[Dict].
-    Previously crashed with AttributeError: 'int' object has no attribute 'get'
+    C-4 FIX: get_driver_last_n_results now returns List[dict] with {position, status}.
+    DNF/DNS/DSQ drivers are correctly identified via status field, not just position.
+    A-4 FIX: Filter out DNS padding — only use actual race results.
+    
+    LIVE DATA (v3.1): When live data is available, uses actual recent race results
+    from Jolpica API instead of hardcoded season_2026.py data.
     """
+    # Try live data first
+    live_results = get_live_recent_results()
+    if live_results and live_results.get("driver_form", {}).get(driver_id):
+        form_positions = live_results["driver_form"][driver_id]
+        if form_positions:
+            def pos_to_score_live(pos):
+                if pos <= 0:
+                    return 0.02
+                return max(0.05, 1.0 - (pos - 1) / (N_DRIVERS - 1))
+
+            weighted_sum = 0.0
+            weight_total = 0.0
+            for i, pos in enumerate(form_positions):
+                weight = RECENCY_DECAY ** i
+                score = pos_to_score_live(pos)
+                weighted_sum += weight * score
+                weight_total += weight
+
+            if weight_total > 0:
+                return weighted_sum / weight_total
+
+    # Fallback to hardcoded data
     try:
         results = get_driver_last_n_results(driver_id, n=RECENCY_WINDOW)
-        if not results:
-            return 0.5
         
-        # Convert positions to scores (1st = 1.0, 20th = 0.05, DNF = very low)
-        def pos_to_score(pos):
-            # Handle None, DNF string, or invalid positions
-            if pos is None or pos == "DNF" or pos <= 0:
-                return 0.02  # Heavy penalty for DNF/no result
+        # A-4 FIX: Filter out DNS padding (no data yet) — only use actual results
+        actual_results = [
+            r for r in results
+            if r.get("status", "Finished") not in ("DNS",) or r.get("position", 0) > 0
+        ]
+        if not actual_results:
+            return 0.5  # Neutral for no data
+        
+        # C-4 FIX: pos_to_score now uses status field to detect DNF/DNS/DSQ
+        def pos_to_score(result_dict):
+            pos = result_dict.get("position", 0)
+            status = result_dict.get("status", "Finished")
+            # C-4 FIX: DNF/DNS/DSQ are identified by status, not just position <= 0
+            if status in ("DNF", "DNS", "DSQ") or pos <= 0:
+                return 0.02  # Heavy penalty for non-finish
             return max(0.05, 1.0 - (pos - 1) / (N_DRIVERS - 1))
         
         weighted_sum = 0.0
         weight_total = 0.0
         
-        for i, result in enumerate(results):
+        for i, result in enumerate(actual_results):
             weight = RECENCY_DECAY ** i
-            # FIXED: result is already an integer position, not a dict
-            score = pos_to_score(result if isinstance(result, int) else 20)
+            score = pos_to_score(result)
             weighted_sum += weight * score
             weight_total += weight
         
@@ -150,7 +376,10 @@ def compute_recent_form_score(driver_id: str) -> float:
 # ── Track type fit ─────────────────────────────────────────────────────────────
 
 def compute_track_fit_score(driver_id: str, circuit_id: str) -> float:
-    """Match driver's strengths to circuit characteristics."""
+    """Match driver's strengths to circuit characteristics.
+    
+    A-5 FIX: Include tire management bonus at high-degradation circuits.
+    """
     try:
         driver = get_driver(driver_id)
         circuit = get_circuit(circuit_id)
@@ -161,6 +390,13 @@ def compute_track_fit_score(driver_id: str, circuit_id: str) -> float:
         # Average fit across all circuit types
         total_fit = sum(fits.get(t, 1.0) for t in track_types)
         avg_fit = total_fit / len(track_types)
+        
+        # A-5 FIX: Tire management bonus at high-degradation circuits
+        tire_deg_rate = circuit.get("tire_deg_rate", 0.6)
+        if tire_deg_rate > 0.65:  # High-deg circuit
+            tire_mgmt = driver.get("tire_management", 7.0) / 10.0
+            tire_bonus = (tire_mgmt - 0.7) * (tire_deg_rate - 0.65) * 0.5
+            avg_fit += tire_bonus
         
         # Normalize to 0-1 range (typical range is 0.8-1.2)
         return min(1.0, max(0.0, (avg_fit - 0.8) / 0.4))
@@ -190,20 +426,29 @@ def compute_reliability_score(driver_id: str) -> float:
 
 def compute_weather_score(driver_id: str, circuit_id: str, 
                          rain_probability: Optional[float] = None) -> float:
-    """Wet skill × rain probability interaction."""
+    """Wet skill × rain probability interaction.
+    
+    A-7 FIX: When rain_probability > 0.5, wet skill becomes the primary differentiator.
+    """
     try:
         driver = get_driver(driver_id)
         wet_skill = driver.get("wet_skill", 5.0) / 10.0  # Normalize to 0-1
         
         rain_prob = rain_probability if rain_probability is not None else 0.2
         
-        # Base score is neutral, adjusted by wet skill and rain probability
-        # If no rain expected, wet skill doesn't matter much
-        # If high rain, wet specialists get big boost
-        base_score = 0.5
-        wet_bonus = (wet_skill - 0.5) * rain_prob * 0.6  # Max ±0.3 adjustment
-        
-        return max(0.0, min(1.0, base_score + wet_bonus))
+        # A-7 FIX: Enhanced wet weather differentiation
+        if rain_prob > 0.5:
+            # Heavy rain: wet skill is the primary differentiator
+            # Hamilton (9.0), Verstappen (9.2) vs Lindblad (6.8)
+            return 0.3 + wet_skill * 0.7   # Range: [0.51, 0.93]
+        elif rain_prob > 0.3:
+            base_score = 0.5
+            wet_bonus = (wet_skill - 0.5) * rain_prob * 0.8
+            return max(0.0, min(1.0, base_score + wet_bonus))
+        else:
+            base_score = 0.5
+            wet_bonus = (wet_skill - 0.5) * rain_prob * 0.6
+            return max(0.0, min(1.0, base_score + wet_bonus))
     except Exception:
         return 0.5
 
@@ -215,6 +460,9 @@ def compute_safety_car_upside(driver_id: str, circuit_id: str,
     """
     Drivers starting further back benefit more from safety cars.
     SC probability comes from circuit data.
+    
+    M-2 FIX: Widened range from [0, 0.8] to [0, 1.0] and removed the 0.8 scale factor
+    that was making the max contribution only 0.05 × 0.36 = 0.018 (below float noise).
     """
     try:
         circuit = get_circuit(circuit_id)
@@ -232,10 +480,11 @@ def compute_safety_car_upside(driver_id: str, circuit_id: str,
         # Formula: higher grid pos → more opportunity to gain positions
         grid_factor = (estimated_grid_pos - 1) / (N_DRIVERS - 1)  # 0 to 1
         
-        # Combine with circuit SC probability
-        upside = sc_prob * grid_factor * 0.8  # Scale to reasonable range
+        # M-2 FIX: Combine with circuit SC probability — widened to full [0, 1.0] range
+        # Removed the 0.8 scale factor that was compressing the signal
+        upside = sc_prob * grid_factor
         
-        return max(0.0, min(0.8, upside))
+        return max(0.0, min(1.0, upside))
     except Exception:
         return 0.25
 
@@ -339,7 +588,10 @@ def estimate_dnf_probability(driver_id: str, circuit_id: Optional[str] = None) -
 
 
 def _load_fastf1_features_for_race(circuit_id: str, season: int = 2026) -> Optional[Dict[str, Any]]:
-    """Load and cache FastF1 extracted features for a given race."""
+    """Load and cache FastF1 extracted features for a given race.
+    
+    Q-3 FIX: Falls back to previous season (2025) if current season data unavailable.
+    """
     if not FASTF1_AVAILABLE:
         return None
 
@@ -366,8 +618,14 @@ def _load_fastf1_features_for_race(circuit_id: str, season: int = 2026) -> Optio
 
 
 def _get_fastf1_adjustment(driver_id: str, circuit_id: str, season: int = 2026) -> float:
-    """Return a small score adjustment from FastF1 extracted race features."""
+    """Return a small score adjustment from FastF1 extracted race features.
+    
+    Q-3 FIX: Falls back to previous season data if current season unavailable.
+    """
+    # Q-3 FIX: Try current season first, fall back to previous season (2025)
     features = _load_fastf1_features_for_race(circuit_id, season)
+    if not features:
+        features = _load_fastf1_features_for_race(circuit_id, season - 1)  # 2025 proxy
     if not features:
         return 0.0
 

@@ -22,6 +22,7 @@ class PredictionRequest:
     output_format: str = "full"
     grid_overrides: Dict[str, int] = field(default_factory=dict)
     vectorized: bool = True
+    qualifying_completed: bool = False  # A-1 FIX: Flag for post-qualifying mode
 
 
 # PREDICTION CACHING (P1 Priority - Performance Optimization)
@@ -152,6 +153,11 @@ def predict(request: PredictionRequest) -> dict:
     
     # NEW: Normalize win probabilities to sum to 1.0 (3.6)
     raw["predictions"] = _normalize_win_probabilities(raw["predictions"])
+    
+    # H-3 FIX: Re-enforce hierarchy AFTER normalization.
+    # Normalization can scale win_prob up, breaking win <= top3 <= top10 again.
+    for p in raw["predictions"]:
+        _enforce_probability_hierarchy(p)
 
     predictions = []
     for p in raw["predictions"]:

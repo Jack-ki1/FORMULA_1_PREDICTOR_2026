@@ -6,6 +6,7 @@ Stores predictions, compares with actual results, computes:
 - Log loss
 - Calibration curves
 - Accuracy trends over time
+- Platt scaling for probability calibration (NEW v3.1)
 """
 
 import logging
@@ -15,6 +16,7 @@ import json
 
 from database.models import SessionLocal, Prediction, Race, Driver
 from engine.predictor import predict, PredictionRequest
+from engine.calibration import brier_score as calc_brier_score  # Import calibration functions
 
 logger = logging.getLogger(__name__)
 

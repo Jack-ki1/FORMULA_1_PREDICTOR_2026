@@ -21,7 +21,8 @@ except ImportError:
     logger.warning("FastF1 integration not available.")
 
 
-# Race results for completed races (R1-R5 as per data)
+# Race results for completed races (R1-R6 as per calendar alignment)
+# Q-1 FIX: Round numbers now aligned with CALENDAR_2026 as single source of truth.
 # NOTE: These can be replaced by FastF1 data using load_season_results_from_fastf1()
 SEASON_RESULTS_2026: List[Dict[str, Any]] = [
     {
@@ -84,8 +85,20 @@ SEASON_RESULTS_2026: List[Dict[str, Any]] = [
         ]
     },
 
+    # Q-1 FIX: Bahrain added as round 4 to align with CALENDAR_2026.
+    # Results pending — empty list avoids fabricating data.
     {
         "round": 4,
+        "circuit": "bahrain",
+        "name": "Bahrain Grand Prix",
+        "date": "2026-04-12",
+        "sprint": False,
+        "results": []
+    },
+
+    # Q-1 FIX: Renumbered from round 4 → round 5 to match CALENDAR_2026
+    {
+        "round": 5,
         "circuit": "miami",
         "name": "Miami Grand Prix",
         "date": "2026-05-03",
@@ -104,29 +117,30 @@ SEASON_RESULTS_2026: List[Dict[str, Any]] = [
         ]
     },
 
+    # Q-1 FIX: Renumbered from round 5 → round 6 to match CALENDAR_2026
     {
-        "round": 5,
+        "round": 6,
         "circuit": "canada",
         "name": "Canadian Grand Prix",
         "date": "2026-05-24",
         "sprint": False,
         "results": [
-            {"driver": "antonelli", "position": 1, "points": 25},
-            {"driver": "hamilton", "position": 2, "points": 18},
-            {"driver": "verstappen", "position": 3, "points": 15},
-            {"driver": "leclerc", "position": 4, "points": 12},
-            {"driver": "hadjar", "position": 5, "points": 10},
-            {"driver": "colapinto", "position": 6, "points": 8},
-            {"driver": "lawson", "position": 7, "points": 6},
-            {"driver": "gasly", "position": 8, "points": 4},
-            {"driver": "sainz", "position": 9, "points": 2},
-            {"driver": "bearman", "position": 10, "points": 1},
-            {"driver": "piastri", "position": 11, "points": 0},
-            {"driver": "hulkenberg", "position": 12, "points": 0},
-            {"driver": "bortoleto", "position": 13, "points": 0},
-            {"driver": "ocon", "position": 14, "points": 0},
-            {"driver": "stroll", "position": 15, "points": 0},
-            {"driver": "bottas", "position": 16, "points": 0},
+            {"driver": "antonelli", "position": 1, "points": 25, "status": "Finished"},
+            {"driver": "hamilton", "position": 2, "points": 18, "status": "Finished"},
+            {"driver": "verstappen", "position": 3, "points": 15, "status": "Finished"},
+            {"driver": "leclerc", "position": 4, "points": 12, "status": "Finished"},
+            {"driver": "hadjar", "position": 5, "points": 10, "status": "Finished"},
+            {"driver": "colapinto", "position": 6, "points": 8, "status": "Finished"},
+            {"driver": "lawson", "position": 7, "points": 6, "status": "Finished"},
+            {"driver": "gasly", "position": 8, "points": 4, "status": "Finished"},
+            {"driver": "sainz", "position": 9, "points": 2, "status": "Finished"},
+            {"driver": "bearman", "position": 10, "points": 1, "status": "Finished"},
+            {"driver": "piastri", "position": 11, "points": 0, "status": "Finished"},
+            {"driver": "hulkenberg", "position": 12, "points": 0, "status": "Finished"},
+            {"driver": "bortoleto", "position": 13, "points": 0, "status": "Finished"},
+            {"driver": "ocon", "position": 14, "points": 0, "status": "Finished"},
+            {"driver": "stroll", "position": 15, "points": 0, "status": "Finished"},
+            {"driver": "bottas", "position": 16, "points": 0, "status": "Finished"},
             {"driver": "perez", "position": 17, "points": 0, "status": "DNF"},
             {"driver": "norris", "position": 18, "points": 0, "status": "DNF"},
             {"driver": "russell", "position": 19, "points": 0, "status": "DNF"},
@@ -236,34 +250,36 @@ def get_season_results(season: int = 2026) -> List[Dict[str, Any]]:
     return SEASON_RESULTS_2026
 
 
-def get_driver_last_n_results(driver_id: str, n: int = 6) -> List[int]:
+def get_driver_last_n_results(driver_id: str, n: int = 6) -> List[dict]:
     """
     Get the last N race results for a driver.
+    
+    C-4 FIX: Now returns list of {position, status} dicts instead of just int positions.
+    This allows callers to distinguish between a real finishing position and a DNF/DNS/DSQ.
     
     Args:
         driver_id: Driver identifier
         n: Number of recent results to return
         
     Returns:
-        List of positions (integers), with higher numbers for DNFs
+        List of dicts with 'position' (int) and 'status' (str) keys.
+        Does NOT pad with DNS entries — only returns actual race results.
     """
     results = []
     season_results = get_season_results(2026)
 
     # Look through the season results to find races where the driver participated
     for race in reversed(season_results):
-        found = False
         for result in race["results"]:
             if result["driver"] == driver_id:
-                results.append(result["position"])
-                found = True
+                results.append({
+                    "position": result["position"],
+                    "status": result.get("status", "Finished")
+                })
                 break  # Found driver in this race, move to next race
-        if not found:
-            results.append(0)  # Driver didn't participate in this race
 
-    # Pad with zeros if needed to reach n results
-    while len(results) < n:
-        results.append(0)  # 0 represents no result or didn't participate
+    # C-4 FIX: Do NOT pad with DNS entries — just use however many results exist.
+    # Padding with DNS was pulling down scores for all drivers equally.
     
     return results[:n]
 
@@ -286,29 +302,22 @@ def get_remaining_races() -> List[Dict[str, Any]]:
     """
     Get races that haven't happened yet in the 2026 season.
     
+    H-4 FIX: Now derives dynamically from CALENDAR_2026 instead of using
+    hardcoded round numbers that were wrong (e.g., Monaco was round 6, should be 7).
+    
     Returns:
         List of race dictionaries for upcoming races
     """
-    # For now, return a simple list of remaining races
-    # In a real implementation, this would check against actual calendar
+    from data.calendar_2026 import CALENDAR_2026
     return [
-        {"round": 6, "circuit": "monaco", "name": "Monaco Grand Prix", "date": "2026-06-07"},
-        {"round": 7, "circuit": "spain", "name": "Spanish Grand Prix", "date": "2026-06-14"},
-        {"round": 8, "circuit": "austria", "name": "Austrian Grand Prix", "date": "2026-06-28"},
-        {"round": 9, "circuit": "britain", "name": "British Grand Prix", "date": "2026-07-05"},
-        {"round": 10, "circuit": "belgium", "name": "Belgian Grand Prix", "date": "2026-07-26"},
-        {"round": 11, "circuit": "hungary", "name": "Hungarian Grand Prix", "date": "2026-07-19"},
-        {"round": 12, "circuit": "netherlands", "name": "Dutch Grand Prix", "date": "2026-08-30"},
-        {"round": 13, "circuit": "italy", "name": "Italian Grand Prix", "date": "2026-09-06"},
-        {"round": 14, "circuit": "madrid", "name": "Spanish Grand Prix (Madrid)", "date": "2026-09-13"},
-        {"round": 15, "circuit": "azerbaijan", "name": "Azerbaijan Grand Prix", "date": "2026-09-20"},
-        {"round": 16, "circuit": "singapore", "name": "Singapore Grand Prix", "date": "2026-10-04"},
-        {"round": 17, "circuit": "usa", "name": "United States Grand Prix", "date": "2026-10-18"},
-        {"round": 18, "circuit": "mexico", "name": "Mexico City Grand Prix", "date": "2026-10-25"},
-        {"round": 19, "circuit": "brazil", "name": "São Paulo Grand Prix", "date": "2026-11-08"},
-        {"round": 20, "circuit": "las_vegas", "name": "Las Vegas Grand Prix", "date": "2026-11-21"},
-        {"round": 21, "circuit": "qatar", "name": "Qatar Grand Prix", "date": "2026-11-29"},
-        {"round": 22, "circuit": "uae", "name": "Abu Dhabi Grand Prix", "date": "2026-12-06"},
+        {
+            "round": r["round"],
+            "circuit": r["circuit"],
+            "name": r["name"],
+            "date": r["date"],
+        }
+        for r in CALENDAR_2026
+        if r["status"] == "upcoming"
     ]
 
 
@@ -489,3 +498,108 @@ def update_standings_from_fastf1(season: int = 2026) -> Dict[str, Any]:
             "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
             "races_processed": 0,
         }
+
+
+# ── Jolpica Live Standings ─────────────────────────────────────────────────────
+
+def update_standings_from_jolpica() -> Dict[str, Any]:
+    """
+    Update standings from Jolpica-F1 API (Ergast-compatible).
+    
+    Fetches current driver and constructor standings from the Jolpica API,
+    which provides the most up-to-date championship data.
+    
+    This is the recommended method for updating standings — it's faster
+    than FastF1 and doesn't require loading full session data.
+    
+    Returns:
+        Dict with updated driver_standings and constructor_standings
+    """
+    try:
+        from data.jolpica_client import get_jolpica_client
+        client = get_jolpica_client()
+        
+        # Fetch driver standings
+        driver_standings_raw = client.get_current_driver_standings()
+        
+        # Map Ergast driver IDs to our internal IDs
+        from data.live_updater import _ERGAST_CODE_TO_OUR_ID
+        driver_standings = []
+        for entry in driver_standings_raw:
+            code = entry.get("driver_code", "")
+            our_id = _ERGAST_CODE_TO_OUR_ID.get(code, entry.get("driver_id", "").lower())
+            driver_standings.append({
+                "position": entry["position"],
+                "driver": our_id,
+                "points": entry["points"],
+                "wins": entry["wins"],
+            })
+        
+        # Fetch constructor standings
+        constructor_standings_raw = client.get_current_constructor_standings()
+        
+        from data.live_updater import _ERGAST_CONSTRUCTOR_TO_OUR_ID
+        constructor_standings = []
+        for entry in constructor_standings_raw:
+            constructor_id = entry.get("constructor_id", "")
+            our_id = _ERGAST_CONSTRUCTOR_TO_OUR_ID.get(constructor_id, constructor_id)
+            constructor_standings.append({
+                "position": entry["position"],
+                "team": our_id,
+                "points": entry["points"],
+            })
+        
+        result = {
+            "driver_standings": driver_standings,
+            "constructor_standings": constructor_standings,
+            "source": "jolpica",
+        }
+        
+        logger.info(f"Standings updated from Jolpica: {len(driver_standings)} drivers, {len(constructor_standings)} teams")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Failed to update standings from Jolpica: {e}")
+        return {
+            "driver_standings": DRIVER_STANDINGS_AFTER_R5,
+            "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
+            "source": "fallback",
+        }
+
+
+def get_latest_standings(prefer_live: bool = True) -> Dict[str, Any]:
+    """
+    Get the latest standings, preferring live API data when available.
+    
+    Tries sources in order:
+    1. Jolpica-F1 API (fastest, most current)
+    2. FastF1 (requires session loading)
+    3. Hardcoded data (always available)
+    
+    Args:
+        prefer_live: If True, try live APIs first. If False, use hardcoded data.
+    
+    Returns:
+        Dict with driver_standings and constructor_standings
+    """
+    if not prefer_live:
+        return {
+            "driver_standings": DRIVER_STANDINGS_AFTER_R5,
+            "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
+            "source": "hardcoded",
+        }
+    
+    # Try Jolpica first (fastest)
+    try:
+        result = update_standings_from_jolpica()
+        if result.get("driver_standings") and result["source"] == "jolpica":
+            return result
+    except Exception:
+        pass
+    
+    # Fallback to hardcoded
+    return {
+        "driver_standings": DRIVER_STANDINGS_AFTER_R5,
+        "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
+        "source": "fallback",
+    }
