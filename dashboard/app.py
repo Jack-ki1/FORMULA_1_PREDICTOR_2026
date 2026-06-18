@@ -1639,9 +1639,30 @@ def health():
 if __name__ == '__main__':
     import os
     logging.basicConfig(level=logging.INFO)
-    port = int(os.environ.get('FLASK_PORT', 5000))
+    
+    # Production-ready port detection (works on all platforms)
+    # Hugging Face: PORT or FLASK_PORT env var, default 7860
+    # Railway/Render: PORT env var
+    # Local: FLASK_PORT env var, default 5000
+    port = int(os.environ.get('PORT', os.environ.get('FLASK_PORT', 5000)))
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
-    print("Starting F1 Predictor Dashboard v3.0")
-    print(f"Dashboard: http://127.0.0.1:{port}")
-    print("API: Direct integration (no external API server needed)")
-    app.run(debug=debug, port=port)
+    
+    # Security warning for production
+    if debug and os.environ.get('PORT'):
+        print("⚠️  WARNING: Debug mode enabled in production environment!")
+        print("   Set FLASK_DEBUG=false for production deployments")
+    
+    print("=" * 60)
+    print("🏎️  F1 Predictor Dashboard v3.0")
+    print("=" * 60)
+    print(f"📊 Dashboard: http://0.0.0.0:{port}")
+    print(f"🔧 API: http://0.0.0.0:{port}/api/*")
+    print(f"💾 Database: {'Initialized' if os.path.exists('f1_predictor.db') else 'Not initialized'}")
+    print(f"🔒 Debug Mode: {'ON ⚠️' if debug else 'OFF ✅'}")
+    print("=" * 60)
+    
+    # Bind to 0.0.0.0 for external access (required for cloud deployment)
+    # Use 127.0.0.1 for local-only access
+    host = '0.0.0.0' if os.environ.get('PORT') or os.environ.get('FLASK_PORT') != '5000' else '127.0.0.1'
+    
+    app.run(host=host, debug=debug, port=port)

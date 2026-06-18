@@ -1,0 +1,53 @@
+# Git files
+.git
+.gitignore
+
+# Python cache
+*.pyc
+__pycache__
+*.pyo
+.pytest_cache
+
+# Environment variables
+.env
+.env.local
+
+# Database files (will be regenerated)
+f1_predictor.db
+fastf1_cache.sqlite
+
+# Cache directories
+output/
+cache/
+.fastf1_cache/
+
+# Generated reports and data
+*.json
+!requirements.txt
+!weights_optimized.json
+!calibration_params_2026.json
+
+# Documentation (not needed for deployment)
+PROJECT_AUDIT.md
+DEPLOYMENT_GUIDE.md
+README_DEPLOYMENT.md
+
+# Cleanup scripts
+cleanup_and_test.bat
+
+# Examples directory (empty)
+examples/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+test_*.py
+*_test.py

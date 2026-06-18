@@ -98,6 +98,10 @@ Dashboard: http://127.0.0.1:5000
   - [Rain Probability Adjustment](#rain-probability-adjustment)
   - [Simulation Count Tuning](#simulation-count-tuning)
   - [Vectorized vs Original Engine](#vectorized-vs-original-engine)
+- [Live Deployment](#-live-deployment) ⭐ NEW
+  - [Hugging Face (Free)](#quick-deploy-to-hugging-face-free---30-minutes)
+  - [Other Platforms](#other-deployment-options)
+  - [Detailed Guide](#detailed-guide)
 - [Project Structure](#-project-structure)
 - [Database Schema](#-database-schema)
 - [Troubleshooting](#-troubleshooting)
@@ -1513,6 +1517,71 @@ Currently hardcoded to vectorized. To use original:
 # In engine/predictor.py
 USE_VECTORIZED = False  # Change to True/False
 ```
+
+---
+
+## 🚀 Live Deployment
+
+**Want to share your F1 Predictor dashboard with the world? Deploy it to the cloud!**
+
+### Quick Deploy to Hugging Face (Free - 30 Minutes)
+
+**Step 1: Run Deployment Helper**
+```bash
+deploy_to_huggingface.bat
+```
+
+This script will:
+- ✅ Check all required files
+- ✅ Initialize Git repository
+- ✅ Optionally test with Docker locally
+- ✅ Guide you through Hugging Face setup
+
+**Step 2: Create Hugging Face Space**
+1. Go to [huggingface.co/new-space](https://huggingface.co/new-space)
+2. Name: `f1-predictor-2026`
+3. SDK: **Docker**
+4. Click "Create Space"
+
+**Step 3: Push Code**
+```bash
+git remote add origin https://huggingface.co/spaces/YOUR_USERNAME/f1-predictor-2026
+git push -u origin main
+```
+
+**Step 4: Wait & Access**
+- Build time: 5-10 minutes
+- Your URL: `https://YOUR_USERNAME-f1-predictor-2026.hf.space`
+
+### Other Deployment Options
+
+| Platform | Cost | Setup Time | Best For |
+|----------|------|------------|----------|
+| **Hugging Face Spaces** | Free | 30 min | Demos, sharing |
+| **Railway** | $5/month | 20 min | Production apps |
+| **Render** | Free/$7/month | 15 min | Simple deployments |
+| **Fly.io** | $2-5/month | 25 min | Global users |
+| **PythonAnywhere** | Free/$5/month | 40 min | Beginners |
+
+### Deployment Files Included
+
+Your project already includes all necessary deployment configs:
+- ✅ `Dockerfile` - For containerized deployment
+- ✅ `.dockerignore` - Optimizes build size
+- ✅ `Procfile` - For Railway/Heroku
+- ✅ `railway.toml` - Railway configuration
+- ✅ `fly.toml` - Fly.io configuration
+
+### Detailed Guide
+
+See **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** for:
+- Step-by-step instructions for each platform
+- Troubleshooting common issues
+- Security best practices
+- Performance optimization tips
+- Cost comparison and recommendations
+
+**Recommended:** Start with Hugging Face Spaces (free), upgrade to Railway ($5/month) if you need always-on performance.
 
 ---
 
