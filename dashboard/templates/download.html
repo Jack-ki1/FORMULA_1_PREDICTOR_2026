@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor 2026 — Download Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="static/analytics.js"></script>
+</head>
+<body>
+
+<!-- ── Loading Overlay ─────────────────────────────────── -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="spinner-label">Running Simulations</div>
+    <div class="spinner-sub" id="simProgress">Initialising engine…</div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div id="toast">
+    <i class="fas fa-check-circle toast-icon"></i>
+    <span class="toast-msg" id="toastMsg">Done</span>
+</div>
+
+<!-- ── Navbar ─────────────────────────────────────────── -->
+<nav class="navbar">
+    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+        <span class="f1-badge">F1</span>
+        <span class="brand-name">Predictor <span class="yr">2026</span></span>
+    </a>
+    <div class="nav-links">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="h2h.html">H2H Comparison</a>
+        <a href="constructors.html">Constructors</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="settings.html">Settings</a>
+        <a href="download.html" class="active">Download Report</a>
+        <span class="live-pill">Live</span>
+    </div>
+</nav>
+
+<div class="container">
+
+    <section id="sec-download" class="page-section">
+        <div class="dl-hero">
+            <div class="dl-hero-icon"><i class="fas fa-file-download"></i></div>
+            <h2>Download Race Report</h2>
+            <p>Generate a comprehensive HTML race prediction report complete with interactive charts, driver analysis, and full probability breakdowns.</p>
+            <div class="dl-race-select">
+                <div class="ctrl-group">
+                    <label class="ctrl-label">Select Grand Prix for Report</label>
+                    <select class="ctrl-select" id="dlRaceSelect">
+                        <option value="">— Choose a race —</option>
+                        <option value="australia">Australian GP</option>
+                        <option value="china">Chinese GP</option>
+                        <option value="japan">Japanese GP</option>
+                        <option value="bahrain">Bahrain GP</option>
+                        <option value="saudi_arabia">Saudi Arabian GP</option>
+                        <option value="miami">Miami GP</option>
+                        <option value="monaco">Monaco GP</option>
+                        <option value="spain">Spanish GP</option>
+                        <option value="canada">Canadian GP</option>
+                        <option value="austria">Austrian GP</option>
+                        <option value="britain">British GP</option>
+                        <option value="belgium">Belgian GP</option>
+                        <option value="hungary">Hungarian GP</option>
+                        <option value="netherlands">Dutch GP</option>
+                        <option value="italy">Italian GP</option>
+                        <option value="azerbaijan">Azerbaijan GP</option>
+                        <option value="singapore">Singapore GP</option>
+                        <option value="usa">United States GP</option>
+                        <option value="mexico">Mexico City GP</option>
+                        <option value="brazil">São Paulo GP</option>
+                        <option value="las_vegas">Las Vegas GP</option>
+                        <option value="qatar">Qatar GP</option>
+                        <option value="uae">Abu Dhabi GP</option>
+                    </select>
+                </div>
+            </div>
+            <div class="dl-options">
+                <div class="dl-option" onclick="downloadReport('html')">
+                    <div class="dl-option-icon"><i class="fas fa-file-code"></i></div>
+                    <div class="dl-option-title">HTML Report</div>
+                    <div class="dl-option-desc">Interactive charts &amp; full prediction breakdown. Open in any browser.</div>
+                </div>
+                <div class="dl-option" onclick="downloadReport('json')">
+                    <div class="dl-option-icon"><i class="fas fa-database"></i></div>
+                    <div class="dl-option-title">Raw JSON Data</div>
+                    <div class="dl-option-desc">All probability scores, position distributions &amp; metadata for integration.</div>
+                </div>
+                <div class="dl-option" onclick="downloadReport('csv')">
+                    <div class="dl-option-icon"><i class="fas fa-file-csv"></i></div>
+                    <div class="dl-option-title">CSV Export</div>
+                    <div class="dl-option-desc">Driver results table for spreadsheet analysis &amp; custom models.</div>
+                </div>
+            </div>
+            <button class="btn-download" onclick="downloadReport('html')">
+                <i class="fas fa-download" style="margin-right:0.5rem;"></i> Generate &amp; Download Report
+            </button>
+        </div>
+    </section>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script src="common.js"></script>
+<script src="download.js"></script>
+</body>
+</html>

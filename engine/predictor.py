@@ -4,13 +4,14 @@ Supports grid_overrides dict for post-qualifying accuracy boost.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import hashlib
 import json
 import time
 
 from data.circuit_data import get_circuit
 from engine.probability_model import predict_race
+from config.settings import LIVE_OPENF1_ENABLED
 
 
 @dataclass
@@ -22,7 +23,11 @@ class PredictionRequest:
     output_format: str = "full"
     grid_overrides: Dict[str, int] = field(default_factory=dict)
     vectorized: bool = True
-    qualifying_completed: bool = False  # A-1 FIX: Flag for post-qualifying mode
+    qualifying_completed: bool = False
+    live_weather_override: Optional[float] = None
+    session_type: str = "race"
+    sprint_weekend: bool = False
+    live_context: Dict[str, Any] = field(default_factory=dict)
 
 
 # PREDICTION CACHING (P1 Priority - Performance Optimization)
@@ -39,6 +44,8 @@ def _cache_key(request: PredictionRequest) -> str:
         "sims": request.n_simulations,
         "seed": request.seed,
         "grid": sorted(request.grid_overrides.items()),
+        "session_type": request.session_type.lower(),
+        "live_weather": request.live_weather_override,
     }
     return hashlib.md5(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
@@ -135,12 +142,15 @@ def predict(request: PredictionRequest) -> dict:
     # Cache miss or expired - run prediction
     circuit = get_circuit(request.circuit_id)
     sc_prob   = circuit.get("safety_car_probability", 0.5)
-    rain_prob = request.rain_probability or circuit.get("rain_probability_typical", 0.2)
+        # If live OpenF1 data shows rain, override user input with actual probability
+    live_rain_prob = request.live_weather_override if LIVE_OPENF1_ENABLED else None
 
+    rain_prob = live_rain_prob if live_rain_prob is not None else (request.rain_probability or circuit.get("rain_probability_typical", 0.2))
+        
     # BUG-01 FIX: Pass grid_overrides to predict_race so they are actually applied
     raw = predict_race(
         circuit_id=request.circuit_id,
-        rain_probability=request.rain_probability,
+        rain_probability=rain_prob,
         n_simulations=request.n_simulations,
         seed=request.seed,
         grid_overrides=request.grid_overrides or {},
@@ -212,6 +222,10 @@ def predict(request: PredictionRequest) -> dict:
             "rain_probability":         rain_prob,
             "n_simulations":            request.n_simulations,
             "overall_model_confidence": round(overall_confidence, 3),
+            "session_type":              request.session_type.lower(),
+            "qualifying_completed":      request.qualifying_completed,
+            "grid_overrides_count":      len(request.grid_overrides or {}),
+            "rain_source":               "openf1_live" if live_rain_prob is not None else "request_or_circuit",
         },
         "predictions":          output_predictions,
         "podium_predictions":   [p.driver_name for p in predictions[:3]],

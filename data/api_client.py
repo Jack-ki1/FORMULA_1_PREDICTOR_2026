@@ -36,7 +36,8 @@ class RateLimiter:
     def __init__(self, requests_per_second: float = 3, requests_per_minute: float = 30):
         self.rps = requests_per_second
         self.rpm = requests_per_minute
-        self.min_interval_s = 1.0 / requests_per_second if requests_per_second > 0 else 0
+        # Add safety margin - use 70% of allowed rate to avoid hitting limits
+        self.min_interval_s = (1.0 / requests_per_second) * 1.5 if requests_per_second > 0 else 0
         self.min_interval_m = 60.0 / requests_per_minute if requests_per_minute > 0 else 0
         self._last_request_time = 0.0
         self._minute_requests: List[float] = []
@@ -45,7 +46,7 @@ class RateLimiter:
         """Block until it's safe to make the next request."""
         now = time.time()
 
-        # Enforce per-second interval
+        # Enforce per-second interval with safety margin
         elapsed_since_last = now - self._last_request_time
         if elapsed_since_last < self.min_interval_s:
             sleep_time = self.min_interval_s - elapsed_since_last

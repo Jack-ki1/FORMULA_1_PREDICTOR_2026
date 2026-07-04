@@ -1,0 +1,87 @@
+{
+  "cached_at": "2026-06-30T19:39:31.226642",
+  "key": "OpenF1:https://api.openf1.org/v1/laps?session_key=11228&driver_number=11",
+  "data": [
+    {
+      "meeting_key": 1279,
+      "session_key": 11228,
+      "driver_number": 11,
+      "lap_number": 1,
+      "date_start": "2026-03-06T05:50:18.938000+00:00",
+      "duration_sector_1": 44.438,
+      "duration_sector_2": 20.758,
+      "duration_sector_3": 53.61,
+      "i1_speed": 227,
+      "i2_speed": 234,
+      "is_pit_out_lap": true,
+      "lap_duration": 118.806,
+      "segments_sector_1": [
+        2064,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049
+      ],
+      "segments_sector_2": [
+        2049,
+        2049,
+        2049,
+        2049,
+        2049
+      ],
+      "segments_sector_3": [
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049
+      ],
+      "st_speed": 143
+    },
+    {
+      "meeting_key": 1279,
+      "session_key": 11228,
+      "driver_number": 11,
+      "lap_number": 2,
+      "date_start": "2026-03-06T05:52:15.781000+00:00",
+      "duration_sector_1": 35.629,
+      "duration_sector_2": 21.864,
+      "duration_sector_3": null,
+      "i1_speed": 224,
+      "i2_speed": 208,
+      "is_pit_out_lap": false,
+      "lap_duration": null,
+      "segments_sector_1": [
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2049,
+        2048,
+        2048
+      ],
+      "segments_sector_2": [
+        2048,
+        2048,
+        2049,
+        2049,
+        2048
+      ],
+      "segments_sector_3": [
+        2049
+      ],
+      "st_speed": 248
+    }
+  ]
+}

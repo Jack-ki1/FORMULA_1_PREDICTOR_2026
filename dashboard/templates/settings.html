@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor 2026 — Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="static/analytics.js"></script>
+</head>
+<body>
+
+<!-- ── Loading Overlay ─────────────────────────────────── -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="spinner-label">Running Simulations</div>
+    <div class="spinner-sub" id="simProgress">Initialising engine…</div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div id="toast">
+    <i class="fas fa-check-circle toast-icon"></i>
+    <span class="toast-msg" id="toastMsg">Done</span>
+</div>
+
+<!-- ── Navbar ─────────────────────────────────────────── -->
+<nav class="navbar">
+    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+        <span class="f1-badge">F1</span>
+        <span class="brand-name">Predictor <span class="yr">2026</span></span>
+    </a>
+    <div class="nav-links">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="h2h.html">H2H Comparison</a>
+        <a href="constructors.html">Constructors</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="settings.html" class="active">Settings</a>
+        <a href="download.html">Download Report</a>
+        <span class="live-pill">Live</span>
+    </div>
+</nav>
+
+<div class="container">
+
+    <section id="sec-settings" class="page-section">
+        <div class="settings-hero">
+            <h2><i class="fas fa-cog"></i> System Settings</h2>
+            <p>Control the data pipeline and model calibration workflow (database, sync, and validation).</p>
+        </div>
+
+        <div class="card" style="margin-bottom:2rem;padding:1.8rem 2rem;border-left:4px solid var(--red);">
+            <div style="display:flex;gap:1rem;align-items:flex-start;">
+                <div style="font-size:1.6rem;color:var(--red);">🧩</div>
+                <div>
+                    <div style="font-family:var(--font-head);font-size:1.2rem;font-weight:800;margin-bottom:0.35rem;">What these settings do</div>
+                    <div style="color:var(--text-2);font-size:0.98rem;line-height:1.6;">Settings here trigger backend tasks (migrations, sync runs, calibration and benchmarks). Use <b>Quick Setup</b> for a one-click bootstrapping flow.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <h3><i class="fas fa-database"></i> Database Management</h3>
+            <p>Initialize SQLite database and migrate static season data</p>
+            <div class="setting-action">
+                <div class="setting-info"><strong>Initialize Database</strong><p>Create tables and import driver, team, and circuit data</p></div>
+                <button class="btn btn-primary" onclick="migrateDatabase()"><i class="fas fa-sync-alt"></i> Migrate Now</button>
+            </div>
+            <div id="migrationStatus" class="result-box" style="display:none;"></div>
+        </div>
+
+        <div class="settings-card">
+            <h3><i class="fas fa-cloud-download-alt"></i> Data Sources</h3>
+            <p>Sync historical race data from external APIs</p>
+            <div class="setting-action">
+                <div class="setting-info">
+                    <strong>FastF1 Data Sync</strong>
+                    <p>Fetch historical lap times, telemetry, and session data</p>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" id="sync2024"> 2024 Season</label>
+                        <label><input type="checkbox" id="sync2025" checked> 2025 Season</label>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="syncFastF1()"><i class="fas fa-download"></i> Sync Data</button>
+            </div>
+            <div id="syncStatus" class="result-box" style="display:none;"></div>
+        </div>
+
+        <div class="settings-card">
+            <h3><i class="fas fa-check-circle"></i> Data Quality</h3>
+            <p>Validate dataset integrity and consistency</p>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="runQualityCheck()"><i class="fas fa-search"></i> Run Quality Check</button>
+            </div>
+            <div id="qualityResults" class="result-box" style="display:none;"></div>
+        </div>
+
+        <div class="settings-card">
+            <h3><i class="fas fa-tachometer-alt"></i> Performance Benchmark</h3>
+            <p>Test simulation speed and compare vectorized vs original engine</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Test Circuit:</label>
+                    <select id="benchmarkCircuit" class="ctrl-select">
+                        <option value="canada">Canada</option>
+                        <option value="monaco">Monaco</option>
+                        <option value="spain">Spain</option>
+                        <option value="britain">Britain</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Simulations:</label>
+                    <input type="number" id="benchmarkSims" value="5000" min="1000" max="50000" class="ctrl-input">
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="runBenchmark()"><i class="fas fa-stopwatch"></i> Run Benchmark</button>
+            </div>
+            <div id="benchmarkResults" class="result-box" style="display:none;"></div>
+        </div>
+
+        <div class="settings-card">
+            <h3><i class="fas fa-rocket"></i> Quick Setup</h3>
+            <p>One-click initialization for new installations</p>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="initializeSystem()"><i class="fas fa-magic"></i> Initialize Everything</button>
+            </div>
+            <div id="setupStatus" class="result-box" style="display:none;"></div>
+        </div>
+    </section>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script src="common.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

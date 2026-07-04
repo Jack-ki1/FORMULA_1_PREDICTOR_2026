@@ -1,0 +1,567 @@
+'use strict';
+
+/* ── State ──────────────────────────────────────────────── */
+let currentSession   = 'practice';
+let lastPrediction   = null;
+let currentCircuitId = null;
+/* ── Session switching ──────────────────────────────────── */
+function selectSession(sess, el) {
+    currentSession = sess;
+    document.querySelectorAll('.session-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.session-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + sess).classList.add('active');
+    const map = {practice:'PRACTICE', qualifying:'QUALIFYING', race:'RACE'};
+    document.getElementById('sessionTypeSelect').value = map[sess];
+    showToast('Switched to ' + el.querySelector('.tab-day').textContent);
+}
+
+/* ── Weather widget ─────────────────────────────────────── */
+function updateWeatherWidget(weather) {
+    const cfg = {
+        dry:   {temp:'24°C', desc:'Sunny & Clear',       icon:'fa-sun',                bg:'linear-gradient(135deg,#1e3a5f,#1a2d4f)'},
+        mixed: {temp:'21°C', desc:'Partly Cloudy',       icon:'fa-cloud-sun',          bg:'linear-gradient(135deg,#2d3748,#4a5568)'},
+        wet:   {temp:'19°C', desc:'Heavy Rain',          icon:'fa-cloud-showers-heavy',bg:'linear-gradient(135deg,#1a365d,#2c5282)'},
+    };
+    const w = cfg[weather] || cfg.dry;
+    const ww = document.getElementById('weatherWidget');
+    if (!ww) return;
+    ww.style.background = w.bg;
+    ww.querySelector('.weather-icon').className = 'fas ' + w.icon + ' weather-icon';
+    ww.querySelector('.weather-temp').textContent = w.temp;
+    ww.querySelector('.weather-desc').textContent = w.desc;
+}
+
+/* ── Run Prediction ─────────────────────────────────────── */
+async function runPrediction() {
+    const race        = document.getElementById('raceSelect').value;
+    const weather     = document.getElementById('weatherSelect').value;
+    const sims        = parseInt(document.getElementById('simsInput').value) || 10000;
+    const sessionType = document.getElementById('sessionTypeSelect').value;
+
+    if (!race) { showToast('Please select a Grand Prix first.'); return; }
+    showLoading('Running ' + sims.toLocaleString() + ' simulations…');
+
+    try {
+        const resp = await fetch('/api/predict', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({race, session_type: sessionType, simulations: sims, weather})
+        });
+        const data = await resp.json();
+        hideLoading();
+
+        if (!data.success) { showToast('Error: ' + (data.error || 'Prediction failed')); return; }
+
+        lastPrediction   = data;
+        currentCircuitId = CIRCUIT_LOOKUP[race] || null;
+
+        updateHero(race, data.results);
+        updateCircuitInfo(currentCircuitId);
+        updateSimBadge(sims);
+
+        const sess = sessionType.toLowerCase();
+        if (sess === 'practice')   renderPractice(data.results);
+        if (sess === 'qualifying') renderQualifying(data.results);
+        if (sess === 'race')       renderRace(data.results);
+
+        showToast('Prediction complete — ' + sims.toLocaleString() + ' sims');
+
+    } catch(err) {
+        hideLoading();
+        showToast('Network error: ' + err.message);
+        console.error(err);
+    }
+}
+
+/* ── Hero update ────────────────────────────────────────── */
+function updateHero(race, res) {
+    const city = race.replace(' Grand Prix','').replace(' City','');
+    document.getElementById('heroTitle').innerHTML = city.toUpperCase() + ' <span class="accent">GRAND PRIX</span>';
+    document.getElementById('heroSub').textContent  = race;
+    const m = res.meta || {};
+    document.getElementById('kpi-sc').textContent   = m.safety_car_probability   != null ? Math.round(m.safety_car_probability*100)+'%'   : '—';
+    document.getElementById('kpi-rain').textContent = m.rain_probability           != null ? Math.round(m.rain_probability*100)+'%'         : '—';
+    document.getElementById('kpi-sims').textContent = m.n_simulations              != null ? (m.n_simulations/1000)+'k'                     : '—';
+    document.getElementById('kpi-conf').textContent = m.overall_model_confidence   != null ? Math.round(m.overall_model_confidence*100)+'%' : '—';
+}
+
+function updateCircuitInfo(id) {
+    const m = CIRCUIT_META[id]; if (!m) return;
+    document.getElementById('circuitInfoBlock').innerHTML = `
+        <div class="track-info">
+            <div class="track-row"><span>Track Length</span><span>${m.len}</span></div>
+            <div class="track-row"><span>Corners</span><span>${m.corners}</span></div>
+            <div class="track-row"><span>DRS Zones</span><span>${m.drs}</span></div>
+            <div class="track-row"><span>Safety Car Prob</span><span style="color:var(--red);font-weight:700;">${m.sc}</span></div>
+            <div class="track-row"><span>Circuit Type</span><span>${m.type}</span></div>
+        </div>`;
+    document.getElementById('trackInfoBlock').innerHTML = `
+        <div class="track-row"><span>Circuit Type</span><span style="font-weight:700;">${m.type}</span></div>
+        <div class="track-row"><span>Safety Car Prob</span><span style="color:var(--red);font-weight:700;">${m.sc}</span></div>
+        <div class="track-row"><span>DRS Zones</span><span>${m.drs}</span></div>`;
+}
+
+function updateSimBadge(n) {
+    const el = document.getElementById('raceSimBadge');
+    if (el) el.textContent = (n/1000).toFixed(0) + 'k sims';
+}
+
+/* ── Practice render ────────────────────────────────────── */
+function renderPractice(res) {
+    const top3 = (res.chart_data?.lap_time_comparison || []).slice(0,3);
+    const pl   = document.getElementById('practicePodium');
+    const cls  = ['p1','p2','p3'];
+    const emj  = ['🥇','🥈','🥉'];
+    if (top3.length) {
+        pl.innerHTML = top3.map((d,i) => `
+            <div class="podium-item ${cls[i]}">
+                <div class="podium-pos">${emj[i]}</div>
+                <div class="podium-info">
+                    <div class="podium-name">${d.driver}</div>
+                    <div class="podium-team">${(d.team||'').replace(/_/g,' ')}</div>
+                </div>
+                <div class="podium-metric">+${(d.gap_to_fastest||0).toFixed(3)}s</div>
+            </div>`).join('');
+    }
+    const lt = (res.chart_data?.lap_time_comparison || []).slice(0,12);
+    if (lt.length) {
+        document.getElementById('practiceCharts').style.display = 'grid';
+        Plotly.newPlot('plotPracticeLap', [{
+            x: lt.map(d=>d.driver), y: lt.map(d=>d.gap_to_fastest||0), type:'bar',
+            marker:{color: lt.map((_,i)=>i===0?'#e10600':i<3?'#ff6666':'#cccccc')},
+            text: lt.map(d=>'+'+(d.gap_to_fastest||0).toFixed(3)+'s'), textposition:'outside',
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'Gap to Fastest (s)'}});
+
+        const cons = (res.chart_data?.consistency_ratings || []).slice(0,12);
+        if (cons.length) {
+            Plotly.newPlot('plotPracticeConsistency', [
+                {r:cons.map(d=>d.consistency||70), theta:cons.map(d=>d.driver), type:'scatterpolar', fill:'toself', line:{color:'#e10600',width:2}, fillcolor:'rgba(225,6,0,0.12)', name:'Consistency'},
+                {r:cons.map(d=>d.reliability||60),  theta:cons.map(d=>d.driver), type:'scatterpolar', fill:'toself', line:{color:'#1e3a5f',width:2}, fillcolor:'rgba(30,58,95,0.12)', name:'Reliability'},
+            ], {
+                paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+                font:{color:'#444',family:'Inter,sans-serif'},
+                polar:{radialaxis:{visible:true,range:[0,100],gridcolor:'#e8e8e8'},angularaxis:{gridcolor:'#e8e8e8'}},
+                showlegend:true, legend:{orientation:'h',y:-0.15}, margin:{t:20,r:40,b:60,l:40},
+            });
+        }
+    }
+}
+
+/* ── Qualifying render ──────────────────────────────────── */
+function renderQualifying(res) {
+    const pos = (res.chart_data?.qualifying_positions || []).slice(0,5);
+    const qg  = document.getElementById('qualifyingGrid');
+    const cls = ['p1','p2','p3'];
+    const emj = ['P1','P2','P3','P4','P5'];
+    if (pos.length) {
+        qg.innerHTML = pos.map((d,i) => `
+            <div class="podium-item ${cls[i]||''}">
+                <div class="podium-pos" style="${i>=3?'color:var(--text-3);font-size:1.4rem;':''}">${emj[i]}</div>
+                <div class="podium-info">
+                    <div class="podium-name">${d.driver}</div>
+                    <div class="podium-team">${(d.team||'').replace(/_/g,' ')}</div>
+                </div>
+                <div class="podium-metric" style="${i>=3?'font-size:1.2rem;':''}">${(d.probability||0).toFixed(1)}%</div>
+            </div>`).join('');
+    }
+    document.getElementById('q1Time').textContent = res.pole_time ? subtractMs(res.pole_time, 1200) : '—';
+    document.getElementById('q2Time').textContent = res.pole_time ? subtractMs(res.pole_time, 600)  : '—';
+    document.getElementById('q3Time').textContent = res.pole_time || '1:18.234';
+
+    const posArr = (res.chart_data?.qualifying_positions || []).slice(0,15);
+    if (posArr.length) {
+        document.getElementById('qualCharts').style.display = 'grid';
+        Plotly.newPlot('plotQualLine', [{
+            x:posArr.map(d=>d.driver), y:posArr.map(d=>d.probability||0), type:'scatter',
+            mode:'lines+markers', line:{color:'#e10600',width:3}, marker:{size:8,color:'#e10600'},
+            fill:'tozeroy', fillcolor:'rgba(225,6,0,0.08)',
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'Probability (%)'}});
+
+        const risk = res.chart_data?.elimination_risk || {};
+        Plotly.newPlot('plotElim', [{
+            x:['Q1 At Risk','Q2 At Risk','Safe in Q3'],
+            y:[(risk.q1_at_risk||[]).length,(risk.q2_at_risk||[]).length,(risk.safe_in_q3||[]).length],
+            type:'bar', marker:{color:['#ef4444','#f59e0b','#10b981']}, textposition:'outside',
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'Drivers'}});
+    }
+}
+
+function subtractMs(timeStr, ms) {
+    try {
+        const [m, rest] = timeStr.split(':');
+        const s = parseFloat(rest) + ms/1000;
+        return m + ':' + s.toFixed(3).padStart(6,'0');
+    } catch { return '—'; }
+}
+
+/* ── Race render ────────────────────────────────────────── */
+function renderRace(res) {
+    // Podium
+    const podSrc = (res.chart_data?.podium_probabilities || res.chart_data?.win_probabilities || []).slice(0,3);
+    const rp     = document.getElementById('racePodium');
+    const cls    = ['p1','p2','p3'];
+    const emj    = ['🥇','🥈','🥉'];
+    if (podSrc.length) {
+        rp.innerHTML = podSrc.map((d,i) => `
+            <div class="podium-item ${cls[i]}">
+                <div class="podium-pos">${emj[i]}</div>
+                <div class="podium-info">
+                    <div class="podium-name">${d.driver}</div>
+                    <div class="podium-team">${(d.team||'').replace(/_/g,' ')}</div>
+                </div>
+                <div class="podium-metric">${(d.podium_chance||d.probability||0).toFixed(1)}%</div>
+            </div>`).join('');
+    }
+
+    // Tire strategy
+    document.getElementById('tireStratBlock').innerHTML = `
+        <div class="tire-stint"><div class="tire-dot tire-S">S</div><div><div class="tire-label">Soft Compound</div><div class="tire-laps">Stint 1 · Laps 1–18</div></div></div>
+        <div class="tire-stint"><div class="tire-dot tire-M">M</div><div><div class="tire-label">Medium Compound</div><div class="tire-laps">Stint 2 · Laps 19–40</div></div></div>
+        <div class="tire-stint"><div class="tire-dot tire-H">H</div><div><div class="tire-label">Hard Compound</div><div class="tire-laps">Stint 3 · Laps 41–finish</div></div></div>
+        <div style="margin-top:1rem;padding:1rem;background:var(--bg-2);border-radius:8px;font-size:0.85rem;color:var(--text-2);">
+            Optimal: 2-stop strategy. Conservative runners gain track position under Safety Car.
+        </div>`;
+
+    // Model metrics
+    const model = res.chart_data?.model_performance || {};
+    document.getElementById('modelMetricsBlock').innerHTML = `
+        <div class="metric-row"><span class="metric-lbl">Model Confidence</span><div class="metric-bar-wrap"><div class="metric-bar"><div class="metric-bar-fill" style="width:${model.overall_confidence||75}%"></div></div></div><span class="metric-val">${(model.overall_confidence||75).toFixed(1)}%</span></div>
+        <div class="metric-row"><span class="metric-lbl">Convergence Rate</span><div class="metric-bar-wrap"><div class="metric-bar"><div class="metric-bar-fill" style="width:${model.convergence_rate||85}%"></div></div></div><span class="metric-val">${(model.convergence_rate||85).toFixed(1)}%</span></div>
+        <div class="metric-row"><span class="metric-lbl">Historical Accuracy</span><div class="metric-bar-wrap"><div class="metric-bar"><div class="metric-bar-fill" style="width:${model.historical_accuracy||78}%"></div></div></div><span class="metric-val">${(model.historical_accuracy||78).toFixed(1)}%</span></div>
+        <div class="metric-row"><span class="metric-lbl">Simulations</span><span class="metric-val">${((model.simulation_count||10000)/1000).toFixed(0)}k</span></div>`;
+
+    // Show chart containers
+    ['raceCharts1','raceTableWrap','raceCharts2','raceCharts3'].forEach(id => {
+        document.getElementById(id).style.display = id === 'raceTableWrap' ? 'block' : 'grid';
+    });
+
+    // Win probability
+    const wp = (res.chart_data?.win_probabilities || []).slice(0,10);
+    if (wp.length) {
+        Plotly.newPlot('plotWinProb', [{
+            x:wp.map(d=>d.driver), y:wp.map(d=>d.probability||0), type:'bar',
+            marker:{color:wp.map(d=>getTeamColor(d.team))},
+            text:wp.map(d=>(d.probability||0).toFixed(1)+'%'), textposition:'outside',
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'Win Probability (%)',range:[0,Math.max(...wp.map(d=>d.probability||0))*1.25]}});
+    }
+
+    // Podium probability
+    const pp = (res.chart_data?.podium_probabilities || []).slice(0,10);
+    if (pp.length) {
+        Plotly.newPlot('plotPodiumProb', [{
+            y:pp.map(d=>d.driver), x:pp.map(d=>d.podium_chance||0), type:'bar', orientation:'h',
+            marker:{color:pp.map(d=>getTeamColor(d.team))},
+            text:pp.map(d=>(d.podium_chance||0).toFixed(1)+'%'), textposition:'outside',
+        }], {...PLY, margin:{t:20,r:80,b:50,l:120}, xaxis:{...PLY.xaxis,title:'Podium Probability (%)'}, yaxis:{...PLY.yaxis,autorange:'reversed'}});
+    }
+
+    // Results table
+    const pts  = res.points_finishers || [];
+    const all  = res.chart_data?.win_probabilities || [];
+    const rows = pts.length ? pts : all.slice(0,20);
+    
+    // Qualifying grid source indicator (from changes.md)
+    const gridSource = res.qualifying_grid_source;
+    if (gridSource) {
+        const badgeHTML = `<div style="margin-bottom:1rem;padding:0.75rem;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:8px;font-size:0.85rem;color:var(--text-2);">
+            <i class="fas fa-info-circle" style="color:var(--green);"></i> 
+            Starting grid auto-filled from <span class="grid-source-badge">${gridSource}</span>
+        </div>`;
+        document.getElementById('raceTableWrap').insertAdjacentHTML('afterbegin', badgeHTML);
+    }
+    
+    if (rows.length) {
+        document.getElementById('raceTableBody').innerHTML = rows.map((p,i) => {
+            const pos  = i + 1;
+            const pb   = pos<=3 ? `<span class="pos-badge pos-${pos}">${pos}</span>` : `<span class="pos-badge pos-n">${pos}</span>`;
+            const conf = (p.confidence||'medium').toLowerCase();
+            const cb   = `<span class="conf-badge conf-${conf}">${conf.charAt(0).toUpperCase()+conf.slice(1)}</span>`;
+            const winP = p.win_pct || p.probability || 0;
+            const driverId = p.driver_id || p.driver?.toLowerCase().replace(/\s+/g, '_') || '';
+            return `<tr data-driver-id="${driverId}">
+                <td>${pb}</td>
+                <td class="driver-cell"><strong>${p.driver||p.driver_name||'—'}</strong><span>${(p.team||'').replace(/_/g,' ')}</span></td>
+                <td style="font-size:0.85rem;color:var(--text-2);">${(p.team||'').replace(/_/g,' ')}</td>
+                <td class="prob-bar-cell"><div class="prob-bar-wrap"><div class="prob-bar"><div class="prob-bar-fill" style="width:${Math.min(winP*3,100)}%"></div></div><div class="prob-val">${winP.toFixed(1)}%</div></div></td>
+                <td>${(p.top3_pct||0).toFixed(1)}%</td>
+                <td>${(p.top10_pct||0).toFixed(1)}%</td>
+                <td style="color:${(p.dnf_pct||0)>20?'var(--red)':'inherit'}">${(p.dnf_pct||0).toFixed(1)}%</td>
+                <td style="font-weight:700;">${(p.expected_points||0).toFixed(1)}</td>
+                <td>${cb}</td>
+                <td><button class="telemetry-btn" onclick="showTelemetry('${driverId}', '${p.driver||p.driver_name||''}')" title="View Live Telemetry"><i class="fas fa-activity"></i></button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    // DNF chart
+    const dnf = (res.chart_data?.dnf_risk_analysis || []).slice(0,12);
+    if (dnf.length) {
+        Plotly.newPlot('plotDNF', [{
+            x:dnf.map(d=>d.driver), y:dnf.map(d=>d.dnf_probability||0), type:'bar',
+            marker:{color:dnf.map(d=>d.dnf_probability>20?'#ef4444':d.dnf_probability>12?'#f59e0b':'#10b981')},
+            text:dnf.map(d=>(d.dnf_probability||0).toFixed(1)+'%'), textposition:'outside',
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'DNF Probability (%)'}});
+    }
+
+    // Constructor chart
+    const cst = res.chart_data?.constructor_standings || [];
+    if (cst.length) {
+        Plotly.newPlot('plotConstructorRace', [{
+            x:cst.map(d=>d.team), y:cst.map(d=>d.points||0), type:'bar',
+            marker:{color:cst.map(d=>getTeamColor(d.team))},
+            text:cst.map(d=>(d.points||0).toFixed(1)+' pts'), textposition:'outside',
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'Expected Points'}});
+    }
+
+    // Expected points
+    const ep = (res.chart_data?.points_distribution || pts).slice(0,10);
+    if (ep.length) {
+        Plotly.newPlot('plotPoints', [{
+            x:ep.map(d=>d.driver||d.driver_name||'—'), y:ep.map(d=>d.expected_points||0), type:'bar',
+            marker:{color:ep.map(d=>d.expected_points>15?'#e10600':d.expected_points>8?'#f59e0b':'#94a3b8')},
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'Expected Championship Points'}});
+    }
+
+    // Heatmap
+    const hm = res.chart_data?.position_heatmap || [];
+    if (hm.length) {
+        Plotly.newPlot('plotHeatmap', [{
+            z:    hm.slice(0,10).map(d=>d.probabilities||[]),
+            x:    (hm[0]?.positions||[]).map(p=>'P'+p),
+            y:    hm.slice(0,10).map(d=>d.driver),
+            type:'heatmap',
+            colorscale:[[0,'rgba(225,6,0,0)'],[0.5,'rgba(225,6,0,0.5)'],[1,'rgba(225,6,0,1)']],
+            showscale:false,
+        }], {...PLY, margin:{t:20,r:20,b:50,l:100}});
+    }
+}
+/* ══════════════════════════════════════════════════════════
+   LIVE DATA INTEGRATION (from changes.md - safe additions)
+══════════════════════════════════════════════════════════ */
+
+// Live data polling state
+let livePollInterval = null;
+// FIX: these were raw, unrendered Jinja2 expressions (e.g. "{{ circuit.id if circuit else '' }}").
+// Outside a Flask render_template() call nothing ever substitutes them, so the browser tried to
+// parse literal "{{" tokens as JavaScript and threw a SyntaxError here — which aborted the entire
+// inline script block. That's why no button, tab, or dropdown on the page did anything at all.
+// Replaced with static defaults so the file works standalone; if this is later re-templated through
+// Flask, swap these seven lines back for the original Jinja expressions.
+const CIRCUIT_ID = '';
+const IS_LIVE_ACTIVE = false;
+const WEEKEND_PHASE = '';
+const IS_SPRINT_WEEKEND = false;
+
+// Initial prediction data from server (if available)
+const INITIAL_PREDICTIONS = [];
+const INITIAL_META = {};
+const HAS_INITIAL_PREDICTION = false;
+
+// Update weekend phase badge
+function updateWeekendPhaseBadge() {
+    const badgeEl = document.getElementById('weekendPhaseBadge');
+    const sprintEl = document.getElementById('sprintWeekendBadge');
+    
+    if (!badgeEl || !sprintEl) {
+        console.warn('[Live Data] Badge elements not found in DOM');
+        return;
+    }
+    
+    console.log('[Live Data] Weekend phase:', WEEKEND_PHASE);
+    console.log('[Live Data] Sprint weekend:', IS_SPRINT_WEEKEND);
+    
+    // Weekend phase badge - ALWAYS show if we have phase info
+    if (WEEKEND_PHASE && WEEKEND_PHASE !== 'unknown' && WEEKEND_PHASE !== '') {
+        const phaseNames = {
+            'friday': 'Friday',
+            'saturday': 'Saturday', 
+            'sunday': 'Sunday',
+            'pre_weekend': 'Pre-Weekend',
+            'post_race': 'Post-Race',
+            'completed': 'Completed'
+        };
+        const phaseClass = `phase-${WEEKEND_PHASE}`;
+        badgeEl.innerHTML = `<span class="weekend-phase-badge ${phaseClass}">${phaseNames[WEEKEND_PHASE] || WEEKEND_PHASE}</span>`;
+        console.log('[Live Data] Phase badge rendered:', phaseNames[WEEKEND_PHASE]);
+    } else {
+        console.log('[Live Data] No valid weekend phase to display');
+    }
+    
+    // Sprint weekend badge
+    if (IS_SPRINT_WEEKEND) {
+        sprintEl.innerHTML = `<span class="sprint-weekend-badge"><i class="fas fa-bolt"></i> Sprint</span>`;
+        console.log('[Live Data] Sprint badge rendered');
+    } else {
+        console.log('[Live Data] Not a sprint weekend');
+    }
+}
+
+// Update live data banner
+function updateLiveDataBanner(data) {
+    const banner = document.getElementById('liveDataBanner');
+    
+    console.log('[Live Data] Banner update called, active:', data?.active);
+    
+    if (!banner || !data.active) {
+        if (banner) {
+            banner.style.display = 'none';
+            console.log('[Live Data] Banner hidden (no active session)');
+        }
+        return;
+    }
+    
+    banner.style.display = 'block';
+    console.log('[Live Data] Banner shown');
+    
+    // Update session name
+    const sessionNameEl = document.getElementById('liveSessionName');
+    if (sessionNameEl) {
+        sessionNameEl.textContent = data.session?.name || 'Live Session';
+    }
+    
+    // Update weather metrics
+    if (data.weather) {
+        const airTempEl = document.getElementById('liveAirTemp');
+        const trackTempEl = document.getElementById('liveTrackTemp');
+        const rainProbEl = document.getElementById('liveRainProb');
+        const rcEl = document.getElementById('liveRaceControl');
+        
+        if (airTempEl) airTempEl.textContent = `${data.weather.air_temp || '—'}°C`;
+        if (trackTempEl) trackTempEl.textContent = `${data.weather.track_temp || '—'}°C`;
+        if (rainProbEl) rainProbEl.textContent = `${data.weather.rain_probability || 0}%`;
+        
+        // Race control status
+        if (rcEl) {
+            if (data.safety_car_deployed) {
+                rcEl.textContent = 'SC DEPLOYED';
+                rcEl.style.color = '#f59e0b';
+            } else {
+                rcEl.textContent = 'GREEN';
+                rcEl.style.color = 'var(--green)';
+            }
+        }
+    }
+    
+    // Update timer
+    const timerEl = document.getElementById('liveUpdateTimer');
+    if (timerEl) {
+        timerEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    }
+}
+
+// Poll live data endpoint
+function pollLiveData() {
+    if (!CIRCUIT_ID || CIRCUIT_ID === '') return;
+    
+    fetch(`/api/live-data/${CIRCUIT_ID}`)
+        .then(r => r.json())
+        .then(data => {
+            updateLiveDataBanner(data);
+            
+            // Auto-adjust rain probability if rain detected
+            if (data.weather && data.weather.rained && data.weather.rain_probability > 30) {
+                const rainInput = document.getElementById('rainInput');
+                if (rainInput && !rainInput.value) {
+                    rainInput.value = Math.round(data.weather.rain_probability);
+                }
+            }
+        })
+        .catch(err => console.warn('Live data poll error:', err));
+}
+
+// Start/stop live polling
+function startLivePolling() {
+    if (livePollInterval) clearInterval(livePollInterval);
+    livePollInterval = setInterval(pollLiveData, 30000); // 30 seconds
+    pollLiveData(); // Initial call
+}
+
+function stopLivePolling() {
+    if (livePollInterval) {
+        clearInterval(livePollInterval);
+        livePollInterval = null;
+    }
+}
+
+// Telemetry modal (from changes.md - simplified version)
+function showTelemetry(driverId, driverName) {
+    if (!driverId) {
+        showToast('Driver ID not available');
+        return;
+    }
+    
+    // For now, just show a toast with driver info
+    // Full telemetry modal would require additional HTML/CSS
+    showToast(`Telemetry for ${driverName} — Feature coming soon`);
+    
+    // TODO: Implement full telemetry modal with Plotly charts
+    // This would fetch from /api/telemetry/<circuit_id>/<driver_number>
+}
+
+function bindSessionTabInteractions() {
+    document.querySelectorAll('.session-tab[data-session]').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const session = tab.getAttribute('data-session');
+            if (session) selectSession(session, tab);
+        });
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    bindSessionTabInteractions();
+
+    // Weather init
+    try {
+        const w = document.getElementById('weatherSelect')?.value || 'dry';
+        updateWeatherWidget(w);
+    } catch(e) { console.warn('Weather init skip:', e); }
+
+    // Weather live update
+    document.getElementById('weatherSelect')?.addEventListener('change', e => updateWeatherWidget(e.target.value));
+
+    // Initialize live data features
+    updateWeekendPhaseBadge();
+    if (IS_LIVE_ACTIVE) {
+        startLivePolling();
+    }
+
+    // Auto-render initial predictions if available from server
+    if (HAS_INITIAL_PREDICTION && INITIAL_PREDICTIONS.length > 0) {
+        console.log('[Init] Rendering initial predictions from server...');
+        try {
+            // Build result object in the format expected by renderRace
+            const resultObj = {
+                chart_data: {
+                    win_probabilities: INITIAL_PREDICTIONS.map(p => ({
+                        driver: p.driver || p.driver_name,
+                        team: p.team,
+                        probability: p.win_pct || 0
+                    })),
+                    podium_probabilities: INITIAL_PREDICTIONS.map(p => ({
+                        driver: p.driver || p.driver_name,
+                        team: p.team,
+                        podium_chance: p.top3_pct || 0
+                    })),
+                    model_performance: INITIAL_META || {}
+                },
+                points_finishers: INITIAL_PREDICTIONS.slice(0, 10),
+                qualifying_grid_source: null
+            };
+
+            // Render based on current session type
+            const sessionType = WEEKEND_PHASE || 'race';
+            if (sessionType.includes('practice')) {
+                renderPractice(resultObj);
+            } else if (sessionType.includes('qualifying')) {
+                renderQualifying(resultObj);
+            } else {
+                renderRace(resultObj);
+            }
+
+            showToast('Predictions loaded for current race');
+        } catch(e) {
+            console.error('[Init] Failed to render initial predictions:', e);
+        }
+    }
+});

@@ -23,7 +23,7 @@ OPENF1_BASE_URL = "https://api.openf1.org/v1"
 OPENF1_RATE_LIMIT_RPS = 3        # 3 requests per second (free tier)
 OPENF1_RATE_LIMIT_RPM = 30       # 30 requests per minute (free tier)
 OPENF1_TIMEOUT = 15              # seconds
-OPENF1_ENABLED = True
+OPENF1_ENABLED = os.environ.get("OPENF1_ENABLED", "true").lower() == "true"
 
 # OpenF1 available endpoints (18 total)
 OPENF1_ENDPOINTS = {
@@ -51,7 +51,7 @@ JOLPICA_BASE_URL = "http://api.jolpi.ca/ergast/f1"
 JOLPICA_RATE_LIMIT_RPS = 4
 JOLPICA_RATE_LIMIT_RPM = 60
 JOLPICA_TIMEOUT = 20             # seconds
-JOLPICA_ENABLED = True
+JOLPICA_ENABLED = os.environ.get("JOLPICA_ENABLED", "true").lower() == "true"
 
 # Jolpica (Ergast-compatible) endpoints
 JOLPICA_ENDPOINTS = {
@@ -86,7 +86,10 @@ APISPORTS_ENABLED = bool(APISPORTS_API_KEY)  # Only enable if key is set
 # Local cache directory for API responses
 CACHE_DIR = Path(__file__).resolve().parents[1] / "cache" / "api_responses"
 CACHE_ENABLED = True
-CACHE_TTL_SECONDS = 300          # 5 minutes for live data
+CACHE_TTL_SECONDS = 600          # 10 minutes for live data (increased to reduce API calls)
+CACHE_TTL_LIVE_TIMING_SECONDS = 60  # Increased from 30s
+CACHE_TTL_LIVE_WEATHER_SECONDS = 120  # Increased from 60s
+CACHE_TTL_SESSION_RESULTS_SECONDS = 600
 CACHE_TTL_STANDINGS_SECONDS = 3600  # 1 hour for standings (changes less often)
 CACHE_TTL_SCHEDULE_SECONDS = 86400  # 24 hours for schedule (rarely changes)
 CACHE_TTL_HISTORICAL_SECONDS = 604800  # 7 days for historical data
@@ -107,6 +110,8 @@ FEATURE_FLAGS = {
     "auto_update_after_race":  True,    # Auto-refresh data 2 hours after race end
     "cache_api_responses":     CACHE_ENABLED,
 }
+
+DATA_SOURCE_PRIORITY = ["openf1", "fastf1", "jolpica", "local"]
 
 
 # ── Driver ID Mapping ─────────────────────────────────────────────────────────
@@ -256,8 +261,10 @@ __all__ = [
     "APISPORTS_TIMEOUT", "APISPORTS_ENABLED",
     # Cache
     "CACHE_DIR", "CACHE_ENABLED",
-    "CACHE_TTL_SECONDS", "CACHE_TTL_STANDINGS_SECONDS",
+    "CACHE_TTL_SECONDS", "CACHE_TTL_LIVE_TIMING_SECONDS", "CACHE_TTL_LIVE_WEATHER_SECONDS",
+    "CACHE_TTL_SESSION_RESULTS_SECONDS", "CACHE_TTL_STANDINGS_SECONDS",
     "CACHE_TTL_SCHEDULE_SECONDS", "CACHE_TTL_HISTORICAL_SECONDS",
+    "DATA_SOURCE_PRIORITY",
     # Feature flags
     "FEATURE_FLAGS",
     # ID mappings

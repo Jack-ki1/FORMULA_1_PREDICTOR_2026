@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor 2026 — H2H Comparison</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="static/analytics.js"></script>
+</head>
+<body>
+
+<!-- ── Loading Overlay ─────────────────────────────────── -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="spinner-label">Running Simulations</div>
+    <div class="spinner-sub" id="simProgress">Initialising engine…</div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div id="toast">
+    <i class="fas fa-check-circle toast-icon"></i>
+    <span class="toast-msg" id="toastMsg">Done</span>
+</div>
+
+<!-- ── Navbar ─────────────────────────────────────────── -->
+<nav class="navbar">
+    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+        <span class="f1-badge">F1</span>
+        <span class="brand-name">Predictor <span class="yr">2026</span></span>
+    </a>
+    <div class="nav-links">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="h2h.html" class="active">H2H Comparison</a>
+        <a href="constructors.html">Constructors</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="settings.html">Settings</a>
+        <a href="download.html">Download Report</a>
+        <span class="live-pill">Live</span>
+    </div>
+</nav>
+
+<div class="container">
+
+    <section id="sec-h2h" class="page-section">
+        <div class="h2h-showcase">
+            <div class="showcase-trio">
+                <div class="trio-card hero-trio">
+                    <img src="static/f1_image1.png" alt="Duel Arena" class="trio-image" onerror="this.style.display='none'">
+                    <div class="trio-overlay"><div class="trio-content"><h3>Duel Arena</h3><p>Head-to-head battles</p><div class="live-indicator"><span class="pulse-dot"></span><span>Who's faster?</span></div></div></div>
+                </div>
+                <div class="trio-card center-trio">
+                    <img src="static/f1_image2.png" alt="Performance Analysis" class="trio-image" onerror="this.style.display='none'">
+                    <div class="trio-overlay"><div class="trio-content"><h3>Performance</h3><p>Real-time analytics</p><div class="live-indicator"><span class="pulse-dot"></span><span>LIVE DATA</span></div></div></div>
+                </div>
+                <div class="trio-card stats-trio">
+                    <img src="static/f1_image3.png" alt="Predictive Insights" class="trio-image" onerror="this.style.display='none'">
+                    <div class="trio-overlay"><div class="trio-content"><h3>Predictions</h3><p>Monte Carlo simulations</p><div class="sim-counter"><span class="counter-value">10K</span><span class="counter-label">Simulations</span></div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FIX: h2h-card now has a proper CSS definition above -->
+        <div class="h2h-card">
+            <div class="h2h-header">
+                <h2><i class="fas fa-users" style="color:var(--red);margin-right:0.5rem;"></i>Driver Head-to-Head Comparison</h2>
+                <p>Select two drivers and a circuit to run an advanced Monte Carlo duel analysis with comprehensive performance metrics</p>
+            </div>
+            <!-- FIX: removed double-nested btn-group; controls are clean grid -->
+            <div class="h2h-controls">
+                <div class="ctrl-group">
+                    <label class="ctrl-label"><i class="fas fa-user"></i> Driver 1</label>
+                    <select class="ctrl-select" id="h2h-d1"><option value="">— Select driver —</option></select>
+                </div>
+                <div class="ctrl-group" style="align-self:flex-end;font-family:var(--font-head);font-size:1.5rem;font-weight:900;color:var(--red);text-align:center;padding-bottom:0.9rem;">VS</div>
+                <div class="ctrl-group">
+                    <label class="ctrl-label"><i class="fas fa-user"></i> Driver 2</label>
+                    <select class="ctrl-select" id="h2h-d2"><option value="">— Select driver —</option></select>
+                </div>
+                <div class="ctrl-group">
+                    <label class="ctrl-label"><i class="fas fa-flag-checkered"></i> Circuit</label>
+                    <select class="ctrl-select" id="h2h-circuit"><option value="">— Select circuit —</option></select>
+                </div>
+            </div>
+            <div style="text-align:center;margin-bottom:2rem;">
+                <button class="btn-run" onclick="runH2H()" style="padding:1rem 3rem;font-size:1.1rem;">
+                    <i class="fas fa-bolt"></i> Run Advanced H2H Analysis
+                </button>
+            </div>
+        </div>
+
+        <div id="h2hLoading" class="loading-state" style="display:none;"><div class="spinner"></div><p>Running Monte Carlo simulations…</p></div>
+        <div id="h2hError" class="error-state" style="display:none;">
+            <i class="fas fa-exclamation-triangle" style="font-size:3rem;color:var(--red);margin-bottom:1rem;"></i>
+            <h3>Analysis Failed</h3><p id="h2hErrorMessage">Unable to complete H2H comparison.</p>
+            <button class="btn-run" onclick="runH2H()" style="margin-top:1rem;"><i class="fas fa-redo"></i> Retry</button>
+        </div>
+
+        <div id="h2hDashboard" style="display:none;">
+            <div class="grid-2">
+                <div class="card" style="border-left:4px solid var(--red);">
+                    <div class="card-head"><div class="card-icon"><i class="fas fa-user-circle"></i></div><div class="card-title" id="h2h-d1-profile-name">Driver 1</div><span class="card-badge" id="h2h-d1-profile-team">Team</span></div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;text-align:center;">
+                        <div><div style="font-family:var(--font-head);font-size:2.5rem;font-weight:900;color:var(--red);" id="h2h-d1-number">#—</div><div style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;">Car Number</div></div>
+                        <div><div style="font-family:var(--font-head);font-size:2.5rem;font-weight:900;color:var(--red);" id="h2h-d1-wins">—</div><div style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;">Career Wins</div></div>
+                        <div><div style="font-family:var(--font-head);font-size:2.5rem;font-weight:900;color:var(--red);" id="h2h-d1-podiums">—</div><div style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;">Podiums</div></div>
+                    </div>
+                </div>
+                <div class="card" style="border-left:4px solid #1e3a5f;">
+                    <div class="card-head"><div class="card-icon" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8e);"><i class="fas fa-user-circle"></i></div><div class="card-title" id="h2h-d2-profile-name">Driver 2</div><span class="card-badge" id="h2h-d2-profile-team">Team</span></div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;text-align:center;">
+                        <div><div style="font-family:var(--font-head);font-size:2.5rem;font-weight:900;color:#1e3a5f;" id="h2h-d2-number">#—</div><div style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;">Car Number</div></div>
+                        <div><div style="font-family:var(--font-head);font-size:2.5rem;font-weight:900;color:#1e3a5f;" id="h2h-d2-wins">—</div><div style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;">Career Wins</div></div>
+                        <div><div style="font-family:var(--font-head);font-size:2.5rem;font-weight:900;color:#1e3a5f;" id="h2h-d2-podiums">—</div><div style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;">Podiums</div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-4">
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-trophy"></i></div><div class="stat-value" id="h2h-stat-winner">—</div><div class="stat-label">Predicted Winner</div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-percentage"></i></div><div class="stat-value" id="h2h-stat-margin">—%</div><div class="stat-label">Win Margin</div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-chart-line"></i></div><div class="stat-value" id="h2h-stat-confidence">—%</div><div class="stat-label">Confidence</div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-random"></i></div><div class="stat-value" id="h2h-stat-sims">10K</div><div class="stat-label">Simulations</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-head"><div class="card-icon"><i class="fas fa-balance-scale"></i></div><div class="card-title">Duel Performance Metrics</div></div>
+                    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+                        <div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;"><span style="font-weight:600;" id="h2h-metric-finishes-a-lbl">Driver 1</span><span style="font-weight:700;color:var(--red);" id="h2h-metric-finishes-a">—%</span></div>
+                            <div class="prob-bar-wrap"><div class="prob-bar"><div class="prob-bar-fill" id="h2h-bar-finishes-a" style="width:50%"></div></div></div>
+                            <div style="display:flex;justify-content:space-between;margin-top:0.3rem;font-size:0.85rem;color:var(--text-3);"><span>Finishes Ahead</span><span id="h2h-metric-finishes-b-lbl">Driver 2</span></div>
+                        </div>
+                        <div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;"><span style="font-weight:600;" id="h2h-metric-win-a-lbl">Driver 1</span><span style="font-weight:700;color:var(--red);" id="h2h-metric-win-a">—%</span></div>
+                            <div class="prob-bar-wrap"><div class="prob-bar"><div class="prob-bar-fill" id="h2h-bar-win-a" style="width:50%"></div></div></div>
+                            <div style="display:flex;justify-content:space-between;margin-top:0.3rem;font-size:0.85rem;color:var(--text-3);"><span>Win Probability</span><span id="h2h-metric-win-b-lbl">Driver 2</span></div>
+                        </div>
+                        <div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;"><span style="font-weight:600;" id="h2h-metric-podium-a-lbl">Driver 1</span><span style="font-weight:700;color:var(--red);" id="h2h-metric-podium-a">—%</span></div>
+                            <div class="prob-bar-wrap"><div class="prob-bar"><div class="prob-bar-fill" id="h2h-bar-podium-a" style="width:50%"></div></div></div>
+                            <div style="display:flex;justify-content:space-between;margin-top:0.3rem;font-size:0.85rem;color:var(--text-3);"><span>Podium Chance</span><span id="h2h-metric-podium-b-lbl">Driver 2</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-chart-bar"></i></div><div class="card-title">Position Distribution</div></div><div class="plotly-box" id="plotH2HPositionDist"></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-chart-area"></i></div><div class="card-title">Performance Attributes Radar</div></div><div class="plotly-box" id="plotH2HRadar"></div></div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-stopwatch"></i></div><div class="card-title">Lap Time Gap Analysis</div></div><div class="plotly-box" id="plotH2HLapTime"></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="card-title">DNF Risk &amp; Reliability</div></div><div class="plotly-box" id="plotH2HDNFRisk"></div></div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-exchange-alt"></i></div><div class="card-title">Overtaking Probability by Lap</div></div><div class="plotly-box" id="plotH2HOvertake"></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-th-large"></i></div><div class="card-title">Sector Performance Comparison</div></div><div class="plotly-box" id="plotH2HSectors"></div></div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-star"></i></div><div class="card-title">Championship Points Impact</div></div><div class="plotly-box" id="plotH2HPoints"></div></div>
+            </div>
+        </div>
+    </section>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script src="common.js"></script>
+<script src="h2h.js"></script>
+</body>
+</html>

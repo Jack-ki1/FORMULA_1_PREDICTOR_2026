@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor 2026 — Analytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="static/analytics.js"></script>
+</head>
+<body>
+
+<!-- ── Loading Overlay ─────────────────────────────────── -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="spinner-label">Running Simulations</div>
+    <div class="spinner-sub" id="simProgress">Initialising engine…</div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div id="toast">
+    <i class="fas fa-check-circle toast-icon"></i>
+    <span class="toast-msg" id="toastMsg">Done</span>
+</div>
+
+<!-- ── Navbar ─────────────────────────────────────────── -->
+<nav class="navbar">
+    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+        <span class="f1-badge">F1</span>
+        <span class="brand-name">Predictor <span class="yr">2026</span></span>
+    </a>
+    <div class="nav-links">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="h2h.html">H2H Comparison</a>
+        <a href="constructors.html">Constructors</a>
+        <a href="analytics.html" class="active">Analytics</a>
+        <a href="settings.html">Settings</a>
+        <a href="download.html">Download Report</a>
+        <span class="live-pill">Live</span>
+    </div>
+</nav>
+
+<div class="container">
+
+    <section id="sec-analytics" class="page-section">
+        <div class="h2h-showcase">
+            <div class="h2h-header" style="margin-bottom:2.2rem;">
+                <h2 style="font-size:2.2rem;">Analytics Lab</h2>
+                <p style="max-width:720px;margin:0 auto;">Calibrate, backtest, and validate the model with race-level feedback.</p>
+            </div>
+            <div class="showcase-trio">
+                <div class="trio-card hero-trio">
+                    <img src="static/f1_image3.png" alt="Analytics Evaluation" class="trio-image" onerror="this.style.display='none'">
+                    <div class="trio-overlay"><div class="trio-content"><h3>Post-Race</h3><p>Accuracy &amp; error analysis</p><div class="live-indicator"><span class="pulse-dot"></span><span>VERIFY</span></div></div></div>
+                </div>
+                <div class="trio-card center-trio">
+                    <img src="static/f1_image4.jpg" alt="Backtesting" class="trio-image" onerror="this.style.display='none'">
+                    <div class="trio-overlay"><div class="trio-content"><h3>Backtests</h3><p>Season validation runs</p><div class="sim-counter"><span class="counter-value">1K+</span><span class="counter-label">Races Sim</span></div></div></div>
+                </div>
+                <div class="trio-card stats-trio">
+                    <img src="static/f1_image5.jpg" alt="Calibration & Tuning" class="trio-image" onerror="this.style.display='none'">
+                    <div class="trio-overlay"><div class="trio-content"><h3>Tuning</h3><p>Calibration &amp; optimization</p><div class="live-indicator" style="border-color:rgba(245,158,11,0.6);background:rgba(245,158,11,0.2);color:#f59e0b;"><span class="pulse-dot" style="background:#f59e0b;"></span><span>OPTIMIZE</span></div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post-Race Evaluation -->
+        <div class="analytics-card">
+            <h3><i class="fas fa-clipboard-check"></i> Post-Race Evaluation</h3>
+            <!-- FIX: .analytics-subtle is now properly defined in CSS -->
+            <p class="analytics-subtle">Turn predicted finishing probabilities into accuracy insights. Paste results, then quantify how close the model really was.</p>
+            <div class="mini-pills">
+                <span class="mini-pill"><i class="fas fa-chart-line"></i> Error metrics</span>
+                <span class="mini-pill"><i class="fas fa-bullseye"></i> Rank accuracy</span>
+                <span class="mini-pill"><i class="fas fa-shield-alt"></i> Confidence sanity check</span>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Select Circuit:</label>
+                    <select class="ctrl-select" id="evalCircuit">
+                        <option value="">— Choose a race —</option>
+                        <option value="australia">Australian GP</option>
+                        <option value="canada">Canadian GP</option>
+                        <option value="monaco">Monaco GP</option>
+                        <option value="britain">British GP</option>
+                        <option value="spain">Spanish GP</option>
+                        <option value="italy">Italian GP</option>
+                        <option value="belgium">Belgian GP</option>
+                        <option value="netherlands">Dutch GP</option>
+                        <option value="singapore">Singapore GP</option>
+                        <option value="japan">Japanese GP</option>
+                        <option value="usa">United States GP</option>
+                        <option value="mexico">Mexico City GP</option>
+                        <option value="brazil">São Paulo GP</option>
+                        <option value="uae">Abu Dhabi GP</option>
+                    </select>
+                </div>
+            </div>
+            <!-- FIX: removed double-wrapped btn-group -->
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="generateTemplate()"><i class="fas fa-file-alt"></i> Generate Template</button>
+                <button class="btn btn-secondary" onclick="showToast('Paste driver_id → finishing position JSON')"><i class="fas fa-lightbulb"></i> Tip</button>
+            </div>
+            <div class="form-group" style="margin-top:1rem;">
+                <label>Paste Results JSON (driver_id: position):</label>
+                <textarea id="resultsJson" class="ctrl-textarea" placeholder='{"verstappen": 1, "hamilton": 2, "leclerc": 3}'></textarea>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="evaluateRace()"><i class="fas fa-play"></i> Evaluate Race</button>
+            </div>
+            <div id="evaluationResults" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- Backtesting -->
+        <div class="analytics-card">
+            <h3><i class="fas fa-history"></i> Historical Backtesting</h3>
+            <p>Validate model performance against completed seasons</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Seasons to Test:</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" id="season2024" checked> 2024</label>
+                        <label><input type="checkbox" id="season2025" checked> 2025</label>
+                        <label><input type="checkbox" id="season2026"> 2026 (partial)</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Simulations per Race:</label>
+                    <input type="number" id="backtestSims" value="10000" min="1000" max="50000" step="1000" class="ctrl-input">
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="runBacktest()"><i class="fas fa-vial"></i> Run Backtest</button>
+            </div>
+            <div id="backtestResults" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- Calibration -->
+        <div class="analytics-card">
+            <h3><i class="fas fa-sliders-h"></i> Probability Calibration</h3>
+            <p>Improve prediction accuracy using Platt scaling</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Season:</label>
+                    <select id="calibrationSeason" class="ctrl-select">
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="runCalibration()"><i class="fas fa-magic"></i> Run Calibration</button>
+            </div>
+            <div id="calibrationResults" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- Weight Optimization -->
+        <div class="analytics-card">
+            <h3><i class="fas fa-brain"></i> Model Weight Optimization</h3>
+            <p>Use Optuna to find optimal feature weights via Bayesian optimization</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Optimization Trials: <strong id="optTrialsValue">100</strong></label>
+                    <input type="range" id="optTrials" min="50" max="500" value="100" step="50"
+                           oninput="document.getElementById('optTrialsValue').textContent = this.value"
+                           style="width:100%;accent-color:var(--red);margin-top:0.5rem;">
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="optimizeWeights()"><i class="fas fa-cogs"></i> Start Optimization</button>
+            </div>
+            <div id="optimizationResults" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- Accuracy Report -->
+        <div class="analytics-card">
+            <h3><i class="fas fa-trophy"></i> Overall Accuracy Report</h3>
+            <p>View aggregated performance metrics across all evaluated races</p>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="loadAccuracyReport()"><i class="fas fa-chart-bar"></i> Load Report</button>
+            </div>
+            <div id="accuracyReport" class="result-box" style="display:none;"></div>
+        </div>
+    </section>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script src="common.js"></script>
+<script src="analytics.js"></script>
+</body>
+</html>

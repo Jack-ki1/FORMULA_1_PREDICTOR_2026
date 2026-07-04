@@ -421,6 +421,108 @@ class JolpicaClient(BaseAPIClient):
             "qualifying_results": results,
         }
 
+    def get_sprint_results(self, season: int, round_num: int) -> Dict[str, Any]:
+        """
+        Get sprint race results for a specific race (sprint weekends only).
+        
+        Returns:
+            Dict with: race_name, circuit, date, results (same format as race results)
+        """
+        if not self.enabled:
+            return {}
+        
+        endpoint = f"/{season}/{round_num}/sprint.json"
+        data = self.get(endpoint, ttl_seconds=CACHE_TTL_HISTORICAL_SECONDS)
+        if not data:
+            return {}
+        
+        races = self._extract_mr_data(data, "RaceTable")
+        if not races:
+            return {}
+        
+        race_list = races[0].get("Races", []) if races else []
+        if not race_list:
+            return {}
+        
+        race = race_list[0]
+        circuit = race.get("Circuit", {})
+        results_raw = race.get("Results", [])
+        
+        results = []
+        for r in results_raw:
+            driver = r.get("Driver", {})
+            constructor = r.get("Constructor", {})
+            time_info = r.get("Time", {})
+            
+            results.append({
+                "position": int(r.get("position", 0)),
+                "points": float(r.get("points", 0)),
+                "driver_id": driver.get("driverId", ""),
+                "driver_code": driver.get("code", ""),
+                "driver_name": f"{driver.get('givenName', '')} {driver.get('familyName', '')}",
+                "constructor_id": constructor.get("constructorId", ""),
+                "constructor_name": constructor.get("name", ""),
+                "grid": int(r.get("grid", 0)),
+                "laps": int(r.get("laps", 0)),
+                "status": r.get("status", ""),
+                "time": time_info.get("time", ""),
+                "time_millis": time_info.get("millis", 0),
+            })
+        
+        return {
+            "season": season,
+            "round": round_num,
+            "race_name": race.get("raceName", ""),
+            "circuit_id": circuit.get("circuitId", ""),
+            "circuit_name": circuit.get("circuitName", ""),
+            "date": race.get("date", ""),
+            "results": results,
+        }
+
+    def get_session_results(self, season: int, round_num: int, session_type: str) -> Dict[str, Any]:
+        """Fetch a race-weekend session using a stable session-type name."""
+        key = (session_type or "").lower().replace(" ", "_")
+        if key in {"race", "r", "grand_prix"}:
+            return self.get_race_results(season, round_num)
+        if key in {"qualifying", "qual", "q"}:
+            return self.get_qualifying_results(season, round_num)
+        if key in {"sprint", "sprint_race"}:
+            return self.get_sprint_results(season, round_num)
+        return {}
+
+    def get_weekend_results(self, season: int, round_num: int) -> Dict[str, Any]:
+        """Fetch all Jolpica-supported classifications for a weekend."""
+        race = self.get_race_results(season, round_num)
+        qualifying = self.get_qualifying_results(season, round_num)
+        sprint = self.get_sprint_results(season, round_num)
+        sessions = {}
+        if qualifying.get("qualifying_results"):
+            sessions["qualifying"] = qualifying
+        if sprint.get("results"):
+            sessions["sprint"] = sprint
+        if race.get("results"):
+            sessions["race"] = race
+        return {
+            "season": season,
+            "round": round_num,
+            "sessions": sessions,
+            "session_count": len(sessions),
+            "source": "jolpica",
+        }
+
+    @staticmethod
+    def normalize_grid_to_internal_ids(results: List[Dict[str, Any]]) -> Dict[str, int]:
+        """Map Jolpica qualifying rows to internal driver IDs and grid positions."""
+        reverse_map = {v: k for k, v in DRIVER_ID_TO_JOLPICA.items()}
+        grid: Dict[str, int] = {}
+        for result in results or []:
+            external_id = result.get("driver_id", "")
+            internal_id = reverse_map.get(external_id, external_id)
+            position = result.get("position")
+            if internal_id and position:
+                grid[internal_id] = int(position)
+        return grid
+
     def get_last_race_results(self) -> Dict[str, Any]:
         """
         Get the most recent completed race results.

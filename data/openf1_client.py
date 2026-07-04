@@ -17,7 +17,7 @@ Historical data available from 2023 season onwards.
 
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from data.api_client import BaseAPIClient
 from config.api_settings import (
@@ -140,6 +140,100 @@ class OpenF1Client(BaseAPIClient):
 
         logger.warning(f"Race session not found for meeting {meeting['meeting_name']}")
         return None
+
+    @staticmethod
+    def _parse_dt(value: Optional[str]) -> Optional[datetime]:
+        """Parse OpenF1 ISO timestamps into timezone-aware datetimes."""
+        if not value:
+            return None
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+
+    @staticmethod
+    def latest_by_driver(rows: List[Dict], driver_key: str = "driver_number") -> List[Dict]:
+        """Return the newest row for each driver, sorted by position when present."""
+        latest: Dict[Any, Dict] = {}
+        for row in rows or []:
+            driver = row.get(driver_key)
+            if driver is None:
+                continue
+            prev = latest.get(driver)
+            if prev is None or str(row.get("date", "")) >= str(prev.get("date", "")):
+                latest[driver] = row
+        values = list(latest.values())
+        values.sort(key=lambda r: (r.get("position") is None, r.get("position", 99), r.get(driver_key, 999)))
+        return values
+
+    def find_meeting_for_circuit(
+        self,
+        year: int,
+        circuit_id: str,
+        race_name: Optional[str] = None,
+    ) -> Optional[Dict]:
+        """Find an OpenF1 meeting using tolerant circuit/race aliases."""
+        aliases = {
+            circuit_id.replace("_", " ").lower(),
+            circuit_id.replace("_", "").lower(),
+        }
+        if race_name:
+            aliases.add(race_name.replace("Grand Prix", "").strip().lower())
+        meetings = self.get_meetings(year=year)
+        for meeting in meetings:
+            haystack = " ".join(
+                str(meeting.get(k, ""))
+                for k in ("meeting_name", "circuit_short_name", "country_name", "location")
+            ).lower().replace("_", " ")
+            compact = haystack.replace(" ", "")
+            if any(alias and (alias in haystack or alias.replace(" ", "") in compact) for alias in aliases):
+                return meeting
+        return None
+
+    def get_current_or_recent_session(
+        self,
+        circuit_id: str,
+        year: int,
+        race_name: Optional[str] = None,
+        now: Optional[datetime] = None,
+    ) -> Dict[str, Any]:
+        """Return active, most recent, and upcoming sessions for a meeting."""
+        meeting = self.find_meeting_for_circuit(year, circuit_id, race_name)
+        if not meeting:
+            return {"meeting": None, "active_session": None, "recent_session": None, "upcoming_sessions": []}
+
+        sessions = self.get_sessions(meeting_key=meeting["meeting_key"])
+        now_dt = now or datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+
+        active = None
+        recent = None
+        upcoming = []
+        for session in sorted(sessions, key=lambda s: s.get("date_start", "")):
+            start = self._parse_dt(session.get("date_start"))
+            end = self._parse_dt(session.get("date_end"))
+            if not start:
+                continue
+            if not end:
+                name = session.get("session_name", "").lower()
+                duration = timedelta(hours=2, minutes=30) if "race" in name else timedelta(hours=1, minutes=30)
+                end = start + duration
+            if start - timedelta(minutes=30) <= now_dt <= end + timedelta(minutes=15):
+                active = session
+            elif now_dt < start:
+                upcoming.append(session)
+            elif end < now_dt and (recent is None or start > self._parse_dt(recent.get("date_start"))):
+                recent = session
+
+        return {
+            "meeting": meeting,
+            "active_session": active,
+            "recent_session": recent,
+            "upcoming_sessions": upcoming,
+            "sessions": sessions,
+        }
 
     # ── Car Telemetry ──────────────────────────────────────────────────────
 
@@ -528,17 +622,14 @@ class OpenF1Client(BaseAPIClient):
         sessions = self.get_sessions()
         for s in sessions:
             if s.get("session_key") == session_key:
-                try:
-                    start = datetime.fromisoformat(s["date_start"].replace("Z", "+00:00"))
-                    now = datetime.now(start.tzinfo) if start.tzinfo else datetime.now()
-                    # Assume ~2 hour session duration + 30 min buffer
-                    from datetime import timedelta
+                start = self._parse_dt(s.get("date_start"))
+                end = self._parse_dt(s.get("date_end"))
+                if not start:
+                    continue
+                if not end:
                     end = start + timedelta(hours=2, minutes=30)
-                    buffer_start = start - timedelta(minutes=30)
-                    buffer_end = end + timedelta(minutes=30)
-                    return buffer_start <= now <= buffer_end
-                except Exception:
-                    pass
+                now = datetime.now(start.tzinfo or timezone.utc)
+                return start - timedelta(minutes=30) <= now <= end + timedelta(minutes=30)
         return False
 
     # ── Convenience: Full Race Weekend Report ──────────────────────────────

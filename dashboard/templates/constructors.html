@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor 2026 — Constructors</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="static/analytics.js"></script>
+</head>
+<body>
+
+<!-- ── Loading Overlay ─────────────────────────────────── -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="spinner-label">Running Simulations</div>
+    <div class="spinner-sub" id="simProgress">Initialising engine…</div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div id="toast">
+    <i class="fas fa-check-circle toast-icon"></i>
+    <span class="toast-msg" id="toastMsg">Done</span>
+</div>
+
+<!-- ── Navbar ─────────────────────────────────────────── -->
+<nav class="navbar">
+    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+        <span class="f1-badge">F1</span>
+        <span class="brand-name">Predictor <span class="yr">2026</span></span>
+    </a>
+    <div class="nav-links">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="h2h.html">H2H Comparison</a>
+        <a href="constructors.html" class="active">Constructors</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="settings.html">Settings</a>
+        <a href="download.html">Download Report</a>
+        <span class="live-pill">Live</span>
+    </div>
+</nav>
+
+<div class="container">
+
+    <section id="sec-constructors" class="page-section">
+        <div class="constructor-showcase-full">
+            <div class="showcase-card-large">
+                <img src="static/f1_image4.jpg" alt="Constructor Championship Battle" class="showcase-image-large" onerror="this.style.display='none'">
+                <div class="showcase-overlay-large">
+                    <div class="showcase-content-large">
+                        <h3>2026 Constructor Championship</h3>
+                        <p>Live Standings &amp; Analytics</p>
+                        <div class="live-data-badge"><span class="pulse-dot"></span><span>LIVE DATA</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="constructor-controls">
+            <div class="ctrl-group">
+                <label class="ctrl-label">Data Source</label>
+                <select class="ctrl-select" id="constructorDataSource" onchange="loadConstructorData()">
+                    <option value="live">Live F1 Standings (Ergast API)</option>
+                </select>
+            </div>
+            <button class="btn-run" onclick="loadConstructorData()" style="margin-left:1rem;">
+                <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+            <span id="constructorLastUpdate" style="margin-left:auto;color:var(--text-3);font-size:0.85rem;"></span>
+        </div>
+
+        <div id="constructorLoading" class="loading-state" style="display:none;"><div class="spinner"></div><p>Fetching live constructor data…</p></div>
+        <div id="constructorError" class="error-state" style="display:none;">
+            <i class="fas fa-exclamation-triangle" style="font-size:3rem;color:var(--red);margin-bottom:1rem;"></i>
+            <h3>Failed to Load Data</h3>
+            <p id="constructorErrorMessage">Unable to fetch constructor standings.</p>
+            <button class="btn-run" onclick="loadConstructorData()" style="margin-top:1rem;"><i class="fas fa-redo"></i> Retry</button>
+        </div>
+
+        <div id="constructorDashboard" style="display:none;">
+            <div class="grid-4">
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-users"></i></div><div class="stat-value" id="totalTeams">—</div><div class="stat-label">Teams</div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-user-friends"></i></div><div class="stat-value" id="totalDrivers">—</div><div class="stat-label">Drivers</div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-trophy"></i></div><div class="stat-value" id="leaderPoints">—</div><div class="stat-label">Leader Points</div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-flag-checkered"></i></div><div class="stat-value" id="totalWins">—</div><div class="stat-label">Total Wins</div></div>
+            </div>
+            <div class="grid-2-1">
+                <div class="card">
+                    <div class="card-head"><div class="card-icon"><i class="fas fa-list-ol"></i></div><div class="card-title">Live Constructor Standings</div><span class="card-badge" id="standingsRound">Round —</span></div>
+                    <div style="overflow-x:auto;"><table class="results-table" id="constructorStandingsTable"><thead><tr><th>Pos</th><th>Team</th><th>Points</th><th>Wins</th><th>Drivers</th><th>Tier</th></tr></thead><tbody id="constructorTableBody"></tbody></table></div>
+                </div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-chart-pie"></i></div><div class="card-title">Points Distribution</div></div><div class="plotly-box" id="plotConstructorPointsPie"></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-chart-area"></i></div><div class="card-title">Team Performance Radar (Top 5)</div></div><div class="plotly-box" id="plotTeamRadar"></div></div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-chart-bar"></i></div><div class="card-title">Win Distribution by Team</div></div><div class="plotly-box" id="plotWinDistribution"></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-layer-group"></i></div><div class="card-title">Driver Points Contribution</div></div><div class="plotly-box" id="plotDriverContribution"></div></div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-arrows-alt-h"></i></div><div class="card-title">Championship Points Gaps</div></div><div class="plotly-box" id="plotPointsGaps"></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-circle-notch"></i></div><div class="card-title">Performance Tiers</div></div><div class="plotly-box" id="plotPerformanceTiers"></div></div>
+                <div class="card"><div class="card-head"><div class="card-icon"><i class="fas fa-chart-line"></i></div><div class="card-title">Avg Points by Position Range</div></div><div class="plotly-box" id="plotAvgByPosition"></div></div>
+            </div>
+        </div>
+    </section>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script src="common.js"></script>
+<script src="constructors.js"></script>
+</body>
+</html>
