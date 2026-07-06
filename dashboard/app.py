@@ -66,7 +66,7 @@ def create_app():
                 "script-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdn.plot.ly"],
                 "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.com"],
                 "img-src": ["'self'", "data:", "cdn.jsdelivr.net", "www.formula1.com"],
-                "font-src": ["'self'", "fonts.gstatic.com"],
+                "font-src": ["'self'", "fonts.gstatic.com", "cdnjs.cloudflare.com"],
                 "connect-src": ["'self'"],
             },
         )
@@ -205,12 +205,38 @@ def _dashboard_payload(result: Dict[str, Any], session_type: str, grid_source: O
     return {
         "meta": meta,
         "chart_data": chart_data,
-        "points_finishers": rows[:10],
+        "points_finishers": rows[:8] if session_key in {"sprint", "sprint_race"} else rows[:10],
         "predictions": rows,
         "raw_prediction": result,
         "qualifying_grid_source": grid_source,
         "pole_time": "1:18.234",
     }
+
+
+# NEW: Human-readable status for the "has this race already happened" banner.
+# Maps the same `phase` values get_weekend_phase() already computes onto a plain-language
+# message, a color/strategy tag for the frontend banner, and a rough confidence boost —
+# borrowed from the sibling Streamlit project's data-availability indicator, but built on
+# top of phases we already compute rather than a second date calculation.
+_PHASE_STATUS = {
+    "pre_weekend":  {"strategy": "historical_only",     "confidence_boost": 0.0,  "message": "📅 Race weekend hasn't started — using historical data only"},
+    "practice":     {"strategy": "practice_enhanced",   "confidence_boost": 0.05, "message": "🏃 Practice underway — real pace data improving accuracy"},
+    "qualifying":   {"strategy": "qualifying_pending",  "confidence_boost": 0.10, "message": "⏱️ Qualifying today — grid will lock in soon"},
+    "sprint":       {"strategy": "sprint_weekend",      "confidence_boost": 0.10, "message": "🏁 Sprint weekend Saturday — Sprint Shootout & Sprint Race today"},
+    "race":         {"strategy": "full_data",           "confidence_boost": 0.15, "message": "✅ Race day — full weekend data available"},
+    "post_race":    {"strategy": "post_race_analysis",  "confidence_boost": 0.0,  "message": "🏁 Race completed — showing post-race analysis"},
+    "completed":    {"strategy": "post_race_analysis",  "confidence_boost": 0.0,  "message": "🏁 Race completed — showing post-race analysis"},
+    "unknown":      {"strategy": "historical_only",     "confidence_boost": 0.0,  "message": "ℹ️ Race weekend status unavailable"},
+}
+
+
+def _attach_phase_status(phase_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Attach message/strategy/confidence_boost fields to a get_weekend_phase() result."""
+    status = _PHASE_STATUS.get(phase_info.get("phase"), _PHASE_STATUS["unknown"])
+    phase_info["message"] = status["message"]
+    phase_info["strategy"] = status["strategy"]
+    phase_info["confidence_boost"] = status["confidence_boost"]
+    return phase_info
 
 
 def get_weekend_phase(circuit_id: str) -> Dict[str, Any]:
@@ -227,7 +253,7 @@ def get_weekend_phase(circuit_id: str) -> Dict[str, Any]:
         recent = context.get("recent_session")
         if active:
             normalized = _normalize_session_name(active.get("session_name", ""))
-            return {
+            return _attach_phase_status({
                 "phase": "practice" if normalized.startswith("practice") else normalized,
                 "active_session": active,
                 "next_session": (context.get("upcoming_sessions") or [None])[0],
@@ -235,14 +261,14 @@ def get_weekend_phase(circuit_id: str) -> Dict[str, Any]:
                 "sprint_weekend": sprint_weekend,
                 "race_date": race_date_str,
                 "data_source": "openf1",
-            }
+            })
     except Exception as e:
         logger.debug(f"OpenF1 weekend phase lookup skipped: {e}")
     
     try:
         race_date = datetime.strptime(race_date_str, "%Y-%m-%d").date()
     except ValueError:
-        return {"phase": "unknown", "qualifying_completed": False, "sprint_weekend": False}
+        return _attach_phase_status({"phase": "unknown", "qualifying_completed": False, "sprint_weekend": False})
     
     today = datetime.now().date()
     delta = (today - race_date).days
@@ -264,14 +290,15 @@ def get_weekend_phase(circuit_id: str) -> Dict[str, Any]:
     # Qualifying is considered "completed" from Saturday evening onwards
     qualifying_completed = delta >= 0  # Race day or after
     
-    return {
+    return _attach_phase_status({
         "phase": phase,
         "qualifying_completed": qualifying_completed,
         "sprint_weekend": sprint_weekend,
         "race_date": race_date_str,
         "days_until_race": (race_date - today).days,
         "data_source": "calendar_fallback",
-    }
+    })
+
 
 # ── Helper: Fetch Live Qualifying Grid ───────────────────────────────────────
 
@@ -633,25 +660,42 @@ def dashboard():
         if not circuit_id:
             flash(f"Unknown race: {selected_race}", "error")
             return redirect(url_for("dashboard", race="Australian Grand Prix"))
-        
+
+########################
+  
         circuit = get_circuit(circuit_id)
         weekend_phase = get_weekend_phase(circuit_id)
         
         # ── Auto-fetch qualifying grid on race day ─────────────────────────────
         grid_overrides = {}
         qualifying_data = None
+        session_grid_key = f"grid_{circuit_id}"
         
-        if weekend_phase["qualifying_completed"] or weekend_phase["phase"] == "sunday":
-            # Try to fetch live qualifying results
+        # FIX: this compared weekend_phase["phase"] to "sunday", a value get_weekend_phase()
+        # never actually returns (it returns "race", not "sunday") — the check was always
+        # False and silently relied on qualifying_completed alone. Fixed to check "race".
+        if weekend_phase["qualifying_completed"] or weekend_phase["phase"] == "race":
+            # NOTE: fetch_live_qualifying_grid() always returns a grid — real live results
+            # when available, otherwise a synthetic "fallback"-sourced grid — it never
+            # returns None just because live data is missing. Only a genuinely live
+            # source should be allowed to overwrite a grid the user manually saved, so
+            # that's checked explicitly here rather than trusting truthiness alone.
             qual_live = fetch_live_qualifying_grid(circuit_id)
-            if qual_live and qual_live.get("grid"):
+            is_real_live_grid = bool(qual_live and qual_live.get("grid") and not str(qual_live.get("source", "")).startswith("fallback"))
+            if is_real_live_grid:
                 grid_overrides = qual_live["grid"]
                 qualifying_data = qual_live
+                flask_session[session_grid_key] = grid_overrides
                 flash("Qualifying grid auto-filled from live data!", "success")
-            else:
-                # Fallback: use hardcoded typical grid if no live data yet
-                # This ensures the model still runs with reasonable defaults
-                pass
+        
+        # NEW: Fall back to a manually-entered (or previously live-fetched) grid saved
+        # earlier this weekend if this request didn't just get a genuinely live one above.
+        # Persisted in the Flask session so it survives across page loads for the circuit.
+        if not grid_overrides:
+            saved_grid = flask_session.get(session_grid_key)
+            if saved_grid:
+                grid_overrides = saved_grid
+                qualifying_data = qualifying_data or {"source": "Manually Entered", "grid": saved_grid}
         
         # ── Live Session Data (lightweight call) ───────────────────────────────
         live_data = get_live_session_data(circuit_id)
@@ -679,10 +723,12 @@ def dashboard():
             podium = result.get("podium_predictions", [])
             surprises = result.get("likely_top_surprises", [])
             raw = result.get("raw") if req.output_format == "full" else None
+            data_confidence = _data_confidence(result, live_data, grid_overrides)
         except Exception as e:
             logger.error(f"Prediction failed: {e}")
             flash(f"Prediction error: {e}", "error")
             predictions, meta, podium, surprises, raw = [], {}, [], [], None
+            data_confidence = {"score": 0, "level": "low", "reasons": []}
         
         # ── Driver List for Grid Override UI ───────────────────────────────────
         all_drivers = get_all_drivers()
@@ -693,6 +739,11 @@ def dashboard():
         # Championship standings - SKIP ON INITIAL LOAD (load via AJAX instead)
         # This prevents another API call during page load
         live_standings = {}
+        
+        # NEW: circuit_id -> sprint_weekend map, so the frontend knows whether to show the
+        # Sprint tab when the user picks a *different* race from the dropdown, without an
+        # extra API round-trip for something we already have on the server.
+        sprint_circuits = {c["id"]: bool(c.get("sprint_weekend")) for c in get_all_circuits()}
         
         return render_template(
             "dashboard.html",
@@ -708,6 +759,8 @@ def dashboard():
             grid_overrides=grid_overrides,
             qualifying_data=qualifying_data,
             live_data=live_data,
+            data_confidence=data_confidence,
+            sprint_circuits=sprint_circuits,
             historical_sessions=historical_sessions,
             live_standings=live_standings,
             race_names=sorted(RACE_NAME_MAPPING.keys()),
@@ -727,7 +780,47 @@ def dashboard():
             details="Check server logs for more information"
         ), 500
 
+# ── Pages split out of the old single-file dashboard.html ────────────────────
+# Each is pure client-side/AJAX (no server-rendered prediction state needed),
+# unlike /dashboard above which computes and injects live prediction context.
+
+@app.route("/h2h")
+def h2h():
+    """Driver head-to-head comparison page."""
+    return render_template("h2h.html")
+
+@app.route("/constructors")
+def constructors():
+    """Live constructor standings & analytics page."""
+    return render_template("constructors.html")
+
+@app.route("/analytics")
+def analytics():
+    """Analytics lab: post-race evaluation, backtesting, calibration, tuning."""
+    return render_template("analytics.html")
+
+@app.route("/settings")
+def settings():
+    """System settings: database migration, data sync, quality checks."""
+    return render_template("settings.html")
+
+@app.route("/download")
+def download():
+    """Race report download page."""
+    return render_template("download.html")
+
+
+@app.route("/api/weekend-phase/<circuit_id>")
+def api_weekend_phase(circuit_id: str):
+    """Lightweight status check for the 'has this race already happened' banner —
+    no simulation run, just the same phase/message/confidence_boost computation
+    already used on page load, so switching races updates the banner instantly."""
+    try:
+        return jsonify({"success": True, "weekend_phase": get_weekend_phase(circuit_id)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 @app.route("/api/live-data/<circuit_id>")
+
 def api_live_data(circuit_id: str):
     """AJAX endpoint for live session data polling."""
     data = get_live_session_data(circuit_id)
@@ -782,11 +875,35 @@ def api_predict():
     try:
         circuit = get_circuit(circuit_id)
         live_data = get_live_session_data(circuit_id)
+        weekend_phase = get_weekend_phase(circuit_id)
+        session_grid_key = f"grid_{circuit_id}"
         grid_data = None
-        if session_type in {"race", "r"}:
-            grid_data = fetch_live_qualifying_grid(circuit_id)
-            if not grid_overrides and grid_data:
-                grid_overrides = grid_data.get("grid", {})
+
+        # NEW: manually-entered grid_overrides (e.g. from the Sunday P1-P22 widget) take
+        # priority and get persisted so they're remembered for the rest of the weekend.
+        if grid_overrides:
+            flask_session[session_grid_key] = grid_overrides
+            grid_data = {"source": "Manually Entered", "grid": grid_overrides}
+        elif session_type in {"race", "r", "sprint", "sprint_race"}:
+            # NOTE: fetch_live_qualifying_grid() always returns *a* grid — real live
+            # results when available, otherwise a synthetic "fallback"-sourced one — it
+            # never returns None just because live data is missing. Only a genuinely
+            # live source should override a grid saved earlier this weekend, so that's
+            # checked explicitly rather than trusting truthiness of the return value.
+            live_grid = fetch_live_qualifying_grid(circuit_id)
+            is_real_live_grid = bool(live_grid and live_grid.get("grid") and not str(live_grid.get("source", "")).startswith("fallback"))
+            saved_grid = flask_session.get(session_grid_key)
+            if is_real_live_grid:
+                grid_overrides = live_grid.get("grid", {})
+                flask_session[session_grid_key] = grid_overrides
+                grid_data = live_grid
+            elif saved_grid:
+                grid_overrides = saved_grid
+                grid_data = {"source": "Saved From Earlier This Weekend", "grid": saved_grid}
+            elif live_grid and live_grid.get("grid"):
+                grid_overrides = live_grid.get("grid", {})
+                grid_data = live_grid
+
         req = PredictionRequest(
             circuit_id=circuit_id,
             rain_probability=rain_prob,
@@ -799,10 +916,11 @@ def api_predict():
             live_context=live_data,
         )
         result = predict(req)
-        grid_source = grid_data.get("source") if grid_data else None
+        grid_source = grid_data.get("source") if grid_data else ("Manually Entered" if grid_overrides else None)
         dashboard_result = _dashboard_payload(result, session_type, grid_source)
         dashboard_result["data_confidence"] = _data_confidence(result, live_data, grid_overrides)
         dashboard_result["live_data"] = live_data
+        dashboard_result["weekend_phase"] = weekend_phase
         return jsonify({
             "success": True,
             "results": dashboard_result,

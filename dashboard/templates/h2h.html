@@ -7,9 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="static/analytics.js"></script>
+    <script src="{{ url_for('static', filename='analytics.js') }}"></script>
 </head>
 <body>
 
@@ -28,17 +28,17 @@
 
 <!-- ── Navbar ─────────────────────────────────────────── -->
 <nav class="navbar">
-    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+    <a href="{{ url_for('dashboard') }}" class="nav-brand" style="text-decoration:none;">
         <span class="f1-badge">F1</span>
         <span class="brand-name">Predictor <span class="yr">2026</span></span>
     </a>
     <div class="nav-links">
-        <a href="dashboard.html">Dashboard</a>
-        <a href="h2h.html" class="active">H2H Comparison</a>
-        <a href="constructors.html">Constructors</a>
-        <a href="analytics.html">Analytics</a>
-        <a href="settings.html">Settings</a>
-        <a href="download.html">Download Report</a>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('h2h') }}" class="active">H2H Comparison</a>
+        <a href="{{ url_for('constructors') }}">Constructors</a>
+        <a href="{{ url_for('analytics') }}">Analytics</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
+        <a href="{{ url_for('download') }}">Download Report</a>
         <span class="live-pill">Live</span>
     </div>
 </nav>
@@ -49,15 +49,15 @@
         <div class="h2h-showcase">
             <div class="showcase-trio">
                 <div class="trio-card hero-trio">
-                    <img src="static/f1_image1.png" alt="Duel Arena" class="trio-image" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename='f1_image1.png') }}" alt="Duel Arena" class="trio-image" onerror="this.style.display='none'">
                     <div class="trio-overlay"><div class="trio-content"><h3>Duel Arena</h3><p>Head-to-head battles</p><div class="live-indicator"><span class="pulse-dot"></span><span>Who's faster?</span></div></div></div>
                 </div>
                 <div class="trio-card center-trio">
-                    <img src="static/f1_image2.png" alt="Performance Analysis" class="trio-image" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename='f1_image2.png') }}" alt="Performance Analysis" class="trio-image" onerror="this.style.display='none'">
                     <div class="trio-overlay"><div class="trio-content"><h3>Performance</h3><p>Real-time analytics</p><div class="live-indicator"><span class="pulse-dot"></span><span>LIVE DATA</span></div></div></div>
                 </div>
                 <div class="trio-card stats-trio">
-                    <img src="static/f1_image3.png" alt="Predictive Insights" class="trio-image" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename='f1_image3.png') }}" alt="Predictive Insights" class="trio-image" onerror="this.style.display='none'">
                     <div class="trio-overlay"><div class="trio-content"><h3>Predictions</h3><p>Monte Carlo simulations</p><div class="sim-counter"><span class="counter-value">10K</span><span class="counter-label">Simulations</span></div></div></div>
                 </div>
             </div>
@@ -167,7 +167,7 @@
 <!-- ══════════════════════════════════════════════════════════
      JAVASCRIPT
 ══════════════════════════════════════════════════════════ -->
-<script src="common.js"></script>
-<script src="h2h.js"></script>
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+<script src="{{ url_for('static', filename='h2h.js') }}"></script>
 </body>
 </html>

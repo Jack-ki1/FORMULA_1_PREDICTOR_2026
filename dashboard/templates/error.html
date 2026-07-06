@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Predictor 2026 — Error {{ code }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .error-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+        .error-code {
+            font-family: var(--font-head);
+            font-size: 7rem;
+            font-weight: 900;
+            color: var(--red);
+            line-height: 1;
+        }
+        .error-message {
+            font-size: 1.3rem;
+            color: var(--text-1);
+            margin: 1rem 0 0.5rem;
+        }
+        .error-details {
+            font-size: 0.95rem;
+            color: var(--text-3);
+            max-width: 560px;
+            margin-bottom: 2rem;
+        }
+        .error-home-btn {
+            display: inline-block;
+            padding: 0.9rem 2.2rem;
+            background: var(--red);
+            color: #fff;
+            border-radius: 8px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background 0.2s ease;
+        }
+        .error-home-btn:hover { background: var(--red-dark); }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <div class="error-code">{{ code }}</div>
+        <div class="error-message">{{ message }}</div>
+        {% if details %}<div class="error-details">{{ details }}</div>{% endif %}
+        <a href="{{ url_for('dashboard') }}" class="error-home-btn">
+            <i class="fas fa-flag-checkered"></i> Back to Dashboard
+        </a>
+    </div>
+</body>
+</html>

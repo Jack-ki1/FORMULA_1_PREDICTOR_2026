@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
-    <script src="static/analytics.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='analytics.js') }}"></script>
 </head>
 <body>
 
@@ -27,17 +27,17 @@
 
 <!-- ── Navbar ─────────────────────────────────────────── -->
 <nav class="navbar">
-    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+    <a href="{{ url_for('dashboard') }}" class="nav-brand" style="text-decoration:none;">
         <span class="f1-badge">F1</span>
         <span class="brand-name">Predictor <span class="yr">2026</span></span>
     </a>
     <div class="nav-links">
-        <a href="dashboard.html">Dashboard</a>
-        <a href="h2h.html">H2H Comparison</a>
-        <a href="constructors.html">Constructors</a>
-        <a href="analytics.html" class="active">Analytics</a>
-        <a href="settings.html">Settings</a>
-        <a href="download.html">Download Report</a>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('h2h') }}">H2H Comparison</a>
+        <a href="{{ url_for('constructors') }}">Constructors</a>
+        <a href="{{ url_for('analytics') }}" class="active">Analytics</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
+        <a href="{{ url_for('download') }}">Download Report</a>
         <span class="live-pill">Live</span>
     </div>
 </nav>
@@ -52,15 +52,15 @@
             </div>
             <div class="showcase-trio">
                 <div class="trio-card hero-trio">
-                    <img src="static/f1_image3.png" alt="Analytics Evaluation" class="trio-image" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename='f1_image3.png') }}" alt="Analytics Evaluation" class="trio-image" onerror="this.style.display='none'">
                     <div class="trio-overlay"><div class="trio-content"><h3>Post-Race</h3><p>Accuracy &amp; error analysis</p><div class="live-indicator"><span class="pulse-dot"></span><span>VERIFY</span></div></div></div>
                 </div>
                 <div class="trio-card center-trio">
-                    <img src="static/f1_image4.jpg" alt="Backtesting" class="trio-image" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename='f1_image5.png') }}" alt="Backtesting" class="trio-image" onerror="this.style.display='none'">
                     <div class="trio-overlay"><div class="trio-content"><h3>Backtests</h3><p>Season validation runs</p><div class="sim-counter"><span class="counter-value">1K+</span><span class="counter-label">Races Sim</span></div></div></div>
                 </div>
                 <div class="trio-card stats-trio">
-                    <img src="static/f1_image5.jpg" alt="Calibration & Tuning" class="trio-image" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename='f1_image4.jpg') }}" alt="Calibration & Tuning" class="trio-image" onerror="this.style.display='none'">
                     <div class="trio-overlay"><div class="trio-content"><h3>Tuning</h3><p>Calibration &amp; optimization</p><div class="live-indicator" style="border-color:rgba(245,158,11,0.6);background:rgba(245,158,11,0.2);color:#f59e0b;"><span class="pulse-dot" style="background:#f59e0b;"></span><span>OPTIMIZE</span></div></div></div>
                 </div>
             </div>
@@ -191,7 +191,7 @@
 <!-- ══════════════════════════════════════════════════════════
      JAVASCRIPT
 ══════════════════════════════════════════════════════════ -->
-<script src="common.js"></script>
-<script src="analytics.js"></script>
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+<script src="{{ url_for('static', filename='analytics-lab.js') }}"></script>
 </body>
 </html>

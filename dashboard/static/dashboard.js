@@ -11,9 +11,69 @@ function selectSession(sess, el) {
     el.classList.add('active');
     document.querySelectorAll('.session-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + sess).classList.add('active');
-    const map = {practice:'PRACTICE', qualifying:'QUALIFYING', race:'RACE'};
+    const map = {practice:'PRACTICE', qualifying:'QUALIFYING', sprint:'SPRINT_QUALIFYING', race:'RACE'};
     document.getElementById('sessionTypeSelect').value = map[sess];
     showToast('Switched to ' + el.querySelector('.tab-day').textContent);
+}
+
+/* ── Sprint sub-tabs (Shootout / Sprint Race, inside the Sprint panel) ──── */
+function selectSprintSubTab(which) {
+    document.querySelectorAll('#panel-sprint .sub-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#panel-sprint .sub-panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+    document.getElementById('subtab-' + which).classList.add('active');
+    const panel = document.getElementById('subpanel-' + which);
+    panel.classList.add('active');
+    panel.style.display = 'block';
+    document.getElementById('sessionTypeSelect').value = which === 'shootout' ? 'SPRINT_QUALIFYING' : 'SPRINT';
+}
+
+/* ── Weekend status banner: "has this race already happened" ────────────
+   Renders the message/strategy computed server-side by get_weekend_phase(),
+   and — when available — the already-computed data_confidence reasons list. */
+function renderWeekendStatusBanner(phaseData, confidenceData) {
+    const banner = document.getElementById('weekendStatusBanner');
+    if (!banner || !phaseData) return;
+    banner.setAttribute('data-strategy', phaseData.strategy || 'historical_only');
+    const msgEl = document.getElementById('wsbMessage');
+    if (msgEl) msgEl.textContent = phaseData.message || '';
+
+    const reasons = (confidenceData && confidenceData.reasons) || [];
+    const toggle = document.getElementById('wsbToggle');
+    const reasonsEl = document.getElementById('wsbReasons');
+    if (toggle && reasonsEl) {
+        if (reasons.length) {
+            toggle.style.display = 'inline-flex';
+            reasonsEl.innerHTML = '<ul>' + reasons.map(r => `<li>${r}</li>`).join('') + '</ul>';
+        } else {
+            toggle.style.display = 'none';
+            reasonsEl.style.display = 'none';
+            reasonsEl.innerHTML = '';
+        }
+    }
+}
+
+function toggleConfidenceReasons() {
+    const el = document.getElementById('wsbReasons');
+    if (!el) return;
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+/* ── Sprint tab visibility: shown only for circuits flagged sprint_weekend ─
+   SPRINT_CIRCUITS (circuit_id -> bool) and CIRCUIT_LOOKUP (race name -> circuit_id)
+   both come from the server, so this stays correct without hardcoding a calendar. */
+function updateSprintTabVisibility() {
+    const race = document.getElementById('raceSelect')?.value;
+    const circuitId = CIRCUIT_LOOKUP[race];
+    const isSprint = !!(circuitId && window.SPRINT_CIRCUITS && window.SPRINT_CIRCUITS[circuitId]);
+    const tab = document.getElementById('tab-sprint');
+    const tabs = document.querySelector('.session-tabs');
+    if (tab) tab.style.display = isSprint ? '' : 'none';
+    if (tabs) tabs.classList.toggle('has-sprint', isSprint);
+    // If Sprint was selected but the newly-picked race isn't a sprint weekend, bounce back to Qualifying.
+    if (!isSprint && currentSession === 'sprint') {
+        const qualTab = document.getElementById('tab-qualifying');
+        if (qualTab) selectSession('qualifying', qualTab);
+    }
 }
 
 /* ── Weather widget ─────────────────────────────────────── */
@@ -42,11 +102,22 @@ async function runPrediction() {
     if (!race) { showToast('Please select a Grand Prix first.'); return; }
     showLoading('Running ' + sims.toLocaleString() + ' simulations…');
 
+    const payload = {race, session_type: sessionType, simulations: sims, weather};
+
+    // Manual starting grid (P1-P22) only applies to sessions with a grid to override —
+    // the Grand Prix race and the Sprint Race. getStartingGridOverrides() returns null
+    // if there's a validation conflict (e.g. duplicate positions), in which case we
+    // send nothing and let the model/auto-fetched grid be used instead.
+    if (sessionType === 'RACE' || sessionType === 'SPRINT') {
+        const overrides = getStartingGridOverrides();
+        if (overrides && Object.keys(overrides).length) payload.grid_overrides = overrides;
+    }
+
     try {
         const resp = await fetch('/api/predict', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({race, session_type: sessionType, simulations: sims, weather})
+            body: JSON.stringify(payload)
         });
         const data = await resp.json();
         hideLoading();
@@ -59,11 +130,16 @@ async function runPrediction() {
         updateHero(race, data.results);
         updateCircuitInfo(currentCircuitId);
         updateSimBadge(sims);
+        if (data.results.weekend_phase) {
+            renderWeekendStatusBanner(data.results.weekend_phase, data.results.data_confidence);
+        }
 
         const sess = sessionType.toLowerCase();
-        if (sess === 'practice')   renderPractice(data.results);
-        if (sess === 'qualifying') renderQualifying(data.results);
-        if (sess === 'race')       renderRace(data.results);
+        if (sess === 'practice')           renderPractice(data.results);
+        if (sess === 'qualifying')         renderQualifying(data.results);
+        if (sess === 'sprint_qualifying')  renderSprintQualifying(data.results);
+        if (sess === 'sprint')             renderSprintRace(data.results);
+        if (sess === 'race')               renderRace(data.results);
 
         showToast('Prediction complete — ' + sims.toLocaleString() + ' sims');
 
@@ -193,6 +269,101 @@ function subtractMs(timeStr, ms) {
         const s = parseFloat(rest) + ms/1000;
         return m + ':' + s.toFixed(3).padStart(6,'0');
     } catch { return '—'; }
+}
+
+/* ── Sprint Shootout render (sets tomorrow's Sprint grid, no points) ────── */
+function renderSprintQualifying(res) {
+    const pos = (res.chart_data?.qualifying_positions || []).slice(0,5);
+    const qg  = document.getElementById('sprintQualGrid');
+    const cls = ['p1','p2','p3'];
+    const emj = ['P1','P2','P3','P4','P5'];
+    if (qg && pos.length) {
+        qg.innerHTML = pos.map((d,i) => `
+            <div class="podium-item ${cls[i]||''}">
+                <div class="podium-pos" style="${i>=3?'color:var(--text-3);font-size:1.4rem;':''}">${emj[i]}</div>
+                <div class="podium-info">
+                    <div class="podium-name">${d.driver}</div>
+                    <div class="podium-team">${(d.team||'').replace(/_/g,' ')}</div>
+                </div>
+                <div class="podium-metric" style="${i>=3?'font-size:1.2rem;':''}">${(d.probability||0).toFixed(1)}%</div>
+            </div>`).join('');
+    }
+    document.getElementById('sq1Time').textContent = res.pole_time ? subtractMs(res.pole_time, 900) : '—';
+    document.getElementById('sq2Time').textContent = res.pole_time ? subtractMs(res.pole_time, 450) : '—';
+    document.getElementById('sq3Time').textContent = res.pole_time || '1:19.500';
+}
+
+/* ── Sprint Race render (~100km, points for top 8 only) ─────────────────── */
+function renderSprintRace(res) {
+    const podSrc = (res.chart_data?.podium_probabilities || res.chart_data?.win_probabilities || []).slice(0,3);
+    const rp     = document.getElementById('sprintRacePodium');
+    const cls    = ['p1','p2','p3'];
+    const emj    = ['🥇','🥈','🥉'];
+    if (rp && podSrc.length) {
+        rp.innerHTML = podSrc.map((d,i) => `
+            <div class="podium-item ${cls[i]}">
+                <div class="podium-pos">${emj[i]}</div>
+                <div class="podium-info">
+                    <div class="podium-name">${d.driver}</div>
+                    <div class="podium-team">${(d.team||'').replace(/_/g,' ')}</div>
+                </div>
+                <div class="podium-metric">${(d.podium_chance||d.probability||0).toFixed(1)}%</div>
+            </div>`).join('');
+    }
+
+    const dnfNote = document.getElementById('sprintDnfNote');
+    const avgDnf = (res.chart_data?.dnf_risk_analysis || []).slice(0,20);
+    if (dnfNote && avgDnf.length) {
+        const avg = avgDnf.reduce((s,d) => s + (d.dnf_probability||0), 0) / avgDnf.length;
+        dnfNote.textContent = `Average sprint DNF risk across the field: ${avg.toFixed(1)}% — noticeably lower than a full Grand Prix given the shorter distance.`;
+    }
+
+    ['sprintRaceCharts','sprintRaceTableWrap'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === 'sprintRaceTableWrap' ? 'block' : 'grid';
+    });
+
+    const wp = (res.chart_data?.win_probabilities || []).slice(0,8);
+    if (wp.length) {
+        Plotly.newPlot('plotSprintWinProb', [{
+            x:wp.map(d=>d.driver), y:wp.map(d=>d.probability||0), type:'bar',
+            marker:{color:wp.map(d=>getTeamColor(d.team))},
+            text:wp.map(d=>(d.probability||0).toFixed(1)+'%'), textposition:'outside',
+        }], {...PLY, yaxis:{...PLY.yaxis,title:'Sprint Win Probability (%)'}});
+    }
+
+    const pp = (res.chart_data?.podium_probabilities || []).slice(0,8);
+    if (pp.length) {
+        Plotly.newPlot('plotSprintPodiumProb', [{
+            y:pp.map(d=>d.driver), x:pp.map(d=>d.podium_chance||0), type:'bar', orientation:'h',
+            marker:{color:pp.map(d=>getTeamColor(d.team))},
+            text:pp.map(d=>(d.podium_chance||0).toFixed(1)+'%'), textposition:'outside',
+        }], {...PLY, margin:{t:20,r:80,b:50,l:120}, xaxis:{...PLY.xaxis,title:'Sprint Podium Probability (%)'}, yaxis:{...PLY.yaxis,autorange:'reversed'}});
+    }
+
+    // Sprint scores points for the top 8 only — expected_points here already reflects
+    // the sprint points table (8-7-6-5-4-3-2-1), computed server-side in predictor.py.
+    const pts  = (res.points_finishers || res.chart_data?.win_probabilities || []).slice(0,8);
+    const body = document.getElementById('sprintRaceTableBody');
+    if (body && pts.length) {
+        body.innerHTML = pts.map((p,i) => {
+            const pos  = i + 1;
+            const pb   = pos<=3 ? `<span class="pos-badge pos-${pos}">${pos}</span>` : `<span class="pos-badge pos-n">${pos}</span>`;
+            const conf = (p.confidence||'medium').toLowerCase();
+            const cb   = `<span class="conf-badge conf-${conf}">${conf.charAt(0).toUpperCase()+conf.slice(1)}</span>`;
+            const winP = p.win_pct || p.probability || 0;
+            return `<tr>
+                <td>${pb}</td>
+                <td class="driver-cell"><strong>${p.driver||p.driver_name||'—'}</strong><span>${(p.team||'').replace(/_/g,' ')}</span></td>
+                <td style="font-size:0.85rem;color:var(--text-2);">${(p.team||'').replace(/_/g,' ')}</td>
+                <td>${winP.toFixed(1)}%</td>
+                <td>${(p.top3_pct||0).toFixed(1)}%</td>
+                <td style="color:${(p.dnf_pct||0)>10?'var(--red)':'inherit'}">${(p.dnf_pct||0).toFixed(1)}%</td>
+                <td style="font-weight:700;">${(p.expected_points||0).toFixed(1)}</td>
+                <td>${cb}</td>
+            </tr>`;
+        }).join('');
+    }
 }
 
 /* ── Race render ────────────────────────────────────────── */
@@ -336,27 +507,104 @@ function renderRace(res) {
         }], {...PLY, margin:{t:20,r:20,b:50,l:100}});
     }
 }
+
+/* ══════════════════════════════════════════════════════════
+   STARTING GRID WIDGET (P1-P22 manual override)
+   One row per driver with a single position number input, rather than 22
+   separate "P1: [driver dropdown]" selects — this makes picking the same
+   driver twice structurally impossible instead of something to validate
+   after the fact. Positions are optional; fill in as many as you know.
+══════════════════════════════════════════════════════════ */
+
+function buildStartingGridRows() {
+    const table = document.getElementById('gridInputTable');
+    if (!table) return;
+    const entries = Object.entries(DRIVERS || {});
+    if (!entries.length) return;
+    table.innerHTML = entries.map(([id, d]) => `
+        <div class="grid-input-row" data-driver-id="${id}">
+            <span class="grid-input-swatch" style="background:${getTeamColor(d.team)}"></span>
+            <span class="grid-input-name">${d.name}</span>
+            <span class="grid-input-team">${(d.team||'').replace(/_/g,' ')}</span>
+            <input type="number" class="grid-input-pos" min="1" max="22" placeholder="—"
+                   aria-label="Grid position for ${d.name}"
+                   oninput="validateStartingGrid()">
+        </div>`).join('');
+}
+
+function validateStartingGrid() {
+    const rows = Array.from(document.querySelectorAll('#gridInputTable .grid-input-row'));
+    const errorEl = document.getElementById('gridInputError');
+    const badge = document.getElementById('gridStatusBadge');
+    const seen = {};
+    let filled = 0;
+    let conflict = false;
+
+    rows.forEach(row => row.classList.remove('grid-input-conflict'));
+
+    rows.forEach(row => {
+        const input = row.querySelector('.grid-input-pos');
+        const val = input.value ? parseInt(input.value, 10) : null;
+        if (val) {
+            filled++;
+            if (seen[val]) {
+                conflict = true;
+                row.classList.add('grid-input-conflict');
+                seen[val].classList.add('grid-input-conflict');
+            } else {
+                seen[val] = row;
+            }
+        }
+    });
+
+    if (conflict) {
+        errorEl.textContent = 'Two drivers can\u2019t share a grid position — fix the highlighted rows.';
+        badge.textContent = '⚠ Conflict';
+        badge.style.color = 'var(--red)';
+    } else if (filled === 0) {
+        errorEl.textContent = '';
+        badge.textContent = 'Auto';
+        badge.style.color = '';
+    } else if (filled === rows.length) {
+        errorEl.textContent = '';
+        badge.textContent = 'Complete (22/22)';
+        badge.style.color = 'var(--green)';
+    } else {
+        errorEl.textContent = '';
+        badge.textContent = `Partial (${filled}/${rows.length})`;
+        badge.style.color = 'var(--gold)';
+    }
+    return !conflict;
+}
+
+function getStartingGridOverrides() {
+    if (!validateStartingGrid()) return null;
+    const overrides = {};
+    document.querySelectorAll('#gridInputTable .grid-input-row').forEach(row => {
+        const val = row.querySelector('.grid-input-pos').value;
+        if (val) overrides[row.getAttribute('data-driver-id')] = parseInt(val, 10);
+    });
+    return overrides;
+}
+
+function clearStartingGrid() {
+    document.querySelectorAll('#gridInputTable .grid-input-pos').forEach(input => input.value = '');
+    validateStartingGrid();
+    showToast('Starting grid cleared — using auto-fetched / model grid.');
+}
+
 /* ══════════════════════════════════════════════════════════
    LIVE DATA INTEGRATION (from changes.md - safe additions)
 ══════════════════════════════════════════════════════════ */
 
 // Live data polling state
 let livePollInterval = null;
-// FIX: these were raw, unrendered Jinja2 expressions (e.g. "{{ circuit.id if circuit else '' }}").
-// Outside a Flask render_template() call nothing ever substitutes them, so the browser tried to
-// parse literal "{{" tokens as JavaScript and threw a SyntaxError here — which aborted the entire
-// inline script block. That's why no button, tab, or dropdown on the page did anything at all.
-// Replaced with static defaults so the file works standalone; if this is later re-templated through
-// Flask, swap these seven lines back for the original Jinja expressions.
-const CIRCUIT_ID = '';
-const IS_LIVE_ACTIVE = false;
-const WEEKEND_PHASE = '';
-const IS_SPRINT_WEEKEND = false;
-
-// Initial prediction data from server (if available)
-const INITIAL_PREDICTIONS = [];
-const INITIAL_META = {};
-const HAS_INITIAL_PREDICTION = false;
+// CIRCUIT_ID, IS_LIVE_ACTIVE, WEEKEND_PHASE, IS_SPRINT_WEEKEND, INITIAL_PREDICTIONS,
+// INITIAL_META, and HAS_INITIAL_PREDICTION are NOT declared here. This file is served
+// as a static asset — Flask/Jinja never processes it, so it can't contain "{{ }}"
+// template expressions. Instead, dashboard.html (the actual Jinja template) sets
+// these as window.* globals, via Jinja, in an inline <script> block that runs before
+// this file loads. The bare names below resolve to those globals automatically.
 
 // Update weekend phase badge
 function updateWeekendPhaseBadge() {
@@ -373,13 +621,18 @@ function updateWeekendPhaseBadge() {
     
     // Weekend phase badge - ALWAYS show if we have phase info
     if (WEEKEND_PHASE && WEEKEND_PHASE !== 'unknown' && WEEKEND_PHASE !== '') {
+        // FIX: this dictionary previously used 'friday'/'saturday'/'sunday' keys, but
+        // get_weekend_phase() on the backend actually returns 'practice'/'qualifying'/
+        // 'sprint'/'race'/'pre_weekend'/'post_race'/'completed' — so every phase except
+        // pre_weekend/post_race/completed fell through to the raw, unstyled backend string.
         const phaseNames = {
-            'friday': 'Friday',
-            'saturday': 'Saturday', 
-            'sunday': 'Sunday',
             'pre_weekend': 'Pre-Weekend',
-            'post_race': 'Post-Race',
-            'completed': 'Completed'
+            'practice':    'Practice (Friday)',
+            'qualifying':  'Qualifying (Saturday)',
+            'sprint':      'Sprint Weekend (Saturday)',
+            'race':        'Race Day (Sunday)',
+            'post_race':   'Post-Race',
+            'completed':   'Completed',
         };
         const phaseClass = `phase-${WEEKEND_PHASE}`;
         badgeEl.innerHTML = `<span class="weekend-phase-badge ${phaseClass}">${phaseNames[WEEKEND_PHASE] || WEEKEND_PHASE}</span>`;
@@ -519,6 +772,28 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Weather live update
     document.getElementById('weatherSelect')?.addEventListener('change', e => updateWeatherWidget(e.target.value));
+
+    // NEW: Weekend status banner ("has this race already happened") — render the
+    // server-computed status for the initially-loaded race immediately.
+    renderWeekendStatusBanner(window.WEEKEND_PHASE_DATA, window.DATA_CONFIDENCE);
+
+    // NEW: Starting grid (P1-P22) widget — build the 22 rows once on load.
+    buildStartingGridRows();
+
+    // NEW: Sprint tab only shows for sprint-weekend circuits. Check on load, and
+    // again whenever the user picks a different race — plus refresh the banner for
+    // whichever circuit is now selected via the lightweight weekend-phase endpoint,
+    // so the notification is accurate before the user even clicks "Run Prediction".
+    updateSprintTabVisibility();
+    document.getElementById('raceSelect')?.addEventListener('change', e => {
+        updateSprintTabVisibility();
+        const circuitId = CIRCUIT_LOOKUP[e.target.value];
+        if (!circuitId) return;
+        fetch(`/api/weekend-phase/${circuitId}`)
+            .then(r => r.json())
+            .then(data => { if (data.success) renderWeekendStatusBanner(data.weekend_phase); })
+            .catch(err => console.warn('Weekend phase refresh failed:', err));
+    });
 
     // Initialize live data features
     updateWeekendPhaseBadge();

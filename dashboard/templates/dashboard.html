@@ -7,9 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="static/analytics.js"></script>
+    <script src="{{ url_for('static', filename='analytics.js') }}"></script>
 </head>
 <body>
 
@@ -28,17 +28,17 @@
 
 <!-- ── Navbar ─────────────────────────────────────────── -->
 <nav class="navbar">
-    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+    <a href="{{ url_for('dashboard') }}" class="nav-brand" style="text-decoration:none;">
         <span class="f1-badge">F1</span>
         <span class="brand-name">Predictor <span class="yr">2026</span></span>
     </a>
     <div class="nav-links">
-        <a href="dashboard.html" class="active">Dashboard</a>
-        <a href="h2h.html">H2H Comparison</a>
-        <a href="constructors.html">Constructors</a>
-        <a href="analytics.html">Analytics</a>
-        <a href="settings.html">Settings</a>
-        <a href="download.html">Download Report</a>
+        <a href="{{ url_for('dashboard') }}" class="active">Dashboard</a>
+        <a href="{{ url_for('h2h') }}">H2H Comparison</a>
+        <a href="{{ url_for('constructors') }}">Constructors</a>
+        <a href="{{ url_for('analytics') }}">Analytics</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
+        <a href="{{ url_for('download') }}">Download Report</a>
         <span class="live-pill">Live</span>
     </div>
 </nav>
@@ -61,10 +61,17 @@
                 </div>
             </div>
             <div class="hero-visual">
-                <img src="static/f1_image0.png" alt="F1 action"
+                <img src="{{ url_for('static', filename='f1_image0.png') }}" alt="F1 action"
                      style="width:100%;height:100%;object-fit:cover;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);"
                      onerror="this.style.display='none'">
             </div>
+        </div>
+
+        <!-- Weekend Status Banner: "has this race already happened" notification -->
+        <div class="weekend-status-banner" id="weekendStatusBanner" data-strategy="{{ weekend_phase.strategy if weekend_phase else 'historical_only' }}">
+            <div class="wsb-message" id="wsbMessage">{{ weekend_phase.message if weekend_phase else '' }}</div>
+            <button class="wsb-toggle" id="wsbToggle" type="button" onclick="toggleConfidenceReasons()" style="display:none;">Why? <i class="fas fa-chevron-down"></i></button>
+            <div class="wsb-reasons" id="wsbReasons" style="display:none;"></div>
         </div>
 
         <!-- Session Selector -->
@@ -80,6 +87,11 @@
                     <div class="tab-icon">⚡</div>
                     <div class="tab-day">Saturday Qualifying</div>
                     <div class="tab-desc">Q1/Q2/Q3 elimination predictions, pole position &amp; grid penalty impact</div>
+                </div>
+                <div class="session-tab" id="tab-sprint" data-session="sprint" style="display:none;">
+                    <div class="tab-icon">🏃</div>
+                    <div class="tab-day">Saturday Sprint</div>
+                    <div class="tab-desc">Sprint Shootout grid &amp; ~100km Sprint Race, points for top 8</div>
                 </div>
                 <div class="session-tab" id="tab-race" data-session="race">
                     <div class="tab-icon">🏆</div>
@@ -139,6 +151,8 @@
                     <select class="ctrl-select" id="sessionTypeSelect">
                         <option value="PRACTICE">Practice</option>
                         <option value="QUALIFYING">Qualifying</option>
+                        <option value="SPRINT_QUALIFYING">Sprint Shootout</option>
+                        <option value="SPRINT">Sprint Race</option>
                         <option value="RACE">Race</option>
                     </select>
                 </div>
@@ -307,8 +321,131 @@
             </div>
         </div>
 
+        <!-- ── Sprint Panel (shown only for sprint-weekend circuits) ─── -->
+        <div class="session-panel" id="panel-sprint">
+            <div class="sub-tabs">
+                <button class="sub-tab active" type="button" id="subtab-shootout" onclick="selectSprintSubTab('shootout')">⏱️ Sprint Shootout</button>
+                <button class="sub-tab" type="button" id="subtab-sprintrace" onclick="selectSprintSubTab('sprintrace')">🏃 Sprint Race</button>
+            </div>
+
+            <!-- Sprint Shootout: SQ1 -> SQ2 -> SQ3, sets the Sprint starting grid -->
+            <div class="sub-panel active" id="subpanel-shootout">
+                <div class="grid-3">
+                    <div class="card">
+                        <div class="card-head">
+                            <div class="card-icon"><i class="fas fa-stopwatch"></i></div>
+                            <div class="card-title">Sprint Shootout Format</div>
+                        </div>
+                        <div class="qual-stage qual-q1">
+                            <div><div class="qual-label" style="color:var(--red);">SQ1</div><div class="qual-sub">12 min · 5 eliminated</div></div>
+                            <div class="qual-time" id="sq1Time">—</div>
+                        </div>
+                        <div class="qual-stage qual-q2">
+                            <div><div class="qual-label" style="color:var(--gold);">SQ2</div><div class="qual-sub">10 min · 5 eliminated</div></div>
+                            <div class="qual-time" id="sq2Time">—</div>
+                        </div>
+                        <div class="qual-stage qual-q3">
+                            <div><div class="qual-label">SQ3</div><div class="qual-sub">8 min · Sprint pole shootout</div></div>
+                            <div class="qual-time" id="sq3Time">—</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head">
+                            <div class="card-icon"><i class="fas fa-th-large"></i></div>
+                            <div class="card-title">Sprint Grid Predictions</div>
+                        </div>
+                        <div class="podium-list" id="sprintQualGrid">
+                            <div class="empty-state"><i class="fas fa-bolt"></i><h3>Awaiting prediction</h3><p>Run the engine to see the expected Sprint grid.</p></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head">
+                            <div class="card-icon"><i class="fas fa-info-circle"></i></div>
+                            <div class="card-title">Format Notes</div>
+                        </div>
+                        <p class="grid-hint">No championship points awarded for the Shootout — it only sets tomorrow's Sprint Race starting grid. Sunday's Grand Prix grid is set by the separate Qualifying session.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sprint Race: ~100km, points for top 8 -->
+            <div class="sub-panel" id="subpanel-sprintrace" style="display:none;">
+                <div class="grid-3" id="sprintRaceCards">
+                    <div class="card">
+                        <div class="card-head">
+                            <div class="card-icon"><i class="fas fa-trophy"></i></div>
+                            <div class="card-title">Predicted Sprint Podium</div>
+                        </div>
+                        <div class="podium-list" id="sprintRacePodium">
+                            <div class="empty-state"><i class="fas fa-trophy"></i><h3>Awaiting prediction</h3><p>Run the engine above.</p></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head">
+                            <div class="card-icon"><i class="fas fa-brain"></i></div>
+                            <div class="card-title">Sprint Notes</div>
+                        </div>
+                        <p class="grid-hint">~100km, no mandatory pit stop. Points: 8-7-6-5-4-3-2-1 for the top 8 — no fastest-lap point. Grid position matters more here than in the Grand Prix since there's little time to recover from a bad start.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-head">
+                            <div class="card-icon"><i class="fas fa-exclamation-circle"></i></div>
+                            <div class="card-title">DNF Risk</div>
+                        </div>
+                        <div id="sprintDnfNote" class="grid-hint">Run the engine to see sprint-adjusted DNF risk (lower than a full race — much less time for mechanical issues).</div>
+                    </div>
+                </div>
+                <div class="grid-2" id="sprintRaceCharts" style="display:none;">
+                    <div class="chart-card">
+                        <div class="chart-title"><i class="fas fa-chart-bar"></i> Sprint Win Probability</div>
+                        <div class="plotly-box" id="plotSprintWinProb"></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title"><i class="fas fa-medal"></i> Sprint Podium Probability</div>
+                        <div class="plotly-box" id="plotSprintPodiumProb"></div>
+                    </div>
+                </div>
+                <div class="full-width" id="sprintRaceTableWrap" style="display:none;">
+                    <div class="card">
+                        <div class="card-head">
+                            <div class="card-icon"><i class="fas fa-list-ol"></i></div>
+                            <div class="card-title">Full Sprint Prediction</div>
+                            <span class="card-badge">Top 8 score points</span>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="results-table">
+                                <thead>
+                                    <tr><th>Pos</th><th>Driver</th><th>Team</th><th>Win %</th><th>Top 3 %</th><th>DNF %</th><th>Exp. Pts</th><th>Confidence</th></tr>
+                                </thead>
+                                <tbody id="sprintRaceTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ── Race Panel ─── -->
         <div class="session-panel" id="panel-race">
+            <div class="card" id="startingGridCard">
+                <div class="card-head">
+                    <div class="card-icon"><i class="fas fa-flag-checkered"></i></div>
+                    <div class="card-title">Starting Grid (P1–P22)</div>
+                    <span class="card-badge" id="gridStatusBadge">Auto</span>
+                </div>
+                <p class="grid-hint">
+                    Specify grid positions after qualifying to improve race prediction accuracy — leave blank to use
+                    the auto-fetched or model-predicted grid. Fill in as many or as few positions as you know; a
+                    fully specified grid (all 22 positions, no duplicates) gives the most accurate result.
+                </p>
+                <div class="grid-input-table" id="gridInputTable"><!-- rows injected by dashboard.js --></div>
+                <div class="grid-input-actions">
+                    <span class="grid-input-error" id="gridInputError"></span>
+                    <button class="btn-secondary" type="button" onclick="clearStartingGrid()">
+                        <i class="fas fa-eraser"></i> Clear &amp; Use Auto Grid
+                    </button>
+                </div>
+            </div>
             <div class="grid-3" id="raceCards">
                 <div class="card">
                     <div class="card-head">
@@ -399,7 +536,26 @@
 <!-- ══════════════════════════════════════════════════════════
      JAVASCRIPT
 ══════════════════════════════════════════════════════════ -->
-<script src="common.js"></script>
-<script src="dashboard.js"></script>
+<script>
+    // Server-injected state from Flask's /dashboard route (circuit, weekend_phase,
+    // predictions, meta, live_data) — read by dashboard.js as plain globals, since
+    // that file is a static asset and can't contain Jinja expressions itself.
+    window.CIRCUIT_ID            = '{{ circuit.id if circuit else "" }}';
+    window.IS_LIVE_ACTIVE        = {{ 'true' if (live_data and live_data.active) else 'false' }};
+    window.WEEKEND_PHASE         = '{{ weekend_phase.phase if weekend_phase else "" }}';
+    window.IS_SPRINT_WEEKEND     = {{ 'true' if (circuit and circuit.sprint_weekend) else 'false' }};
+    window.INITIAL_PREDICTIONS   = {{ predictions | tojson | safe if predictions else '[]' }};
+    window.INITIAL_META          = {{ meta | tojson | safe if meta else '{}' }};
+    window.HAS_INITIAL_PREDICTION = {{ 'true' if predictions and predictions|length > 0 else 'false' }};
+    // NEW: full weekend-phase status object (message/strategy/confidence_boost) and the
+    // already-computed data-confidence reasons, for the "has this race already happened"
+    // banner — plus a circuit_id -> sprint_weekend map so switching races in the dropdown
+    // can show/hide the Sprint tab without an extra round-trip.
+    window.WEEKEND_PHASE_DATA    = {{ weekend_phase | tojson | safe if weekend_phase else '{}' }};
+    window.DATA_CONFIDENCE       = {{ data_confidence | tojson | safe if data_confidence else '{}' }};
+    window.SPRINT_CIRCUITS       = {{ sprint_circuits | tojson | safe if sprint_circuits else '{}' }};
+</script>
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 </body>
 </html>

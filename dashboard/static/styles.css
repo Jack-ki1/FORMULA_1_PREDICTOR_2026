@@ -266,6 +266,7 @@
             text-transform: uppercase; color: var(--text-3); margin-bottom: 1.2rem;
         }
         .session-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+        .session-tabs.has-sprint { grid-template-columns: repeat(4, 1fr); }
         .session-tab {
             border: 2px solid var(--border);
             background: var(--bg-2); border-radius: 12px;
@@ -945,6 +946,70 @@
         }
         .btn-download:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(225,6,0,0.36); }
 
+        /* ── Weekend Status Banner ("has this race already happened") ───────── */
+        .weekend-status-banner {
+            display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+            margin: 0 0 1.8rem; padding: 0.9rem 1.4rem;
+            background: var(--bg-2); border-left: 4px solid var(--text-3);
+            border-radius: 8px; font-size: 0.95rem; color: var(--text-1);
+            transition: border-color 0.25s ease;
+        }
+        .weekend-status-banner[data-strategy="historical_only"]     { border-left-color: var(--text-3); }
+        .weekend-status-banner[data-strategy="practice_enhanced"]   { border-left-color: #3b82f6; }
+        .weekend-status-banner[data-strategy="qualifying_pending"]  { border-left-color: var(--gold); }
+        .weekend-status-banner[data-strategy="sprint_weekend"]      { border-left-color: var(--gold); }
+        .weekend-status-banner[data-strategy="full_data"]           { border-left-color: var(--green); }
+        .weekend-status-banner[data-strategy="post_race_analysis"]  { border-left-color: #a855f7; }
+        .wsb-message { flex: 1; font-weight: 600; }
+        .wsb-toggle {
+            background: none; border: 1px solid var(--border); border-radius: 6px;
+            padding: 0.35rem 0.8rem; font-size: 0.8rem; color: var(--text-2);
+            cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .wsb-toggle:hover { background: var(--bg-3); }
+        .wsb-reasons { flex-basis: 100%; font-size: 0.85rem; color: var(--text-2); }
+        .wsb-reasons ul { list-style: none; padding-top: 0.5rem; }
+        .wsb-reasons li { padding: 0.25rem 0; border-top: 1px dashed var(--border); }
+        .wsb-reasons li:first-child { border-top: none; }
+        .wsb-reasons li::before { content: '›'; color: var(--red); margin-right: 0.5rem; font-weight: 700; }
+
+        /* ── Sprint sub-tabs (Shootout / Sprint Race, inside the Sprint panel) ── */
+        .sub-tabs { display: flex; gap: 0.8rem; margin-bottom: 1.5rem; }
+        .sub-tab {
+            flex: 1; padding: 0.9rem 1.2rem; border-radius: 10px; border: 2px solid var(--border);
+            background: var(--bg); font-family: var(--font-head); font-weight: 700;
+            font-size: 1rem; letter-spacing: 0.5px; color: var(--text-2); cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .sub-tab:hover { border-color: var(--red); color: var(--text-1); }
+        .sub-tab.active { border-color: var(--red); background: rgba(225,6,0,0.06); color: var(--red); }
+        .sub-panel { animation: fadeUp 0.35s ease both; }
+
+        /* ── Starting Grid Widget (P1-P22 manual override) ───────────────────── */
+        .grid-hint { font-size: 0.85rem; color: var(--text-2); margin: 0.5rem 0 1rem; line-height: 1.5; }
+        .grid-input-table {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem 1.5rem;
+            max-height: 480px; overflow-y: auto; padding-right: 0.5rem;
+        }
+        .grid-input-row {
+            display: flex; align-items: center; gap: 0.7rem;
+            padding: 0.55rem 0.8rem; border: 1px solid var(--border); border-radius: 8px;
+            background: var(--bg-2); transition: border-color 0.2s ease;
+        }
+        .grid-input-row.grid-input-conflict { border-color: var(--red); background: rgba(225,6,0,0.06); }
+        .grid-input-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .grid-input-name { flex: 1; font-weight: 600; font-size: 0.88rem; }
+        .grid-input-team { font-size: 0.75rem; color: var(--text-3); text-transform: capitalize; }
+        .grid-input-pos {
+            width: 52px; text-align: center; padding: 0.4rem; border-radius: 6px;
+            border: 1px solid var(--border); font-family: var(--font-head); font-weight: 700;
+        }
+        .grid-input-actions {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 1rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .grid-input-error { color: var(--red); font-size: 0.85rem; font-weight: 600; }
+
         /* ── Responsive ────────────────────────────────────────────── */
         @media (max-width: 1200px) {
             .grid-4 { grid-template-columns: repeat(2, 1fr); }
@@ -962,6 +1027,9 @@
             .navbar { padding: 0 1.5rem; }
             .container { padding: 1.5rem; }
             .session-tabs { grid-template-columns: 1fr; }
+            .session-tabs.has-sprint { grid-template-columns: 1fr; }
+            .grid-input-table { grid-template-columns: 1fr; }
+            .sub-tabs { flex-direction: column; }
             .controls-grid { grid-template-columns: 1fr; }
             .dl-options { grid-template-columns: 1fr; }
             .h2h-controls { grid-template-columns: 1fr; }

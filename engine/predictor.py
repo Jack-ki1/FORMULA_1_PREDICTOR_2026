@@ -130,6 +130,30 @@ def _normalize_win_probabilities(predictions: list) -> list:
     return predictions
 
 
+# NEW: Sprint-race awareness. A Sprint is ~100km with its own points table (top 8
+# only) versus a full ~305km Grand Prix (top 10 + fastest lap). Rather than re-running
+# or altering the Monte Carlo engine, this recomputes expected_points from the position
+# distribution that's already been simulated, and scales dnf_probability down to reflect
+# a much shorter race — there's simply less time for mechanical failures or incidents.
+SPRINT_POINTS = {1: 8, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1}
+SPRINT_DISTANCE_FACTOR = 0.35  # ~100km sprint vs ~305km race distance ratio
+
+
+def _apply_sprint_adjustments(output_predictions: list, n_simulations: int) -> None:
+    """Recompute expected_points with the sprint points table and reduce dnf_pct
+    to reflect sprint race distance. Mutates output_predictions in place."""
+    for d in output_predictions:
+        dist = d.get("position_distribution") or []
+        if dist and n_simulations:
+            sprint_points_total = sum(
+                SPRINT_POINTS.get(pos + 1, 0) * count for pos, count in enumerate(dist)
+            )
+            d["expected_points"] = round(sprint_points_total / n_simulations, 2)
+        else:
+            d["expected_points"] = 0.0
+        d["dnf_pct"] = round(d.get("dnf_pct", 0.0) * SPRINT_DISTANCE_FACTOR, 1)
+
+
 def predict(request: PredictionRequest) -> dict:
     """Main prediction function with caching to avoid redundant Monte Carlo simulations."""
     # Check cache first
@@ -212,12 +236,19 @@ def predict(request: PredictionRequest) -> dict:
         d["position_distribution"] = raw_p.get("position_distribution", [0] * 20)
         output_predictions.append(d)
 
+    # NEW: Sprint session gets sprint points (top 8) + reduced DNF risk (shorter race),
+    # derived from the position distribution already simulated above — no re-simulation.
+    is_sprint_session = request.session_type.lower() in ("sprint", "sprint_race")
+    if is_sprint_session:
+        _apply_sprint_adjustments(output_predictions, request.n_simulations)
+
     result = {
         "meta": {
             "circuit":                  circuit["name"],
             "city":                     circuit["city"],
             "race_date":                circuit["race_date"],
             "sprint_weekend":           circuit.get("sprint_weekend", False),
+            "is_sprint_session":        is_sprint_session,
             "safety_car_probability":   sc_prob,
             "rain_probability":         rain_prob,
             "n_simulations":            request.n_simulations,

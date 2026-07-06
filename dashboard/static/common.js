@@ -145,24 +145,8 @@ function renderResult(elId, html) {
     el.innerHTML = html;
 }
 
-/* ── Global click handling for inline onclick attributes ────
-   Carried over from the original single-page app for behavioral
-   fidelity. Native onclick attributes already fire on their own;
-   this capture-phase listener re-dispatches them via eval and is
-   a harmless no-op duplicate, kept as-is rather than changed. ── */
-function bindGlobalOnclickInteractions() {
-    document.addEventListener('click', event => {
-        const target = event.target.closest('[onclick]');
-        if (!target) return;
-        const handler = target.getAttribute('onclick');
-        if (!handler) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        try {
-            window.eval(handler);
-        } catch (error) {
-            console.error('Inline handler failed:', error);
-        }
-    }, true);
-}
-window.addEventListener('DOMContentLoaded', bindGlobalOnclickInteractions);
+/* NOTE: no global onclick/eval interception here on purpose. Native inline
+   onclick="..." attributes already execute fine on their own — no JS needed
+   to make them work — and this app's Content-Security-Policy (script-src
+   has no 'unsafe-eval') blocks window.eval() outright, so any handler that
+   re-dispatches onclick via eval() would silently disable every button. */

@@ -7,9 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="static/analytics.js"></script>
+    <script src="{{ url_for('static', filename='analytics.js') }}"></script>
 </head>
 <body>
 
@@ -28,17 +28,17 @@
 
 <!-- ── Navbar ─────────────────────────────────────────── -->
 <nav class="navbar">
-    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+    <a href="{{ url_for('dashboard') }}" class="nav-brand" style="text-decoration:none;">
         <span class="f1-badge">F1</span>
         <span class="brand-name">Predictor <span class="yr">2026</span></span>
     </a>
     <div class="nav-links">
-        <a href="dashboard.html">Dashboard</a>
-        <a href="h2h.html">H2H Comparison</a>
-        <a href="constructors.html" class="active">Constructors</a>
-        <a href="analytics.html">Analytics</a>
-        <a href="settings.html">Settings</a>
-        <a href="download.html">Download Report</a>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('h2h') }}">H2H Comparison</a>
+        <a href="{{ url_for('constructors') }}" class="active">Constructors</a>
+        <a href="{{ url_for('analytics') }}">Analytics</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
+        <a href="{{ url_for('download') }}">Download Report</a>
         <span class="live-pill">Live</span>
     </div>
 </nav>
@@ -48,7 +48,7 @@
     <section id="sec-constructors" class="page-section">
         <div class="constructor-showcase-full">
             <div class="showcase-card-large">
-                <img src="static/f1_image4.jpg" alt="Constructor Championship Battle" class="showcase-image-large" onerror="this.style.display='none'">
+                <img src="{{ url_for('static', filename='f1_image4.jpg') }}" alt="Constructor Championship Battle" class="showcase-image-large" onerror="this.style.display='none'">
                 <div class="showcase-overlay-large">
                     <div class="showcase-content-large">
                         <h3>2026 Constructor Championship</h3>
@@ -114,7 +114,7 @@
 <!-- ══════════════════════════════════════════════════════════
      JAVASCRIPT
 ══════════════════════════════════════════════════════════ -->
-<script src="common.js"></script>
-<script src="constructors.js"></script>
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+<script src="{{ url_for('static', filename='constructors.js') }}"></script>
 </body>
 </html>

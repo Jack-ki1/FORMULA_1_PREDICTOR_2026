@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
-    <script src="static/analytics.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='analytics.js') }}"></script>
 </head>
 <body>
 
@@ -27,27 +27,31 @@
 
 <!-- ── Navbar ─────────────────────────────────────────── -->
 <nav class="navbar">
-    <a href="dashboard.html" class="nav-brand" style="text-decoration:none;">
+    <a href="{{ url_for('dashboard') }}" class="nav-brand" style="text-decoration:none;">
         <span class="f1-badge">F1</span>
         <span class="brand-name">Predictor <span class="yr">2026</span></span>
     </a>
     <div class="nav-links">
-        <a href="dashboard.html">Dashboard</a>
-        <a href="h2h.html">H2H Comparison</a>
-        <a href="constructors.html">Constructors</a>
-        <a href="analytics.html">Analytics</a>
-        <a href="settings.html" class="active">Settings</a>
-        <a href="download.html">Download Report</a>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('h2h') }}">H2H Comparison</a>
+        <a href="{{ url_for('constructors') }}">Constructors</a>
+        <a href="{{ url_for('analytics') }}">Analytics</a>
+        <a href="{{ url_for('settings') }}" class="active">Settings</a>
+        <a href="{{ url_for('download') }}">Download Report</a>
         <span class="live-pill">Live</span>
     </div>
 </nav>
 
-<div class="container">
-
-    <section id="sec-settings" class="page-section">
-        <div class="settings-hero">
-            <h2><i class="fas fa-cog"></i> System Settings</h2>
-            <p>Control the data pipeline and model calibration workflow (database, sync, and validation).</p>
+        <div class="constructor-showcase-full">
+            <div class="showcase-card-large">
+                <img src="{{ url_for('static', filename='f1_image5.png') }}" alt="Constructor Championship Battle" class="showcase-image-large" onerror="this.style.display='none'">
+                <div class="showcase-overlay-large">
+                    <div class="showcase-content-large">
+                        <h3>System Configuration</h3>
+                        <p>Data Pipeline & Model Calibration</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="card" style="margin-bottom:2rem;padding:1.8rem 2rem;border-left:4px solid var(--red);">
@@ -135,7 +139,7 @@
 <!-- ══════════════════════════════════════════════════════════
      JAVASCRIPT
 ══════════════════════════════════════════════════════════ -->
-<script src="common.js"></script>
-<script src="settings.js"></script>
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+<script src="{{ url_for('static', filename='settings.js') }}"></script>
 </body>
 </html>
