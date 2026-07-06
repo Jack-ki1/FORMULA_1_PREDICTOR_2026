@@ -225,12 +225,28 @@ def get_race_by_round(round_number: int) -> Optional[dict]:
     return next((r for r in CALENDAR_2026 if r["round"] == round_number), None)
 
 
-def get_race_by_circuit(circuit_id: str) -> Optional[dict]:
-    """Return the local race dictionary for a given circuit ID."""
+def get_circuit(circuit_id: str) -> Optional[Dict[str, Any]]:
+    """Get circuit data by circuit ID (e.g., 'monaco', 'australia')."""
     return next(
         (r for r in CALENDAR_2026 if r["circuit"] == circuit_id or r["name"].lower().replace(' ', '_') == circuit_id),
         None,
     )
+
+
+def get_race_by_circuit(circuit_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get race information by circuit ID.
+    
+    This is an alias for get_circuit() for clarity when used in predictor module.
+    
+    Args:
+        circuit_id: Circuit identifier (e.g., "australia", "monaco")
+    
+    Returns:
+        Dict with race info including round, name, date, sprint status, etc.
+        or None if not found
+    """
+    return get_circuit(circuit_id)
 
 
 def get_sprint_weekends() -> list:

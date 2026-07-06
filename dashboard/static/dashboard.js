@@ -4,6 +4,331 @@
 let currentSession   = 'practice';
 let lastPrediction   = null;
 let currentCircuitId = null;
+let currentRaceStatus = null;  // Track current race completion status
+
+/* ── Race Status Management ────────────────────────────── */
+async function checkAndDisplayRaceStatus(circuitId) {
+    if (!circuitId) return;
+    
+    try {
+        console.log('[Race Status] Checking status for circuit:', circuitId);
+        const resp = await fetch(`/api/check-race-status/${circuitId}`);
+        const data = await resp.json();
+        
+        console.log('[Race Status] Response:', data);
+        
+        if (!data.success) {
+            console.warn('Failed to check race status:', data.error);
+            showToast('Could not load race status');
+            return;
+        }
+        
+        currentRaceStatus = data;
+        
+        // Update weekend status banner with new message
+        renderWeekendStatusBanner(
+            { 
+                strategy: data.completed ? 'post_race_analysis' : 'full_data',
+                message: data.banner_message || ''
+            },
+            {}
+        );
+        
+        // Update Run Prediction button based on race status
+        updatePredictionButton(data);
+        
+        // If race is completed, show actual results instead of predictions
+        if (data.completed) {
+            console.log('[Race Status] Race completed - displaying actual results');
+            displayActualResults(data);
+        } else {
+            console.log('[Race Status] Race upcoming - hiding actual results');
+            hideActualResults();
+        }
+        
+    } catch(err) {
+        console.error('Error checking race status:', err);
+        showToast('Error loading race status');
+    }
+}
+
+function updatePredictionButton(statusData) {
+    const btn = document.getElementById('runPredictionBtn');
+    const btnText = document.getElementById('runPredictionBtnText');
+    
+    if (!btn || !btnText) return;
+    
+    // Remove all button classes
+    btn.classList.remove('btn-primary', 'btn-success', 'btn-warning');
+    
+    // Set appropriate state
+    if (statusData.button_state === 'completed') {
+        btn.classList.add('btn-success');
+        btnText.textContent = statusData.button_text || 'Race Complete - View Results';
+        btn.disabled = false;  // Keep button enabled so user can click to view results
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        // Store race status for click handler
+        btn.dataset.raceCompleted = 'true';
+    } else {
+        btn.classList.add('btn-primary');
+        btnText.textContent = statusData.button_text || 'Run Prediction';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.dataset.raceCompleted = 'false';
+    }
+}
+
+function displayActualResults(statusData) {
+    console.log('[Display Results] Called with statusData:', statusData);
+    
+    const panel = document.getElementById('panel-actual-results');
+    if (!panel) {
+        console.error('[Display Results] panel-actual-results not found!');
+        return;
+    }
+    
+    // Show the actual results panel
+    panel.style.display = 'block';
+    console.log('[Display Results] Showing actual results panel');
+    
+    // Hide prediction panels
+    ['panel-practice', 'panel-qualifying', 'panel-sprint', 'panel-race'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    
+    // Display race results if available
+    const sessions = statusData.sessions || {};
+    const highlightSession = statusData.highlight_session;
+    
+    console.log('[Display Results] Available sessions:', Object.keys(sessions));
+    console.log('[Display Results] Highlight session:', highlightSession);
+    
+    // Reset session cycle index
+    currentSessionIndex = -1;  // Will be incremented to 0 on first click
+    
+    // Auto-display the highlighted session or default to race
+    let defaultSession = highlightSession || 'race';
+    if (!sessions[defaultSession] || !sessions[defaultSession].results) {
+        console.warn('[Display Results] Default session not available, finding fallback');
+        // Fallback to first available session
+        const availableSessions = sessionOrder.filter(s => sessions[s] && sessions[s].results);
+        console.log('[Display Results] Available sessions in order:', availableSessions);
+        if (availableSessions.length > 0) {
+            defaultSession = availableSessions[0];
+        } else {
+            console.error('[Display Results] No sessions with results available!');
+            showToast('No session results available for this race yet');
+            return;
+        }
+    }
+    
+    console.log('[Display Results] Rendering session:', defaultSession);
+    
+    if (sessions[defaultSession] && sessions[defaultSession].results) {
+        console.log('[Display Results] Session has', sessions[defaultSession].results.length, 'results');
+        displaySessionResults(defaultSession, sessions[defaultSession]);
+        
+        // Update button text to show what's being displayed
+        const btnText = document.getElementById('runPredictionBtnText');
+        if (btnText) {
+            const sessionNames = {
+                'race': 'Race Results',
+                'qualifying': 'Qualifying Results',
+                'sprint': 'Sprint Race Results',
+                'fp3': 'FP3 Results',
+                'fp2': 'FP2 Results',
+                'fp1': 'FP1 Results'
+            };
+            btnText.textContent = `Viewing: ${sessionNames[defaultSession] || defaultSession}`;
+        }
+    } else {
+        // No results available
+        console.error('[Display Results] Session exists but no results array');
+        showToast('No session results available for this race yet');
+    }
+}
+
+function renderActualRaceResults(raceData) {
+    const tbody = document.getElementById('actualResultsBody');
+    if (!tbody || !raceData.results) return;
+    
+    const results = Array.isArray(raceData.results) ? raceData.results : [];
+    
+    tbody.innerHTML = results.map((row, idx) => {
+        const pos = row.Position || idx + 1;
+        const driver = row.Abbreviation || row.Driver || '—';
+        const team = row.TeamName || row.Constructor || '—';
+        const grid = row.GridPosition || '—';
+        const time = row.Time || row.Status || 'Finished';
+        const points = row.Points || 0;
+        const status = row.Status || 'Finished';
+        
+        const posClass = pos <= 3 ? `pos-${pos}` : 'pos-n';
+        const statusClass = status.includes('Finished') || /^\+/.test(time) ? 'finished' : 'dnf';
+        
+        return `<tr>
+            <td><span class="pos-badge ${posClass}">${pos}</span></td>
+            <td class="driver-cell"><strong>${driver}</strong></td>
+            <td style="font-size:0.85rem;color:var(--text-2);">${team}</td>
+            <td>${grid}</td>
+            <td>${time}</td>
+            <td style="font-weight:700;">${points}</td>
+            <td><span class="badge bg-${statusClass === 'finished' ? 'success' : 'secondary'}">${status}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+function renderQualifyingResults(qualData) {
+    const tbody = document.getElementById('qualifyingResultsBody');
+    if (!tbody || !qualData.results) return;
+    
+    const results = Array.isArray(qualData.results) ? qualData.results : [];
+    
+    tbody.innerHTML = results.map((row, idx) => {
+        const pos = row.Position || idx + 1;
+        const driver = row.Abbreviation || row.Driver || '—';
+        const team = row.TeamName || row.Constructor || '—';
+        const q1 = row.Q1 || '—';
+        const q2 = row.Q2 || '—';
+        const q3 = row.Q3 || '—';
+        
+        return `<tr>
+            <td><span class="pos-badge pos-${pos <= 3 ? pos : 'n'}">${pos}</span></td>
+            <td class="driver-cell"><strong>${driver}</strong></td>
+            <td style="font-size:0.85rem;color:var(--text-2);">${team}</td>
+            <td>${q1 !== '—' ? q1 : ''}</td>
+            <td>${q2 !== '—' ? q2 : ''}</td>
+            <td>${q3 !== '—' ? q3 : ''}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderPracticeResults(sessions, sessionKeys) {
+    const tbody = document.getElementById('practiceResultsBody');
+    if (!tbody) return;
+    
+    let rows = [];
+    
+    sessionKeys.forEach(key => {
+        const session = sessions[key];
+        if (!session || !session.results) return;
+        
+        const sessionLabel = key.toUpperCase();
+        const results = Array.isArray(session.results) ? session.results : [];
+        
+        results.slice(0, 10).forEach((row, idx) => {
+            const pos = row.Position || idx + 1;
+            const driver = row.Abbreviation || row.Driver || '—';
+            const team = row.TeamName || row.Constructor || '—';
+            const bestTime = row.BestLapTime || row.Time || '—';
+            const laps = row.Laps || '—';
+            
+            rows.push(`<tr>
+                <td><span class="badge bg-info">${sessionLabel}</span></td>
+                <td><span class="pos-badge pos-${pos <= 3 ? pos : 'n'}">${pos}</span></td>
+                <td class="driver-cell"><strong>${driver}</strong></td>
+                <td style="font-size:0.85rem;color:var(--text-2);">${team}</td>
+                <td>${bestTime}</td>
+                <td>${laps}</td>
+            </tr>`);
+        });
+    });
+    
+    tbody.innerHTML = rows.join('');
+}
+
+function hideActualResults() {
+    const panel = document.getElementById('panel-actual-results');
+    if (panel) panel.style.display = 'none';
+    
+    // Show prediction panels again
+    ['panel-practice', 'panel-qualifying', 'panel-sprint', 'panel-race'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+    });
+}
+
+let currentSessionIndex = 0;
+const sessionOrder = ['race', 'qualifying', 'sprint', 'fp3', 'fp2', 'fp1'];
+
+function cycleThroughSessionResults() {
+    if (!currentRaceStatus || !currentRaceStatus.completed) return;
+    
+    const sessions = currentRaceStatus.sessions || {};
+    const availableSessions = sessionOrder.filter(s => sessions[s] && sessions[s].results);
+    
+    if (availableSessions.length === 0) {
+        showToast('No session results available for this race');
+        return;
+    }
+    
+    // Cycle to next session
+    currentSessionIndex = (currentSessionIndex + 1) % availableSessions.length;
+    const sessionType = availableSessions[currentSessionIndex];
+    
+    // Display the selected session
+    displaySessionResults(sessionType, sessions[sessionType]);
+    
+    // Update button text to show what's being displayed
+    const btnText = document.getElementById('runPredictionBtnText');
+    if (btnText) {
+        const sessionNames = {
+            'race': 'Race Results',
+            'qualifying': 'Qualifying Results',
+            'sprint': 'Sprint Race Results',
+            'fp3': 'FP3 Results',
+            'fp2': 'FP2 Results',
+            'fp1': 'FP1 Results'
+        };
+        btnText.textContent = `Viewing: ${sessionNames[sessionType] || sessionType}`;
+    }
+    
+    showToast(`Showing ${sessionNames[sessionType] || sessionType}`);
+}
+
+function displaySessionResults(sessionType, sessionData) {
+    // Hide all result cards first
+    document.getElementById('qualifyingResultsCard').style.display = 'none';
+    document.getElementById('practiceResultsCard').style.display = 'none';
+    
+    // Show the actual results panel
+    const panel = document.getElementById('panel-actual-results');
+    if (panel) panel.style.display = 'block';
+    
+    // Hide prediction panels
+    ['panel-practice', 'panel-qualifying', 'panel-sprint', 'panel-race'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    
+    // Display based on session type
+    switch(sessionType) {
+        case 'race':
+            renderActualRaceResults(sessionData);
+            document.getElementById('actualResultsDate').textContent = sessionData.date || '';
+            break;
+        case 'qualifying':
+            renderQualifyingResults(sessionData);
+            document.getElementById('qualifyingResultsCard').style.display = 'block';
+            document.getElementById('actualResultsDate').textContent = sessionData.date || '';
+            break;
+        case 'sprint':
+            renderActualRaceResults(sessionData); // Use same renderer as race
+            document.getElementById('actualResultsDate').textContent = sessionData.date || '';
+            break;
+        case 'fp1':
+        case 'fp2':
+        case 'fp3':
+            renderPracticeResults({[sessionType]: sessionData}, [sessionType]);
+            document.getElementById('practiceResultsCard').style.display = 'block';
+            document.getElementById('actualResultsDate').textContent = sessionData.date || '';
+            break;
+    }
+}
+
 /* ── Session switching ──────────────────────────────────── */
 function selectSession(sess, el) {
     currentSession = sess;
@@ -100,6 +425,15 @@ async function runPrediction() {
     const sessionType = document.getElementById('sessionTypeSelect').value;
 
     if (!race) { showToast('Please select a Grand Prix first.'); return; }
+    
+    // Check if this is a completed race - if so, show actual results instead
+    const btn = document.getElementById('runPredictionBtn');
+    if (btn && btn.dataset.raceCompleted === 'true') {
+        // User clicked the green "Race Complete" button - cycle through available results
+        cycleThroughSessionResults();
+        return;
+    }
+    
     showLoading('Running ' + sims.toLocaleString() + ' simulations…');
 
     const payload = {race, session_type: sessionType, simulations: sims, weather};
@@ -784,10 +1118,25 @@ window.addEventListener('DOMContentLoaded', () => {
     // whichever circuit is now selected via the lightweight weekend-phase endpoint,
     // so the notification is accurate before the user even clicks "Run Prediction".
     updateSprintTabVisibility();
+    
+    // NEW: Check race completion status on load and when switching races
+    const initialRace = document.getElementById('raceSelect')?.value;
+    if (initialRace) {
+        const initialCircuitId = CIRCUIT_LOOKUP[initialRace];
+        if (initialCircuitId) {
+            checkAndDisplayRaceStatus(initialCircuitId);
+        }
+    }
+    
     document.getElementById('raceSelect')?.addEventListener('change', e => {
         updateSprintTabVisibility();
         const circuitId = CIRCUIT_LOOKUP[e.target.value];
         if (!circuitId) return;
+        
+        // Check race completion status first
+        checkAndDisplayRaceStatus(circuitId);
+        
+        // Also fetch weekend phase for additional context
         fetch(`/api/weekend-phase/${circuitId}`)
             .then(r => r.json())
             .then(data => { if (data.success) renderWeekendStatusBanner(data.weekend_phase); })

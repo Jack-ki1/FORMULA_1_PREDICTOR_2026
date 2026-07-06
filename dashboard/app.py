@@ -832,8 +832,84 @@ def api_weekend_phase(circuit_id: str):
         return jsonify({"success": True, "weekend_phase": get_weekend_phase(circuit_id)})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
-@app.route("/api/live-data/<circuit_id>")
 
+@app.route("/api/check-race-status/<circuit_id>")
+def api_check_race_status(circuit_id: str):
+    """
+    Check if a race has completed and determine what results to show.
+    
+    Returns comprehensive race status including:
+    - Whether race is completed
+    - Current weekend phase (practice/qualifying/sprint/race/post_race)
+    - Available session results
+    - Appropriate session results to display based on current day
+    - UI guidance (should_show_predictions, button state, banner message)
+    """
+    try:
+        from engine.predictor import _check_race_completed
+        
+        # Check if race is completed
+        race_status = _check_race_completed(circuit_id)
+        
+        # Get weekend phase for context
+        weekend_phase = get_weekend_phase(circuit_id)
+        
+        # Determine what to show based on completion status and phase
+        result = {
+            "success": True,
+            "circuit_id": circuit_id,
+            "completed": race_status.get("completed", False),
+            "race_date": race_status.get("race_date"),
+            "is_sprint_weekend": race_status.get("is_sprint_weekend", False),
+            "phase": weekend_phase.get("phase", "unknown"),
+            "available_sessions": race_status.get("available_sessions", []),
+            "sessions": race_status.get("sessions", {}),
+        }
+        
+        # Determine UI behavior
+        if race_status.get("completed"):
+            result["should_show_predictions"] = False
+            result["button_state"] = "completed"
+            result["button_text"] = "Race Complete - View Results"
+            result["button_class"] = "btn-success"
+            
+            # Determine which session results to highlight based on phase
+            phase = weekend_phase.get("phase", "post_race")
+            if phase in ["pre_weekend", "practice"]:
+                result["highlight_session"] = "fp3"  # Show latest practice
+                result["banner_message"] = f"🏃 Practice sessions completed - Viewing official practice results"
+            elif phase == "sprint":
+                result["highlight_session"] = "sprint"
+                result["banner_message"] = f"🏁 Sprint weekend completed - Viewing sprint results"
+            elif phase == "qualifying":
+                result["highlight_session"] = "qualifying"
+                result["banner_message"] = f"⏱️ Qualifying completed - Viewing official grid positions"
+            else:  # race, post_race, completed
+                result["highlight_session"] = "race"
+                result["banner_message"] = f"✅ Race completed on {race_status.get('race_date', 'N/A')} - Showing official results"
+        else:
+            result["should_show_predictions"] = True
+            result["button_state"] = "active"
+            result["button_text"] = "Run Prediction"
+            result["button_class"] = "btn-primary"
+            result["highlight_session"] = None
+            
+            # Banner message for upcoming races
+            days_until = weekend_phase.get("days_until_race", 0)
+            if days_until > 7:
+                result["banner_message"] = f"📅 Race weekend hasn't started — using historical data only"
+            elif days_until > 0:
+                result["banner_message"] = f"⏱️ Race in {days_until} days — predictions available"
+            else:
+                result["banner_message"] = f"🏁 Race weekend active — full prediction mode"
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Failed to check race status: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/live-data/<circuit_id>")
 def api_live_data(circuit_id: str):
     """AJAX endpoint for live session data polling."""
     data = get_live_session_data(circuit_id)

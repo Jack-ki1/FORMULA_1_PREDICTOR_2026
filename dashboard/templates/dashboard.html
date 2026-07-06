@@ -157,8 +157,8 @@
                     </select>
                 </div>
                 <div class="ctrl-group">
-                    <button class="btn-run" onclick="runPrediction()">
-                        <i class="fas fa-play"></i> Run Prediction
+                    <button class="btn-run" id="runPredictionBtn" onclick="runPrediction()">
+                        <i class="fas fa-play"></i> <span id="runPredictionBtnText">Run Prediction</span>
                     </button>
                 </div>
             </div>
@@ -528,6 +528,71 @@
             </div>
         </div>
         <!-- /race panel -->
+
+        <!-- ── Actual Race Results Panel (shown when race is completed) ─── -->
+        <div class="session-panel" id="panel-actual-results" style="display:none;">
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-icon"><i class="fas fa-flag-checkered"></i></div>
+                    <div class="card-title">Official Race Results</div>
+                    <span class="card-badge" id="actualResultsDate">—</span>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th><th>Driver</th><th>Team</th>
+                                <th>Grid</th><th>Time/Gap</th><th>Points</th><th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="actualResultsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Qualifying Results (if available) -->
+            <div id="qualifyingResultsCard" style="display:none; margin-top: 1.5rem;">
+                <div class="card">
+                    <div class="card-head">
+                        <div class="card-icon"><i class="fas fa-stopwatch"></i></div>
+                        <div class="card-title">Qualifying Results</div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Pos</th><th>Driver</th><th>Team</th>
+                                    <th>Q1</th><th>Q2</th><th>Q3</th>
+                                </tr>
+                            </thead>
+                            <tbody id="qualifyingResultsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Practice Results (if available) -->
+            <div id="practiceResultsCard" style="display:none; margin-top: 1.5rem;">
+                <div class="card">
+                    <div class="card-head">
+                        <div class="card-icon"><i class="fas fa-running"></i></div>
+                        <div class="card-title">Practice Session Results</div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th><th>Pos</th><th>Driver</th><th>Team</th>
+                                    <th>Best Time</th><th>Laps</th>
+                                </tr>
+                            </thead>
+                            <tbody id="practiceResultsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /actual results panel -->
 
     </section><!-- FIX: was missing closing </section> for dashboard -->
 

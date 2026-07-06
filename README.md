@@ -2001,7 +2001,38 @@ flake8
 
 ## 📝 Version History
 
-### v3.1 (Current) - Dashboard-First Release
+### v3.2 (Current) - Completed Race Results Feature
+
+**Released:** 2026-07-06
+
+**Major Changes:**
+- ✅ Automatic race completion detection and result display
+- ✅ Dual data source support (FastF1 + Jolpica API fallback)
+- ✅ Smart UI with green "Race Complete" button for past races
+- ✅ Session cycling: click to view Race/Qualifying/Sprint/Practice results
+- ✅ Session-aware automatic result selection based on weekend phase
+- ✅ New API endpoint `/api/check-race-status/<circuit_id>`
+- ✅ Comprehensive logging and error handling
+- ✅ Updated README with feature documentation
+
+**Files Modified:**
+- `engine/predictor.py` - Added `_check_race_completed()` function with FastF1/Jolpica integration
+- `dashboard/app.py` - Added race status API endpoint
+- `dashboard/templates/dashboard.html` - Added actual results panel with tables
+- `dashboard/static/dashboard.js` - Added race status checking, session cycling, results rendering
+- `data/calendar_2026.py` - Added `get_race_by_circuit()` helper function
+- `README.md` - Documented new feature with technical details
+
+**Breaking Changes:**
+- None - fully backward compatible
+
+**Dependencies:**
+- FastF1 optional (provides full session data including practice)
+- Jolpica API works without installation (provides Race/Qualifying/Sprint)
+
+---
+
+### v3.1 - Dashboard-First Release
 
 **Released:** 2026-06-17
 
@@ -2109,5 +2140,95 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 <p align="center">
   <strong>Made with ❤️ for F1 fans worldwide</strong><br>
-  <em>Last updated: June 17, 2026</em>
+  <em>Last updated: July 6, 2026</em>
 </p>
+
+---
+
+## 🏁 Recent Updates - Completed Race Results Feature (July 2026)
+
+### Overview
+
+The F1 Predictor now includes **automatic detection and display of actual race results** for completed races. When users select a race that has already occurred, the system prevents predictions and instead shows official historical results from multiple data sources.
+
+### Key Features Added
+
+#### 1. **Automatic Race Completion Detection**
+- System compares race dates with current date to detect completed races
+- Blocks Monte Carlo predictions on past races
+- Provides clear visual feedback via status banners and button states
+
+#### 2. **Dual Data Source Architecture**
+- **Primary**: FastF1 library (detailed timing, telemetry, all sessions)
+- **Fallback**: Jolpica API (free, no API key, Race/Qualifying/Sprint results)
+- Automatic fallback ensures results always available even without FastF1 installed
+
+#### 3. **Smart UI Behavior**
+- Green "Race Complete" button replaces blue "Run Prediction" for completed races
+- Click green button to cycle through: Race → Qualifying → Sprint → Practice results
+- Automatic session selection based on day (Friday=Practice, Saturday=Qualifying, Sunday+=Race)
+- Professional result tables with position badges, times, points, and status indicators
+
+#### 4. **Session-Aware Display**
+- Shows most relevant results first based on weekend phase
+- Hides prediction panels when showing actual results
+- Maintains full historical context across all session types
+
+### Technical Implementation
+
+**Backend:**
+- New `_check_race_completed()` function in [`engine/predictor.py`](engine/predictor.py#L158-L304)
+- New `/api/check-race-status/<circuit_id>` endpoint in [`dashboard/app.py`](dashboard/app.py)
+- Jolpica integration in [`data/jolpica_client.py`](data/jolpica_client.py) for fallback data
+
+**Frontend:**
+- Race status checking on page load and race selection change
+- Dynamic button state management (green vs blue)
+- Session cycling mechanism with click handler
+- Results rendering functions for Race, Qualifying, and Practice data
+
+### User Experience
+
+**Completed Race Flow:**
+1. Select completed race (e.g., British GP - July 5, 2026)
+2. Green button appears: "Race Complete - View Results"
+3. Official results display automatically
+4. Click button to cycle through different session results
+5. Cannot run predictions (prevents confusion)
+
+**Upcoming Race Flow:**
+1. Select future race (e.g., Monaco GP - June 7, 2026)
+2. Blue button remains: "Run Prediction"
+3. Normal Monte Carlo simulation workflow
+4. Predictions displayed with probabilities
+
+### Benefits
+
+✅ Prevents user confusion about which races can be predicted  
+✅ Provides official historical results without leaving the app  
+✅ Enables post-race evaluation and accuracy tracking  
+✅ Robust dual-source architecture ensures reliability  
+✅ Clear visual distinction between predictions and actual outcomes  
+
+### Testing
+
+```bash
+# Start dashboard
+py -3 main.py dashboard --port 5000
+
+# Test with completed race
+# Select "Australian Grand Prix" or "British Grand Prix"
+# Observe green button and automatic results display
+# Click green button to cycle through sessions
+```
+
+**Note**: For full practice session data (FP1/FP2/FP3), install FastF1:
+```bash
+pip install fastf1
+```
+
+Without FastF1, the system uses Jolpica API and shows Race, Qualifying, and Sprint results.
+
+---
+
+**This feature transforms the F1 Predictor from just a prediction tool into a comprehensive F1 data platform serving users throughout the entire race weekend lifecycle.** 🏎️🏁
