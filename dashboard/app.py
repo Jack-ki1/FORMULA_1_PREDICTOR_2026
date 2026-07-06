@@ -705,30 +705,43 @@ def dashboard():
         historical_sessions = {"loaded": False, "message": "Load via /api/historical endpoint"}
         
         # ── Prediction ─────────────────────────────────────────────────────────
-        try:
-            req = PredictionRequest(
-                circuit_id=circuit_id,
-                rain_probability=rain_prob,
-                n_simulations=min(max(n_sims, 100), 50000),
-                grid_overrides=grid_overrides,
-                qualifying_completed=bool(grid_overrides),
-                live_weather_override=_weather_rain_probability(live_data),
-                session_type=weekend_phase.get("phase", "race"),
-                sprint_weekend=bool(circuit.get("sprint_weekend")),
-                live_context=live_data,
-            )
-            result = predict(req)
-            predictions = result.get("predictions", [])
-            meta = result.get("meta", {})
-            podium = result.get("podium_predictions", [])
-            surprises = result.get("likely_top_surprises", [])
-            raw = result.get("raw") if req.output_format == "full" else None
-            data_confidence = _data_confidence(result, live_data, grid_overrides)
-        except Exception as e:
-            logger.error(f"Prediction failed: {e}")
-            flash(f"Prediction error: {e}", "error")
-            predictions, meta, podium, surprises, raw = [], {}, [], [], None
-            data_confidence = {"score": 0, "level": "low", "reasons": []}
+        # FIX: Don't run predictions on initial page load. User must click "Run Prediction"
+        # to generate predictions. This prevents showing stale/incorrect data on Sunday
+        # before the user has made their selection.
+        predictions = []
+        meta = {}
+        podium = []
+        surprises = []
+        raw = None
+        data_confidence = {"score": 0, "level": "low", "reasons": ["No prediction run yet"]}
+        
+        # Only run prediction if explicitly triggered via URL parameter (?run=1)
+        should_run_prediction = request.args.get("run") == "1"
+        
+        if should_run_prediction:
+            try:
+                req = PredictionRequest(
+                    circuit_id=circuit_id,
+                    rain_probability=rain_prob,
+                    n_simulations=min(max(n_sims, 100), 50000),
+                    grid_overrides=grid_overrides,
+                    qualifying_completed=bool(grid_overrides),
+                    live_weather_override=_weather_rain_probability(live_data),
+                    session_type=weekend_phase.get("phase", "race"),
+                    sprint_weekend=bool(circuit.get("sprint_weekend")),
+                    live_context=live_data,
+                )
+                result = predict(req)
+                predictions = result.get("predictions", [])
+                meta = result.get("meta", {})
+                podium = result.get("podium_predictions", [])
+                surprises = result.get("likely_top_surprises", [])
+                raw = result.get("raw") if req.output_format == "full" else None
+                data_confidence = _data_confidence(result, live_data, grid_overrides)
+            except Exception as e:
+                logger.error(f"Prediction failed: {e}")
+                flash(f"Prediction error: {e}", "error")
+                data_confidence = {"score": 0, "level": "low", "reasons": [str(e)]}
         
         # ── Driver List for Grid Override UI ───────────────────────────────────
         all_drivers = get_all_drivers()

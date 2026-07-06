@@ -1,0 +1,147 @@
+{
+  "seasons": [
+    2025
+  ],
+  "n_races": 5,
+  "summary": {
+    "avg_top3_accuracy": 0.5333,
+    "win_rate": 0.8,
+    "avg_brier_score": 0.1567,
+    "avg_position_error": 3.93
+  },
+  "race_results": [
+    {
+      "race": "Australian Grand Prix",
+      "circuit": "australia",
+      "round": 1,
+      "metrics": {
+        "top3_accuracy": 0.6666666666666666,
+        "win_correct": false,
+        "brier_score": 0.14789839999999999,
+        "avg_position_error": 4.6,
+        "actual_top3": [
+          "antonelli",
+          "leclerc",
+          "russell"
+        ],
+        "predicted_top3": [
+          "antonelli",
+          "russell",
+          "verstappen"
+        ],
+        "hits": [
+          "antonelli",
+          "russell"
+        ],
+        "actual_winner": "russell",
+        "predicted_winner": "antonelli"
+      }
+    },
+    {
+      "race": "Chinese Grand Prix",
+      "circuit": "china",
+      "round": 2,
+      "metrics": {
+        "top3_accuracy": 0.6666666666666666,
+        "win_correct": true,
+        "brier_score": 0.1278255,
+        "avg_position_error": 4.7,
+        "actual_top3": [
+          "antonelli",
+          "hamilton",
+          "russell"
+        ],
+        "predicted_top3": [
+          "antonelli",
+          "russell",
+          "verstappen"
+        ],
+        "hits": [
+          "antonelli",
+          "russell"
+        ],
+        "actual_winner": "antonelli",
+        "predicted_winner": "antonelli"
+      }
+    },
+    {
+      "race": "Japanese Grand Prix",
+      "circuit": "japan",
+      "round": 3,
+      "metrics": {
+        "top3_accuracy": 0.3333333333333333,
+        "win_correct": true,
+        "brier_score": 0.1864675,
+        "avg_position_error": 3.3,
+        "actual_top3": [
+          "antonelli",
+          "leclerc",
+          "piastri"
+        ],
+        "predicted_top3": [
+          "antonelli",
+          "russell",
+          "verstappen"
+        ],
+        "hits": [
+          "antonelli"
+        ],
+        "actual_winner": "antonelli",
+        "predicted_winner": "antonelli"
+      }
+    },
+    {
+      "race": "Miami Grand Prix",
+      "circuit": "miami",
+      "round": 5,
+      "metrics": {
+        "top3_accuracy": 0.3333333333333333,
+        "win_correct": true,
+        "brier_score": 0.20879599999999998,
+        "avg_position_error": 3.3,
+        "actual_top3": [
+          "antonelli",
+          "norris",
+          "piastri"
+        ],
+        "predicted_top3": [
+          "antonelli",
+          "russell",
+          "verstappen"
+        ],
+        "hits": [
+          "antonelli"
+        ],
+        "actual_winner": "antonelli",
+        "predicted_winner": "antonelli"
+      }
+    },
+    {
+      "race": "Canadian Grand Prix",
+      "circuit": "canada",
+      "round": 6,
+      "metrics": {
+        "top3_accuracy": 0.6666666666666666,
+        "win_correct": true,
+        "brier_score": 0.112443,
+        "avg_position_error": 3.7333333333333334,
+        "actual_top3": [
+          "antonelli",
+          "hamilton",
+          "verstappen"
+        ],
+        "predicted_top3": [
+          "antonelli",
+          "russell",
+          "verstappen"
+        ],
+        "hits": [
+          "antonelli",
+          "verstappen"
+        ],
+        "actual_winner": "antonelli",
+        "predicted_winner": "antonelli"
+      }
+    }
+  ]
+}

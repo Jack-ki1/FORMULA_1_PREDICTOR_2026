@@ -458,7 +458,6 @@ function renderRace(res) {
                 <td>${(p.top3_pct||0).toFixed(1)}%</td>
                 <td>${(p.top10_pct||0).toFixed(1)}%</td>
                 <td style="color:${(p.dnf_pct||0)>20?'var(--red)':'inherit'}">${(p.dnf_pct||0).toFixed(1)}%</td>
-                <td style="font-weight:700;">${(p.expected_points||0).toFixed(1)}</td>
                 <td>${cb}</td>
                 <td><button class="telemetry-btn" onclick="showTelemetry('${driverId}', '${p.driver||p.driver_name||''}')" title="View Live Telemetry"><i class="fas fa-activity"></i></button></td>
             </tr>`;
