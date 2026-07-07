@@ -260,3 +260,12 @@ performance_logs/
 .cursor/
 .claude/
 .ai/
+
+# ─────────────────────────────────────────────────────
+# API Response Cache (Prevents stale API data)
+# ─────────────────────────────────────────────────────
+cache/
+cache/api_responses/
+cache/api_responses/jolpica/
+cache/api_responses/openf1/
+*.json.cache
