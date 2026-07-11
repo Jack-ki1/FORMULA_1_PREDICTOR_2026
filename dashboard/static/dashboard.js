@@ -1070,6 +1070,268 @@ function stopLivePolling() {
     }
 }
 
+// Update race status and show appropriate buttons
+function updateRaceStatus() {
+    const circuitId = document.getElementById('raceSelect').value;
+    
+    // If no circuit is selected, reset to default state
+    if (!circuitId) {
+        const sessionBtnContainer = document.getElementById('sessionButtons');
+        if (sessionBtnContainer) {
+            sessionBtnContainer.style.display = 'none';
+        }
+        
+        const predictBtn = document.getElementById('runPredictionBtn');
+        if (predictBtn) {
+            predictBtn.style.display = 'inline-block';
+        }
+        
+        const statusMessage = document.getElementById('statusMessage');
+        if (statusMessage) {
+            statusMessage.innerHTML = '';
+        }
+        return;
+    }
+    
+    // Show loading indicator
+    const statusMessage = document.getElementById('statusMessage');
+    if (statusMessage) {
+        statusMessage.innerHTML = `<div class="status-loading"><span class="status-icon">⏳</span><span>Checking race status...</span></div>`;
+    }
+    
+    fetch(`/api/check-race-status/${circuitId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const { completed, available_sessions, sessions, race_date } = data;
+                
+                if (completed) {
+                    // Hide the main prediction button and show session-specific buttons
+                    const predictBtn = document.getElementById('runPredictionBtn');
+                    if (predictBtn) {
+                        predictBtn.style.display = 'none';
+                    }
+                    
+                    // Show session buttons container
+                    const sessionBtnContainer = document.getElementById('sessionButtons');
+                    if (sessionBtnContainer) {
+                        sessionBtnContainer.style.display = 'flex';
+                        sessionBtnContainer.innerHTML = ''; // Clear existing buttons
+                        
+                        // Define session types with their display names and colors
+                        const sessionTypes = [
+                            { key: 'fp1', name: 'FP1', shortName: 'FP1', color: '#4CAF50', icon: '🏎️' }, // Green
+                            { key: 'fp2', name: 'FP2', shortName: 'FP2', color: '#8BC34A', icon: '🏎️' }, // Light Green
+                            { key: 'fp3', name: 'FP3', shortName: 'FP3', color: '#CDDC39', icon: '🏎️' }, // Lime
+                            { key: 'qualifying', name: 'Qualifying', shortName: 'Q', color: '#FF9800', icon: '⚡' }, // Orange
+                            { key: 'sprint', name: 'Sprint', shortName: 'S', color: '#FF5722', icon: '🏃' }, // Deep Orange
+                            { key: 'race', name: 'Race', shortName: 'R', color: '#2196F3', icon: '🏁' }  // Blue
+                        ];
+                        
+                        // Create buttons for available sessions
+                        sessionTypes.forEach(session => {
+                            if (!available_sessions || !available_sessions.includes(session.key)) {
+                                // Even if not available, still show the button but disabled
+                                const btn = document.createElement('button');
+                                btn.className = 'btn session-btn disabled';
+                                btn.style.backgroundColor = '#cccccc';
+                                btn.style.cursor = 'not-allowed';
+                                btn.textContent = `${session.icon} ${session.shortName}`;
+                                btn.title = `${session.name} Results (Not Available)`;
+                                sessionBtnContainer.appendChild(btn);
+                            } else {
+                                const btn = document.createElement('button');
+                                btn.className = 'btn session-btn';
+                                btn.style.backgroundColor = session.color;
+                                btn.textContent = `${session.icon} ${session.shortName}`;
+                                btn.title = `${session.name} Results`;
+                                btn.onclick = () => showSessionResults(session.key, sessions[session.key], session.name);
+                                sessionBtnContainer.appendChild(btn);
+                            }
+                        });
+                    }
+                    
+                    // Update status message
+                    if (statusMessage) {
+                        statusMessage.innerHTML = `
+                            <div class="status-completed">
+                                <span class="status-icon">🏁</span>
+                                <span>Race completed on ${race_date || 'N/A'}. View historical results below.</span>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Hide session buttons and show prediction button
+                    const sessionBtnContainer = document.getElementById('sessionButtons');
+                    if (sessionBtnContainer) {
+                        sessionBtnContainer.style.display = 'none';
+                    }
+                    
+                    const predictBtn = document.getElementById('runPredictionBtn');
+                    if (predictBtn) {
+                        predictBtn.style.display = 'inline-block';
+                    }
+                    
+                    // Update status message with user-friendly text
+                    if (statusMessage) {
+                        statusMessage.innerHTML = `
+                            <div class="status-upcoming">
+                                <span class="status-icon">ℹ️</span>
+                                <span>This race hasn't happened yet. Run a prediction to see forecasted results.</span>
+                            </div>
+                        `;
+                    }
+                }
+            } else {
+                console.error('Error checking race status:', data.error);
+                
+                // In case of error, show the prediction button
+                const predictBtn = document.getElementById('runPredictionBtn');
+                if (predictBtn) {
+                    predictBtn.style.display = 'inline-block';
+                }
+                
+                const sessionBtnContainer = document.getElementById('sessionButtons');
+                if (sessionBtnContainer) {
+                    sessionBtnContainer.style.display = 'none';
+                }
+                
+                if (statusMessage) {
+                    statusMessage.innerHTML = `
+                        <div class="status-error">
+                            <span class="status-icon">⚠️</span>
+                            <span>Error checking race status: ${data.error || 'Unknown error'}</span>
+                        </div>
+                    `;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking race status:', error);
+            
+            // In case of error, show the prediction button
+            const predictBtn = document.getElementById('runPredictionBtn');
+            if (predictBtn) {
+                predictBtn.style.display = 'inline-block';
+            }
+            
+            const sessionBtnContainer = document.getElementById('sessionButtons');
+            if (sessionBtnContainer) {
+                sessionBtnContainer.style.display = 'none';
+            }
+            
+            if (statusMessage) {
+                statusMessage.innerHTML = `
+                    <div class="status-error">
+                        <span class="status-icon">⚠️</span>
+                        <span>Network error checking race status</span>
+                    </div>
+                `;
+            }
+        });
+}
+
+function showSessionResults(sessionType, sessionData, sessionDisplayName) {
+    if (!sessionData) {
+        showToast(`No data available for ${sessionDisplayName}`);
+        return;
+    }
+    
+    // Create modal or expandable section to show session results
+    const modal = document.createElement('div');
+    modal.className = 'session-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${sessionData.session_type || sessionDisplayName}</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="session-info">
+                    <p><strong>Date:</strong> ${sessionData.date || 'N/A'}</p>
+                </div>
+                <div class="session-results">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Driver</th>
+                                <th>Team</th>
+                                <th>Time/Gap</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateResultsRows(sessionData.results || [], sessionType)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close button functionality
+    modal.querySelector('.close').onclick = function() {
+        document.body.removeChild(modal);
+    };
+    
+    // Close when clicking outside the modal
+    window.onclick = function(event) {
+        if (event.target === modal) {
+            document.body.removeChild(modal);
+        }
+    };
+}
+
+function generateResultsRows(results, sessionType) {
+    if (!results || results.length === 0) {
+        return '<tr><td colspan="5">No results available</td></tr>';
+    }
+    
+    // Different row generation based on session type
+    if (sessionType === 'qualifying') {
+        return results.slice(0, 22).map((result, index) => {
+            const position = result.Position || result.position || (index + 1);
+            const driver = result.Driver || result.driver_name || result.Abbreviation || 'N/A';
+            const team = result.TeamName || result.Constructor || result.team || 'N/A';
+            const q1 = result.Q1 || result.q1 || 'N/A';
+            const q2 = result.Q2 || result.q2 || 'N/A';
+            const q3 = result.Q3 || result.q3 || 'N/A';
+            const status = result.Status || result.status || 'Qualified';
+            
+            return `
+                <tr>
+                    <td>${position}</td>
+                    <td>${driver}</td>
+                    <td>${team}</td>
+                    <td>${q1}/${q2}/${q3}</td>
+                    <td>${status}</td>
+                </tr>
+            `;
+        }).join('');
+    } else {
+        return results.slice(0, 22).map((result, index) => {
+            const position = result.Position || result.position || (index + 1);
+            const driver = result.Driver || result.driver_name || result.Abbreviation || 'N/A';
+            const team = result.TeamName || result.Constructor || result.team || 'N/A';
+            const time = result.Time || result.LapTime || result.time || 'N/A';
+            const status = result.Status || result.status || 'Finished';
+            
+            return `
+                <tr>
+                    <td>${position}</td>
+                    <td>${driver}</td>
+                    <td>${team}</td>
+                    <td>${time}</td>
+                    <td>${status}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+}
+
 // Telemetry modal (from changes.md - simplified version)
 function showTelemetry(driverId, driverName) {
     if (!driverId) {
@@ -1187,4 +1449,17 @@ window.addEventListener('DOMContentLoaded', () => {
             console.error('[Init] Failed to render initial predictions:', e);
         }
     }
+});
+
+// Add event listener for race selection change to update status
+document.addEventListener('DOMContentLoaded', function() {
+    const raceSelect = document.getElementById('raceSelect');
+    if (raceSelect) {
+        raceSelect.addEventListener('change', function() {
+            updateRaceStatus();
+        });
+    }
+    
+    // Initialize status when page loads if a race is already selected
+    setTimeout(updateRaceStatus, 500);  // Quick delay to ensure everything is loaded
 });

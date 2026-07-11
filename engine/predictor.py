@@ -230,7 +230,7 @@ def _check_race_completed(circuit_id: str) -> dict:
         
         # Race is completed - try to fetch actual results from FastF1 or Jolpica
         try:
-            from data.fastf1_integration import get_session, FASTF1_AVAILABLE
+            from data.fastf1_integration import get_session, is_fastf1_available  # Updated import
             
             race_name = race_info.get("name", "")
             is_sprint = race_info.get("sprint", False)
@@ -238,43 +238,34 @@ def _check_race_completed(circuit_id: str) -> dict:
             sessions = {}
             
             # Try FastF1 first if available
-            if FASTF1_AVAILABLE:
+            if is_fastf1_available():
                 logger.info("FastF1 available - fetching results from FastF1")
                 
                 # Fetch Practice Sessions (FP1, FP2, FP3)
                 for fp_num in ['1', '2', '3']:
                     try:
-                        session = get_session(2026, race_name, f'P{fp_num}')
+                        session = get_session(2026, race_info.get("round", race_name), f'FP{fp_num}')  # Use FP1, FP2, FP3 instead of P1, P2, P3
                         if session:
-                            # Load lap times for practice sessions
                             try:
                                 session.load(laps=True, telemetry=False, weather=False, messages=False)
                             except Exception as load_err:
                                 logger.debug(f"Could not load laps for FP{fp_num}: {load_err}")
-                            
-                            if hasattr(session, 'results') and len(session.results) > 0:
+
+                            classification = _build_practice_classification(session)
+                            if classification:
                                 sessions[f"fp{fp_num}"] = {
                                     "session_type": f"Practice {fp_num}",
                                     "date": str(session.event['EventDate']),
-                                    "results": session.results.to_dict('records') if hasattr(session.results, 'to_dict') else [],
+                                    "results": classification,
                                     "fastest_lap": _get_fastest_lap_from_session(session)
                                 }
-                                logger.info(f"Successfully fetched FP{fp_num} results")
-                            elif hasattr(session, 'lap_times') and len(session.lap_times) > 0:
-                                # Fallback: use lap times if results not available
-                                sessions[f"fp{fp_num}"] = {
-                                    "session_type": f"Practice {fp_num}",
-                                    "date": str(session.event['EventDate']),
-                                    "results": [],
-                                    "lap_times_available": True
-                                }
-                                logger.info(f"Fetched FP{fp_num} lap times (no classification)")
+                                logger.info(f"Successfully fetched FP{fp_num} results ({len(classification)} drivers)")
                     except Exception as e:
                         logger.debug(f"Could not fetch FP{fp_num}: {e}")
                 
                 # Fetch Qualifying
                 try:
-                    qual_session = get_session(2026, race_name, 'Q')
+                    qual_session = get_session(2026, race_info.get("round", race_name), 'Q')  # Use round number instead of name
                     if qual_session:
                         try:
                             qual_session.load(laps=True, telemetry=False, weather=False, messages=False)
@@ -282,10 +273,25 @@ def _check_race_completed(circuit_id: str) -> dict:
                             logger.debug(f"Could not load qualifying laps: {load_err}")
                         
                         if hasattr(qual_session, 'results') and len(qual_session.results) > 0:
+                            # Convert results to dict and handle Timedelta serialization
+                            results_records = []
+                            for idx, row in qual_session.results.iterrows():
+                                record = {}
+                                for col in qual_session.results.columns:
+                                    value = row[col]
+                                    # Handle Timedelta objects for JSON serialization
+                                    if hasattr(value, 'total_seconds'):  # Timedelta-like object
+                                        record[col] = str(value) if value is not pd.NaT and pd.notna(value) else None
+                                    elif pd.isna(value):  # Handle NaN/NaT values
+                                        record[col] = None
+                                    else:
+                                        record[col] = value
+                                results_records.append(record)
+                                                        
                             sessions["qualifying"] = {
                                 "session_type": "Qualifying",
                                 "date": str(qual_session.event['EventDate']),
-                                "results": qual_session.results.to_dict('records') if hasattr(qual_session.results, 'to_dict') else [],
+                                "results": results_records,
                                 "grid_positions": _extract_grid_positions(qual_session)
                             }
                             logger.info("Successfully fetched qualifying results")
@@ -295,7 +301,7 @@ def _check_race_completed(circuit_id: str) -> dict:
                 # Fetch Sprint (if sprint weekend)
                 if is_sprint:
                     try:
-                        sprint_session = get_session(2026, race_name, 'S')
+                        sprint_session = get_session(2026, race_info.get("round", race_name), 'S')  # Use round number instead of name
                         if sprint_session:
                             try:
                                 sprint_session.load(laps=True, telemetry=False, weather=False, messages=False)
@@ -303,11 +309,26 @@ def _check_race_completed(circuit_id: str) -> dict:
                                 logger.debug(f"Could not load sprint laps: {load_err}")
                             
                             if hasattr(sprint_session, 'results') and len(sprint_session.results) > 0:
+                                # Convert results to dict and handle Timedelta serialization
+                                results_records = []
+                                for idx, row in sprint_session.results.iterrows():
+                                    record = {}
+                                    for col in sprint_session.results.columns:
+                                        value = row[col]
+                                        # Handle Timedelta objects for JSON serialization
+                                        if hasattr(value, 'total_seconds'):  # Timedelta-like object
+                                            record[col] = str(value) if value is not pd.NaT and pd.notna(value) else None
+                                        elif pd.isna(value):  # Handle NaN/NaT values
+                                            record[col] = None
+                                        else:
+                                            record[col] = value
+                                    results_records.append(record)
+                                
                                 sessions["sprint"] = {
                                     "session_type": "Sprint Race",
                                     "date": str(sprint_session.event['EventDate']),
-                                    "results": sprint_session.results.to_dict('records') if hasattr(sprint_session.results, 'to_dict') else [],
-                                    "winner": sprint_session.results.iloc[0]['Abbreviation'] if len(sprint_session.results) > 0 else None
+                                    "results": results_records,
+                                    "winner": results_records[0]['Abbreviation'] if results_records else None
                                 }
                                 logger.info("Successfully fetched sprint results")
                     except Exception as e:
@@ -315,7 +336,7 @@ def _check_race_completed(circuit_id: str) -> dict:
                 
                 # Fetch Main Race
                 try:
-                    race_session = get_session(2026, race_name, 'R')
+                    race_session = get_session(2026, race_info.get("round", race_name), 'R')  # Use round number instead of name
                     if race_session:
                         try:
                             race_session.load(laps=True, telemetry=False, weather=False, messages=False)
@@ -323,11 +344,26 @@ def _check_race_completed(circuit_id: str) -> dict:
                             logger.debug(f"Could not load race laps: {load_err}")
                         
                         if hasattr(race_session, 'results') and len(race_session.results) > 0:
+                            # Convert results to dict and handle Timedelta serialization
+                            results_records = []
+                            for idx, row in race_session.results.iterrows():
+                                record = {}
+                                for col in race_session.results.columns:
+                                    value = row[col]
+                                    # Handle Timedelta objects for JSON serialization
+                                    if hasattr(value, 'total_seconds'):  # Timedelta-like object
+                                        record[col] = str(value) if value is not pd.NaT and pd.notna(value) else None
+                                    elif pd.isna(value):  # Handle NaN/NaT values
+                                        record[col] = None
+                                    else:
+                                        record[col] = value
+                                results_records.append(record)
+                                                        
                             sessions["race"] = {
                                 "session_type": "Race",
                                 "date": str(race_session.event['EventDate']),
-                                "results": race_session.results.to_dict('records') if hasattr(race_session.results, 'to_dict') else [],
-                                "winner": race_session.results.iloc[0]['Abbreviation'] if len(race_session.results) > 0 else None,
+                                "results": results_records,
+                                "winner": results_records[0]['Abbreviation'] if results_records else None,
                                 "fastest_lap": _get_fastest_lap_from_session(race_session)
                             }
                             logger.info("Successfully fetched race results")
@@ -448,7 +484,7 @@ def _check_race_completed(circuit_id: str) -> dict:
                 "is_sprint_weekend": is_sprint,
                 "sessions": sessions,
                 "available_sessions": list(sessions.keys()),
-                "data_source": "fastf1" if FASTF1_AVAILABLE else "jolpica"
+                "data_source": "fastf1" if is_fastf1_available() else "jolpica"
             }
             
         except Exception as e:
@@ -466,20 +502,72 @@ def _check_race_completed(circuit_id: str) -> dict:
 
 
 def _get_fastest_lap_from_session(session) -> Optional[dict]:
-    """Extract fastest lap information from a session."""
+    """Extract fastest lap information from a session.
+
+    NOTE: `session.lap_times` does not exist on a FastF1 Session object —
+    the real property is `session.laps` (a Laps DataFrame), and the correct
+    way to get the single fastest lap is `.pick_fastest()` (in FastF1 >=3.x;
+    older docs sometimes reference `pick_quickest`, which does not exist in
+    the currently installed fastf1 version).
+    """
     try:
-        if hasattr(session, 'lap_times') and len(session.lap_times) > 0:
-            fastest_idx = session.lap_times['LapTime'].idxmin()
-            if pd.notna(fastest_idx):
+        if hasattr(session, 'laps') and session.laps is not None and len(session.laps) > 0:
+            fastest = session.laps.pick_fastest()
+            if fastest is not None:
+                lap_number = fastest.get('LapNumber')
+                # Handle Timedelta conversion to string for JSON serialization
+                lap_time = fastest.get('LapTime')
+                lap_time_str = str(lap_time) if lap_time is not None else None
                 return {
-                    "driver": session.lap_times.loc[fastest_idx, 'Driver'],
-                    "time": str(session.lap_times.loc[fastest_idx, 'LapTime']),
-                    "lap_number": int(session.lap_times.loc[fastest_idx, 'LapNumber'])
+                    "driver": fastest.get('Driver'),
+                    "time": lap_time_str,  # Convert Timedelta to string
+                    "lap_number": int(lap_number) if pd.notna(lap_number) else None
                 }
         return None
     except Exception as e:
         logger.debug(f"Could not extract fastest lap: {e}")
         return None
+
+
+def _build_practice_classification(session) -> list:
+    """Build a P1/P2/P3... classification for a practice session from lap data.
+
+    Practice sessions have no official finishing "Position" the way Race/
+    Qualifying/Sprint do — `session.results` mostly contains driver/team
+    entry info, not a meaningful ranking. This ranks each driver by their
+    single fastest lap of the session, matching how practice results are
+    actually reported (fastest lap per driver, sorted ascending).
+    """
+    try:
+        if not hasattr(session, 'laps') or session.laps is None or len(session.laps) == 0:
+            return []
+
+        rows = []
+        for drv in session.laps['Driver'].dropna().unique():
+            fastest = session.laps.pick_driver(drv).pick_fastest()
+            if fastest is None:
+                continue
+            # Handle Timedelta conversion to string for JSON serialization
+            lap_time = fastest.get('LapTime')
+            lap_time_serializable = str(lap_time) if lap_time is not pd.NaT and pd.notna(lap_time) else None
+            rows.append({
+                "Driver": drv,
+                "Abbreviation": drv,
+                "_lap_time": lap_time,  # Keep original for sorting
+                "LapTime": lap_time_serializable,  # Convert Timedelta to string for JSON
+                "Compound": fastest.get('Compound'),
+            })
+
+        # Sort by actual lap time (not string representation)
+        rows.sort(key=lambda r: r["_lap_time"] if r["_lap_time"] is not None else pd.Timedelta.max)
+        for i, row in enumerate(rows, start=1):
+            row["Position"] = i
+            del row["_lap_time"]  # not JSON-serializable
+
+        return rows
+    except Exception as e:
+        logger.debug(f"Could not build practice classification: {e}")
+        return []
 
 
 def _extract_grid_positions(qualifying_session) -> dict:

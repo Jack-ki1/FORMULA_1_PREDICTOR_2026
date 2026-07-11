@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 # Try to import FastF1
 try:
-    from data.fastf1_integration import load_entire_season, FASTF1_AVAILABLE
+    from data.fastf1_integration import load_entire_season, is_fastf1_available
+    # Define a local FASTF1_AVAILABLE based on the function
+    FASTF1_AVAILABLE = is_fastf1_available()
 except ImportError:
     FASTF1_AVAILABLE = False
     logger.warning("FastF1 integration not available.")
@@ -242,7 +244,7 @@ def get_season_results(season: int = 2026) -> List[Dict[str, Any]]:
     """
     Return season race results, using FastF1 when available.
     """
-    if FASTF1_AVAILABLE:
+    if is_fastf1_available():  # Using the function to avoid import-time warnings
         try:
             return load_season_results_from_fastf1(season)
         except Exception:
@@ -362,7 +364,9 @@ def load_season_results_from_fastf1(season: int = 2026) -> List[Dict[str, Any]]:
         >>> print(f"Loaded {len(results)} races")
         >>> print(f"Round 1 winner: {results[0]['results'][0]['driver']}")
     """
-    if not FASTF1_AVAILABLE:
+    from data.fastf1_integration import is_fastf1_available  # Import the function
+    
+    if not is_fastf1_available():
         logger.warning("FastF1 not available. Returning hardcoded results.")
         return SEASON_RESULTS_2026
     
@@ -427,7 +431,9 @@ def update_standings_from_fastf1(season: int = 2026) -> Dict[str, Any]:
         - constructor_standings: List of constructor standings entries
         - races_processed: Number of races used in calculation
     """
-    if not FASTF1_AVAILABLE:
+    from data.fastf1_integration import is_fastf1_available  # Import the function
+    
+    if not is_fastf1_available():
         logger.warning("FastF1 not available. Returning existing standings.")
         return {
             "driver_standings": DRIVER_STANDINGS_AFTER_R5,

@@ -40,16 +40,17 @@ const CIRCUIT_LOOKUP = {
     'Bahrain Grand Prix':        'bahrain',
     'Saudi Arabian Grand Prix':  'saudi_arabia',
     'Miami Grand Prix':          'miami',
-    'Emilia Romagna Grand Prix': 'italy',
+    'Emilia Romagna Grand Prix': 'imola',  // Fixed: Emilia Romagna should map to imola
     'Monaco Grand Prix':         'monaco',
-    'Spanish Grand Prix':        'spain',
+    'Spanish Grand Prix (Barcelona)': 'spain',  // Fixed: Barcelona race
+    'Spanish Grand Prix (Madrid)': 'madrid',  // Fixed: Madrid race
     'Canadian Grand Prix':       'canada',
     'Austrian Grand Prix':       'austria',
     'British Grand Prix':        'britain',
     'Belgian Grand Prix':        'belgium',
     'Hungarian Grand Prix':      'hungary',
     'Dutch Grand Prix':          'netherlands',
-    'Italian Grand Prix':        'madrid',
+    'Italian Grand Prix':        'italy',
     'Azerbaijan Grand Prix':     'azerbaijan',
     'Singapore Grand Prix':      'singapore',
     'United States Grand Prix':  'usa',
@@ -84,6 +85,7 @@ const CIRCUIT_META = {
     las_vegas:   {len:'6.201 km', corners:17, drs:2, sc:'25%', type:'Street/High-Speed'},
     qatar:       {len:'5.380 km', corners:16, drs:2, sc:'22%', type:'Permanent/Balanced'},
     uae:         {len:'5.281 km', corners:16, drs:2, sc:'20%', type:'Permanent/Balanced'},
+    imola:       {len:'4.909 km', corners:19, drs:2, sc:'35%', type:'Permanent/High-Speed'},  // Added: Imola circuit
 };
 /* ── Plotly layout defaults ─────────────────────────────── */
 const PLY = {

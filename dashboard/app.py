@@ -189,7 +189,7 @@ def _dashboard_payload(result: Dict[str, Any], session_type: str, grid_source: O
         "points_distribution": rows,
         "position_heatmap": [{"driver": p.get("driver"), "positions": list(range(1, min(11, len(rows) + 1))), "probabilities": (p.get("position_distribution") or [0] * 10)[:10]} for p in rows[:10]],
         "model_performance": {
-            "overall_confidence": round(float(meta.get("overall_model_confidence", 0.75)) * 100, 1),
+            "overall_confidence": round(float(meta.get("overall_model_confidence", 0.75) or 0.75) * 100, 1),  # Handle None value
             "convergence_rate": 88.0,
             "historical_accuracy": 78.0,
             "simulation_count": meta.get("n_simulations", 0),

@@ -29,27 +29,26 @@ except ImportError:
 CALENDAR_2026: list = [
     {"round": 1,  "circuit": "australia",   "name": "Australian Grand Prix",      "date": "2026-03-08", "sprint": False, "status": "completed"},
     {"round": 2,  "circuit": "china",        "name": "Chinese Grand Prix",         "date": "2026-03-15", "sprint": True,  "status": "completed"},
-    {"round": 3,  "circuit": "japan",        "name": "Japanese Grand Prix",        "date": "2026-04-06", "sprint": False, "status": "completed"},
-    {"round": 4,  "circuit": "bahrain",      "name": "Bahrain Grand Prix",         "date": "2026-04-12", "sprint": False, "status": "completed"},
-    {"round": 5,  "circuit": "miami",        "name": "Miami Grand Prix",           "date": "2026-05-03", "sprint": True,  "status": "completed"},
-    {"round": 6,  "circuit": "canada",       "name": "Canadian Grand Prix",        "date": "2026-05-24", "sprint": True, "status": "completed"},  # Updated to reflect actual date and sprint status
-    {"round": 7,  "circuit": "monaco",       "name": "Monaco Grand Prix",          "date": "2026-06-07", "sprint": False, "status": "upcoming"},
-    {"round": 8,  "circuit": "spain",        "name": "Spanish Grand Prix (Barcelona)", "date": "2026-06-14", "sprint": False, "status": "upcoming"},
-    {"round": 9,  "circuit": "austria",      "name": "Austrian Grand Prix",        "date": "2026-06-28", "sprint": True,  "status": "upcoming"},
-    {"round": 10, "circuit": "britain",      "name": "British Grand Prix",         "date": "2026-07-05", "sprint": True,  "status": "upcoming"},
-    {"round": 11, "circuit": "hungary",      "name": "Hungarian Grand Prix",       "date": "2026-07-19", "sprint": False, "status": "upcoming"},
-    {"round": 12, "circuit": "belgium",      "name": "Belgian Grand Prix",         "date": "2026-07-26", "sprint": False, "status": "upcoming"},
-    {"round": 13, "circuit": "netherlands",  "name": "Dutch Grand Prix",           "date": "2026-08-30", "sprint": True,  "status": "upcoming"},
-    {"round": 14, "circuit": "italy",        "name": "Italian Grand Prix",         "date": "2026-09-06", "sprint": False, "status": "upcoming"},
-    {"round": 15, "circuit": "madrid",       "name": "Spanish Grand Prix (Madrid)", "date": "2026-09-13", "sprint": False, "status": "upcoming"},
-    {"round": 16, "circuit": "azerbaijan",   "name": "Azerbaijan Grand Prix",      "date": "2026-09-20", "sprint": False, "status": "upcoming"},
-    {"round": 17, "circuit": "singapore",    "name": "Singapore Grand Prix",       "date": "2026-10-04", "sprint": True,  "status": "upcoming"},
-    {"round": 18, "circuit": "usa",          "name": "United States Grand Prix",   "date": "2026-10-18", "sprint": False, "status": "upcoming"},
-    {"round": 19, "circuit": "mexico",       "name": "Mexico City Grand Prix",     "date": "2026-10-25", "sprint": False, "status": "upcoming"},
-    {"round": 20, "circuit": "brazil",       "name": "São Paulo Grand Prix",       "date": "2026-11-08", "sprint": True,  "status": "upcoming"},
-    {"round": 21, "circuit": "las_vegas",    "name": "Las Vegas Grand Prix",       "date": "2026-11-21", "sprint": False, "status": "upcoming"},
-    {"round": 22, "circuit": "qatar",        "name": "Qatar Grand Prix",           "date": "2026-11-29", "sprint": True,  "status": "upcoming"},
-    {"round": 23, "circuit": "uae",          "name": "Abu Dhabi Grand Prix",       "date": "2026-12-06", "sprint": False, "status": "upcoming"},
+    {"round": 3,  "circuit": "japan",        "name": "Japanese Grand Prix",        "date": "2026-03-29", "sprint": False, "status": "completed"},
+    {"round": 4,  "circuit": "miami",        "name": "Miami Grand Prix",           "date": "2026-05-03", "sprint": True,  "status": "completed"},
+    {"round": 5,  "circuit": "canada",       "name": "Canadian Grand Prix",        "date": "2026-05-24", "sprint": True,  "status": "completed"},
+    {"round": 6,  "circuit": "monaco",       "name": "Monaco Grand Prix",          "date": "2026-06-07", "sprint": False, "status": "completed"},
+    {"round": 7,  "circuit": "spain",        "name": "Spanish Grand Prix (Barcelona)", "date": "2026-06-14", "sprint": False, "status": "completed"},
+    {"round": 8,  "circuit": "austria",      "name": "Austrian Grand Prix",        "date": "2026-06-28", "sprint": True,  "status": "completed"},
+    {"round": 9,  "circuit": "britain",      "name": "British Grand Prix",         "date": "2026-07-05", "sprint": True,  "status": "completed"},
+    {"round": 10, "circuit": "belgium",      "name": "Belgian Grand Prix",         "date": "2026-07-19", "sprint": False, "status": "upcoming"},
+    {"round": 11, "circuit": "hungary",      "name": "Hungarian Grand Prix",       "date": "2026-07-26", "sprint": False, "status": "upcoming"},
+    {"round": 12, "circuit": "netherlands",  "name": "Dutch Grand Prix",           "date": "2026-08-23", "sprint": True,  "status": "upcoming"},
+    {"round": 13, "circuit": "italy",        "name": "Italian Grand Prix",         "date": "2026-09-06", "sprint": False, "status": "upcoming"},
+    {"round": 14, "circuit": "madrid",       "name": "Spanish Grand Prix (Madrid)", "date": "2026-09-13", "sprint": False, "status": "upcoming"},
+    {"round": 15, "circuit": "azerbaijan",   "name": "Azerbaijan Grand Prix",      "date": "2026-09-26", "sprint": False, "status": "upcoming"},
+    {"round": 16, "circuit": "singapore",    "name": "Singapore Grand Prix",       "date": "2026-10-11", "sprint": True,  "status": "upcoming"},
+    {"round": 17, "circuit": "usa",          "name": "United States Grand Prix",   "date": "2026-10-25", "sprint": False, "status": "upcoming"},
+    {"round": 18, "circuit": "mexico",       "name": "Mexico City Grand Prix",     "date": "2026-11-01", "sprint": False, "status": "upcoming"},
+    {"round": 19, "circuit": "brazil",       "name": "São Paulo Grand Prix",       "date": "2026-11-08", "sprint": True, "status": "upcoming"},
+    {"round": 20, "circuit": "las_vegas",    "name": "Las Vegas Grand Prix",       "date": "2026-11-21", "sprint": False, "status": "upcoming"},
+    {"round": 21, "circuit": "qatar",        "name": "Qatar Grand Prix",           "date": "2026-11-29", "sprint": True, "status": "upcoming"},
+    {"round": 22, "circuit": "uae",          "name": "Abu Dhabi Grand Prix",       "date": "2026-12-06", "sprint": False, "status": "upcoming"},
 ]
 
 # ── FastF1 Sync Functions ─────────────────────────────────────────────────
@@ -73,7 +72,9 @@ def sync_calendar_from_fastf1(season: int = 2026) -> Dict[str, Any]:
         - added: Number of new races added
         - errors: List of any errors encountered
     """
-    if not FASTF1_AVAILABLE:
+    from data.fastf1_integration import is_fastf1_available  # Import the new function
+    
+    if not is_fastf1_available():
         logger.warning("FastF1 not available. Cannot sync calendar.")
         return {"synced": 0, "added": 0, "errors": ["FastF1 not installed"]}
     
@@ -173,7 +174,9 @@ def get_fastf1_session(round_or_name: Any, session_type: str = 'R'):
     Returns:
         FastF1 session object or None if data not available
     """
-    if not FASTF1_AVAILABLE:
+    from data.fastf1_integration import is_fastf1_available  # Import the new function
+    
+    if not is_fastf1_available():
         raise ImportError("FastF1 not installed. Install with: pip install fastf1")
     
     # Find race in calendar
@@ -190,7 +193,8 @@ def get_fastf1_session(round_or_name: Any, session_type: str = 'R'):
     # Get session from FastF1
     # fastf1.get_session expects year, identifier (name or round), session
     try:
-        session = fastf1.get_session(2026, race['name'], session_type)
+        # Use round number for more reliable lookup
+        session = fastf1.get_session(2026, race['round'], session_type)
         # Load with minimal data to avoid network issues
         session.load(telemetry=False, weather=False, messages=False)
         return session
@@ -198,12 +202,13 @@ def get_fastf1_session(round_or_name: Any, session_type: str = 'R'):
         # Check if this is a "session not available" error (future race)
         error_msg = str(e).lower()
         if 'no data for this session' in error_msg or 'sessionnotavailable' in str(type(e)).lower():
-            logger.info(f"Future race data not available yet: 2026 {race['name']} {session_type}")
+            logger.info(f"Session data not available: 2026 {race['name']} {session_type}")
             return None
         
         logger.warning(f"Failed to load session for {race['name']} {session_type}: {e}")
-        # For future races, this is expected - return None instead of crashing
-        logger.info(f"Future race data not available yet: 2026 {race['name']}")
+        # Check if it's a past race that should have data but doesn't
+        import traceback
+        logger.debug(f"Full error traceback: {traceback.format_exc()}")
         return None
 
 

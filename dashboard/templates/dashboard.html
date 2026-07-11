@@ -108,30 +108,30 @@
                     <label class="ctrl-label">Grand Prix</label>
                     <select class="ctrl-select" id="raceSelect">
                         <option value="">— Select Race —</option>
-                        <option value="Australian Grand Prix">🇦🇺 Australian GP — Melbourne</option>
-                        <option value="Chinese Grand Prix">🇨🇳 Chinese GP — Shanghai</option>
-                        <option value="Japanese Grand Prix">🇯🇵 Japanese GP — Suzuka</option>
-                        <option value="Bahrain Grand Prix">🇧🇭 Bahrain GP — Sakhir</option>
-                        <option value="Saudi Arabian Grand Prix">🇸🇦 Saudi Arabian GP — Jeddah</option>
-                        <option value="Miami Grand Prix">🇺🇸 Miami GP — Miami</option>
-                        <option value="Emilia Romagna Grand Prix">🇮🇹 Emilia Romagna GP — Imola</option>
-                        <option value="Monaco Grand Prix">🇲🇨 Monaco GP — Monte Carlo</option>
-                        <option value="Spanish Grand Prix">🇪🇸 Spanish GP — Barcelona</option>
-                        <option value="Canadian Grand Prix">🇨🇦 Canadian GP — Montréal</option>
-                        <option value="Austrian Grand Prix">🇦🇹 Austrian GP — Spielberg</option>
-                        <option value="British Grand Prix">🇬🇧 British GP — Silverstone</option>
-                        <option value="Belgian Grand Prix">🇧🇪 Belgian GP — Spa</option>
-                        <option value="Hungarian Grand Prix">🇭🇺 Hungarian GP — Budapest</option>
-                        <option value="Dutch Grand Prix">🇳🇱 Dutch GP — Zandvoort</option>
-                        <option value="Italian Grand Prix">🇮🇹 Italian GP — Monza</option>
-                        <option value="Azerbaijan Grand Prix">🇦🇿 Azerbaijan GP — Baku</option>
-                        <option value="Singapore Grand Prix">🇸🇬 Singapore GP — Marina Bay</option>
-                        <option value="United States Grand Prix">🇺🇸 United States GP — Austin</option>
-                        <option value="Mexico City Grand Prix">🇲🇽 Mexico City GP</option>
-                        <option value="São Paulo Grand Prix">🇧🇷 São Paulo GP — Interlagos</option>
-                        <option value="Las Vegas Grand Prix">🇺🇸 Las Vegas GP</option>
-                        <option value="Qatar Grand Prix">🇶🇦 Qatar GP — Losail</option>
-                        <option value="Abu Dhabi Grand Prix">🇦🇪 Abu Dhabi GP — Yas Marina</option>
+                        <option value="australia">🇦🇺 Australian GP — Melbourne</option>
+                        <option value="china">🇨🇳 Chinese GP — Shanghai</option>
+                        <option value="japan">🇯🇵 Japanese GP — Suzuka</option>
+                        <option value="bahrain">🇧🇭 Bahrain GP — Sakhir</option>
+                        <option value="saudi_arabia">🇸🇦 Saudi Arabian GP — Jeddah</option>
+                        <option value="miami">🇺🇸 Miami GP — Miami</option>
+                        <option value="imola">🇮🇹 Emilia Romagna GP — Imola</option>
+                        <option value="monaco">🇲🇨 Monaco GP — Monte Carlo</option>
+                        <option value="spain">🇪🇸 Spanish GP — Barcelona</option>
+                        <option value="canada">🇨🇦 Canadian GP — Montréal</option>
+                        <option value="austria">🇦🇹 Austrian GP — Spielberg</option>
+                        <option value="britain">🇬🇧 British GP — Silverstone</option>
+                        <option value="belgium">🇧🇪 Belgian GP — Spa</option>
+                        <option value="hungary">🇭🇺 Hungarian GP — Budapest</option>
+                        <option value="netherlands">🇳🇱 Dutch GP — Zandvoort</option>
+                        <option value="italy">🇮🇹 Italian GP — Monza</option>
+                        <option value="azerbaijan">🇦🇿 Azerbaijan GP — Baku</option>
+                        <option value="singapore">🇸🇬 Singapore GP — Marina Bay</option>
+                        <option value="usa">🇺🇸 United States GP — Austin</option>
+                        <option value="mexico">🇲🇽 Mexico City GP</option>
+                        <option value="brazil">🇧🇷 São Paulo GP — Interlagos</option>
+                        <option value="las_vegas">🇺🇸 Las Vegas GP</option>
+                        <option value="qatar">🇶🇦 Qatar GP — Losail</option>
+                        <option value="uae">🇦🇪 Abu Dhabi GP — Yas Marina</option>
                     </select>
                 </div>
                 <div class="ctrl-group">
@@ -157,11 +157,16 @@
                     </select>
                 </div>
                 <div class="ctrl-group">
+                    <div class="call-to-action">
+                        <span class="cta-text">CLICK HERE PLEASE <i class="fas fa-arrow-down"></i></span>
+                    </div>
                     <button class="btn-run" id="runPredictionBtn" onclick="runPrediction()">
                         <i class="fas fa-play"></i> <span id="runPredictionBtnText">Run Prediction</span>
                     </button>
                 </div>
             </div>
+            <div id="statusMessage"></div>
+            <div id="sessionButtons" class="session-buttons-container" style="display:none;"></div>
         </div>
 
         <!-- Live Data Banner (from changes.md - only shows when live data available) -->

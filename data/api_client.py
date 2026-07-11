@@ -20,6 +20,14 @@ from urllib.parse import urlencode, urljoin
 
 logger = logging.getLogger(__name__)
 
+# Many free/hobby APIs (Jolpica, OpenF1, etc.) sit behind bot-protection
+# (e.g. Cloudflare) that silently rejects requests using Python's default
+# urllib User-Agent ("Python-urllib/3.x") with a 403. Always identify
+# ourselves with a real User-Agent so requests aren't dropped.
+DEFAULT_USER_AGENT = (
+    "F1Predictor2026/1.0 (+https://github.com/Jack-ki1/FORMULA_1_PREDICTOR_2026)"
+)
+
 # Use urllib (stdlib) to avoid adding requests as a hard dependency
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
@@ -196,6 +204,11 @@ class BaseAPIClient:
         self._request_count = 0
         self._cache_hits = 0
         self._errors = 0
+        
+        # Set default headers with User-Agent to avoid 403 errors
+        self.default_headers = dict(default_headers or {})
+        self.default_headers.setdefault("User-Agent", DEFAULT_USER_AGENT)
+        self.default_headers.setdefault("Accept", "application/json")
 
     def _build_url(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> str:
         """Build full URL from endpoint and query parameters."""
