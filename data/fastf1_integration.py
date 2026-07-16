@@ -15,7 +15,6 @@ Integrates fastf1 library for:
 """
 
 import json
-import fastf1
 import logging
 from pathlib import Path
 from typing import Optional, Dict, List, Any
@@ -28,45 +27,21 @@ from data._fastf1_cache_fix import apply_fastf1_cache_fix, configure_fastf1_offl
 apply_fastf1_cache_fix()
 configure_fastf1_offline_mode()
 
-# Try to import FastF1 - Suppress warning on import, only warn when actually used
-FASTF1_AVAILABLE = None  # Use None to indicate not yet checked
-SessionNotAvailableError = None  # Will be set to the correct exception if import succeeds
+# Try to import FastF1
+FASTF1_AVAILABLE = False
+SessionNotAvailableError = None
 
-def _init_fastf1():
-    """Initialize FastF1 library on demand."""
-    global FASTF1_AVAILABLE, SessionNotAvailableError
-    if FASTF1_AVAILABLE is not None:  # Already checked
-        return FASTF1_AVAILABLE
-    
-    try:
-        import fastf1
-        from fastf1 import plotting
-        from fastf1.exceptions import InvalidSessionError as SessionNotAvailableErrorException
-        # Update the global variable to the actual exception class
-        globals()['SessionNotAvailableError'] = SessionNotAvailableErrorException
-        FASTF1_AVAILABLE = True
-        plotting.setup_mpl()
-        return True
-    except ImportError:
-        FASTF1_AVAILABLE = False
-        return False
-
-
-def is_fastf1_available():
-    """Check if FastF1 library is available."""
-    return _init_fastf1()
-
-
-def get_fastf1_module():
-    """Get the FastF1 module if available, raises ImportError if not."""
-    if not _init_fastf1():
-        raise ImportError("fastf1 library not installed. Install with: pip install fastf1")
+try:
     import fastf1
-    return fastf1
+    from fastf1 import plotting
+    from fastf1.exceptions import SessionNotAvailableError
+    FASTF1_AVAILABLE = True
+    plotting.setup_mpl()
+except ImportError:
+    logger.warning("fastf1 library not installed. Install with: pip install fastf1")
 
 
-def get_session(season: int, race_name: str, session_type: str = 'R',
-                load_telemetry: bool = False, load_weather: bool = False, load_messages: bool = False):
+def get_session(season: int, race_name: str, session_type: str = 'R'):
     """
     Get F1 session data from fastf1.
     
@@ -74,9 +49,6 @@ def get_session(season: int, race_name: str, session_type: str = 'R',
         season: Year (e.g., 2025)
         race_name: Race name or round number
         session_type: 'P1', 'P2', 'P3', 'Q', 'S', 'SQ', 'R'
-        load_telemetry: Whether to load telemetry data
-        load_weather: Whether to load weather data
-        load_messages: Whether to load race control messages
     
     Returns:
         fastf1.core.Session object or None if data not available
@@ -84,14 +56,13 @@ def get_session(season: int, race_name: str, session_type: str = 'R',
     Raises:
         ImportError: If fastf1 is not installed
     """
-    if not _init_fastf1():  # Initialize if needed
-        raise ImportError("fastf1 library not installed. Install with: pip install fastf1")
+    if not FASTF1_AVAILABLE:
+        raise ImportError("fastf1 library required. Install: pip install fastf1")
     
-    import fastf1  # Import here after verification
     try:
         session = fastf1.get_session(season, race_name, session_type)
-        # Load with configurable data based on parameters
-        session.load(telemetry=load_telemetry, weather=load_weather, messages=load_messages)
+        # Load with minimal data to avoid network issues for future races
+        session.load(telemetry=False, weather=False, messages=False)
         return session
     except Exception as e:
         # Check if this is a "session not available" error (future race)
@@ -105,12 +76,10 @@ def get_session(season: int, race_name: str, session_type: str = 'R',
             return None
 
         logger.warning(f"Failed to load session {season} {race_name} {session_type}: {e}")
-        # For truly future races (beyond current year), return None
-        current_year = datetime.now().year
-        if season > current_year:
+        # For future races, this is expected - return None instead of raising
+        if season >= 2026:
             logger.info(f"Future race data not available yet: {season} {race_name}")
             return None
-        # For current/past years, re-raise the exception to allow proper error handling
         raise
 
 
@@ -252,7 +221,7 @@ def ingest_telemetry_data(season: int, race_name: str, driver_id: str) -> Dict:
         - pos_data: X/Y track coordinates
         - lap_info: Lap number, compound, tire age
     """
-    if not _init_fastf1():  # Initialize if needed
+    if not FASTF1_AVAILABLE:
         raise ImportError("fastf1 library required. Install: pip install fastf1")
     
     session = get_session(season, race_name, 'R')
@@ -325,7 +294,7 @@ def compare_drivers_telemetry(season: int, race_name: str, driver1: str, driver2
         - braking_intensity, throttle_application
         - lap_time difference
     """
-    if not _init_fastf1():  # Initialize if needed
+    if not FASTF1_AVAILABLE:
         raise ImportError("fastf1 library required")
     
     session = get_session(season, race_name, 'R')
@@ -446,150 +415,6 @@ def load_entire_season(season: int, session_type: str = 'R') -> List[Dict]:
     return season_data
 
 
-def extract_sector_performance_features(season: int, race_name: str) -> Dict:
-    """
-    Extract sector-level performance features from FastF1 data.
-    
-    Provides per-driver 'which type of corner/straight are they strongest at' profile
-    by analyzing sector times normalized against the field.
-    
-    Args:
-        season: Year
-        race_name: Race name or round
-    
-    Returns:
-        Dictionary with sector performance features:
-        - driver_sector_features: Per-driver sector time analysis
-        - circuit_sector_characteristics: Circuit-specific sector difficulty data
-    """
-    if not _init_fastf1():  # Use the new function
-        raise ImportError("fastf1 library required")
-    
-    # Load session with telemetry data for sector analysis
-    session = get_session(season, race_name, 'R', load_telemetry=True)
-    laps = session.laps
-    results = session.results
-    
-    # Driver-level sector features
-    driver_sector_features = {}
-    for driver in results['Abbreviation'].unique():
-        driver_laps = laps.pick_driver(driver)
-        
-        if len(driver_laps) == 0:
-            continue
-        
-        # Extract sector times for the driver
-        sector_times = {
-            'sector1': driver_laps['Sector1Time'].dropna(),
-            'sector2': driver_laps['Sector2Time'].dropna(), 
-            'sector3': driver_laps['Sector3Time'].dropna()
-        }
-        
-        # Calculate average sector times and compare to field
-        field_sector_averages = {
-            'sector1': laps['Sector1Time'].mean(),
-            'sector2': laps['Sector2Time'].mean(),
-            'sector3': laps['Sector3Time'].mean()
-        }
-        
-        driver_sector_averages = {
-            'sector1': sector_times['sector1'].mean() if len(sector_times['sector1']) > 0 else None,
-            'sector2': sector_times['sector2'].mean() if len(sector_times['sector2']) > 0 else None,
-            'sector3': sector_times['sector3'].mean() if len(sector_times['sector3']) > 0 else None
-        }
-        
-        # Calculate sector-specific performance (relative to field average)
-        sector_performance = {}
-        for sector in ['sector1', 'sector2', 'sector3']:
-            if driver_sector_averages[sector] and field_sector_averages[sector]:
-                # Negative = faster than field average (better performance)
-                sector_performance[sector] = float(driver_sector_averages[sector] - field_sector_averages[sector])
-            else:
-                sector_performance[sector] = 0.0  # Neutral if no data
-        
-        driver_sector_features[driver] = {
-            'sector_performance': sector_performance,
-            'laps_analyzed': len(driver_laps),
-            'avg_sector1_time': float(driver_sector_averages['sector1']) if driver_sector_averages['sector1'] else None,
-            'avg_sector2_time': float(driver_sector_averages['sector2']) if driver_sector_averages['sector2'] else None,
-            'avg_sector3_time': float(driver_sector_averages['sector3']) if driver_sector_averages['sector3'] else None,
-        }
-    
-    # Circuit-level sector characteristics
-    circuit_sector_characteristics = {
-        'field_avg_sector1': float(field_sector_averages['sector1']) if field_sector_averages['sector1'] else None,
-        'field_avg_sector2': float(field_sector_averages['sector2']) if field_sector_averages['sector2'] else None,
-        'field_avg_sector3': float(field_sector_averages['sector3']) if field_sector_averages['sector3'] else None,
-    }
-    
-    return {
-        'driver_sector_features': driver_sector_features,
-        'circuit_sector_characteristics': circuit_sector_characteristics
-    }
-
-
-def extract_braking_aggression_features(season: int, race_name: str) -> Dict:
-    """
-    Extract braking/throttle aggression metrics from telemetry data.
-    
-    Provides 'late-braking frequency' and 'throttle application variance' metrics
-    that correlate with overtaking aggression and incident risk.
-    
-    Args:
-        season: Year
-        race_name: Race name or round
-    
-    Returns:
-        Dictionary with braking aggression features:
-        - driver_aggression_metrics: Per-driver aggression indicators
-    """
-    if not _init_fastf1():  # Use the new function
-        raise ImportError("fastf1 library required")
-    
-    # Load session with telemetry data for braking analysis
-    session = get_session(season, race_name, 'R', load_telemetry=True)
-    
-    # This would normally access telemetry data to analyze braking patterns
-    # Since we don't have the actual telemetry processing functions implemented yet,
-    # we'll return a placeholder structure
-    driver_aggression_metrics = {}
-    
-    # Note: Actual implementation would use session.laps.pick_driver(abbr).get_telemetry()
-    # to get speed/brake/throttle data and calculate late-braking frequency
-    
-    return {
-        'driver_aggression_metrics': driver_aggression_metrics,
-        'analysis_available': False  # Indicates this feature isn't fully implemented yet
-    }
-
-
-def extract_drs_effectiveness_features(season: int, race_name: str) -> Dict:
-    """
-    Extract DRS zone effectiveness per circuit from telemetry data.
-    
-    Args:
-        season: Year
-        race_name: Race name or round
-    
-    Returns:
-        Dictionary with DRS effectiveness features:
-        - drs_zone_analysis: DRS usage and effectiveness data per zone
-    """
-    if not _init_fastf1():  # Use the new function
-        raise ImportError("fastf1 library required")
-    
-    # Load session with telemetry data for DRS analysis
-    session = get_session(season, race_name, 'R', load_telemetry=True)
-    
-    # Placeholder for DRS analysis
-    drs_zone_analysis = {}
-    
-    return {
-        'drs_zone_analysis': drs_zone_analysis,
-        'analysis_available': False  # Indicates this feature isn't fully implemented yet
-    }
-
-
 def extract_ml_features(season: int, race_name: str) -> Dict:
     """
     Extract ML-ready features from FastF1 data for prediction models.
@@ -611,11 +436,10 @@ def extract_ml_features(season: int, race_name: str) -> Dict:
         - race_features: Race-level metrics (safety car rate, weather, overtaking)
         - strategy_features: Pit stop and tire strategy patterns
     """
-    if not _init_fastf1():  # Use the new function
+    if not FASTF1_AVAILABLE:
         raise ImportError("fastf1 library required")
     
-    # Load session with weather data to make weather features available
-    session = get_session(season, race_name, 'R', load_weather=True)
+    session = get_session(season, race_name, 'R')
     laps = session.laps
     results = session.results
     
@@ -923,32 +747,28 @@ def get_combined_weather_forecast(year: int, meeting_name: str) -> Dict[str, Any
 # ── EXPORT ──────────────────────────────────────────────────────────────────────
 
 __all__ = [
-    'FASTF1_AVAILABLE',
-    'is_fastf1_available',
-    'get_session',
-    'ingest_race_results',
-    'ingest_lap_data',
-    'ingest_qualifying_results',
-    'ingest_tire_strategy',
-    'ingest_weather_data',
-    'ingest_telemetry_data',
-    'compare_drivers_telemetry',
-    'load_entire_season',
-    'extract_ml_features',
-    'get_historical_circuit_stats',
-    'sync_all_historical_data',
-    'get_openf1_weather_supplement',
-    'get_openf1_safety_car_data',
-    'get_combined_weather_forecast',
-    'extract_sector_performance_features',  # NEW: Sector analysis
-    'extract_braking_aggression_features',  # NEW: Braking analysis
-    'extract_drs_effectiveness_features',   # NEW: DRS analysis
+    "FASTF1_AVAILABLE",
+    "get_session",
+    "ingest_race_results",
+    "ingest_lap_data",
+    "ingest_qualifying_results",
+    "ingest_tire_strategy",
+    "ingest_weather_data",
+    "ingest_telemetry_data",              # NEW
+    "compare_drivers_telemetry",          # NEW
+    "load_entire_season",                 # NEW
+    "extract_ml_features",                # NEW
+    "sync_all_historical_data",           # NEW
+    "get_historical_circuit_stats",       # NEW
+    "get_openf1_weather_supplement",       # NEW — OpenF1 weather data
+    "get_openf1_safety_car_data",          # NEW — OpenF1 race control data
+    "get_combined_weather_forecast",       # NEW — Combined FastF1 + OpenF1 weather
 ]
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
-    if is_fastf1_available():  # Use the function instead of direct variable
+    if FASTF1_AVAILABLE:
         print("Fast-F1 Integration Module v3.0 — ENHANCED")
         print("=" * 60)
         print("\nCore Functions:")
@@ -975,28 +795,3 @@ if __name__ == "__main__":
         print("Docs: https://docs.fastf1.dev")
     else:
         print("fastf1 not installed. Install with: pip install fastf1")
-
-
-# Export public functions
-__all__ = [
-    'FASTF1_AVAILABLE',
-    'is_fastf1_available',
-    'get_session',
-    'ingest_race_results',
-    'ingest_lap_data',
-    'ingest_qualifying_results',
-    'ingest_tire_strategy',
-    'ingest_weather_data',
-    'ingest_telemetry_data',
-    'compare_drivers_telemetry',
-    'load_entire_season',
-    'extract_ml_features',
-    'get_historical_circuit_stats',
-    'sync_all_historical_data',
-    'get_openf1_weather_supplement',
-    'get_openf1_safety_car_data',
-    'get_combined_weather_forecast',
-    'extract_sector_performance_features',  # NEW: Sector analysis
-    'extract_braking_aggression_features',  # NEW: Braking analysis
-    'extract_drs_effectiveness_features',   # NEW: DRS analysis
-]

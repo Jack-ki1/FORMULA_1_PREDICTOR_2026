@@ -22,7 +22,6 @@ LIVE DATA INTEGRATION (v3.1):
 
 import math
 from typing import Any, Dict, Optional
-import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -392,7 +391,7 @@ def compute_track_fit_score(driver_id: str, circuit_id: str) -> float:
         total_fit = sum(fits.get(t, 1.0) for t in track_types)
         avg_fit = total_fit / len(track_types)
         
-        # A-5 FIX: Tire management bonus at high-deg circuits
+        # A-5 FIX: Tire management bonus at high-degradation circuits
         tire_deg_rate = circuit.get("tire_deg_rate", 0.6)
         if tire_deg_rate > 0.65:  # High-deg circuit
             tire_mgmt = driver.get("tire_management", 7.0) / 10.0
@@ -467,29 +466,7 @@ def compute_safety_car_upside(driver_id: str, circuit_id: str,
     """
     try:
         circuit = get_circuit(circuit_id)
-        
-        # Try to get historical safety car data from FastF1 if available
-        from data.fastf1_integration import is_fastf1_available, _load_fastf1_features_for_race
-        
-        sc_prob_static = circuit.get("safety_car_probability", 0.5)
-        sc_prob = sc_prob_static  # Default to static value
-        
-        # If FastF1 is available, try to blend with historical data
-        if is_fastf1_available():
-            # Look for historical data from the same circuit in previous years
-            for year_offset in range(1, 6):  # Check previous 5 years
-                prev_year = datetime.now().year - year_offset
-                try:
-                    fastf1_features = _load_fastf1_features_for_race(circuit_id, prev_year)  # Assuming this function exists or creating similar logic
-                    if fastf1_features and "race_features" in fastf1_features:
-                        historical_sc = fastf1_features["race_features"].get("safety_car")
-                        if historical_sc is not None:
-                            sc_prob_historical = 0.8 if historical_sc else 0.2
-                            # Blend static and historical probabilities
-                            sc_prob = 0.5 * sc_prob_static + 0.5 * sc_prob_historical
-                            break  # Use first available historical data
-                except:
-                    continue  # Try next year if this fails
+        sc_prob = circuit.get("safety_car_probability", 0.5)
         
         # Use grid position if provided, otherwise estimate from championship
         if estimated_grid_pos is None:
@@ -507,87 +484,9 @@ def compute_safety_car_upside(driver_id: str, circuit_id: str,
         # Removed the 0.8 scale factor that was compressing the signal
         upside = sc_prob * grid_factor
         
-        # Clamp to reasonable bounds
         return max(0.0, min(1.0, upside))
-    except Exception as e:
-        logger.warning(f"Error computing safety car upside: {e}")
-        # Fallback to original calculation
-        circuit = get_circuit(circuit_id)
-        sc_prob = circuit.get("safety_car_probability", 0.5)
-        if estimated_grid_pos is None:
-            driver = get_driver(driver_id)
-            points = driver.get("championship_points_2026", 50)
-            estimated_grid_pos = max(1, min(20, 2 + int((100 - points) / 5)))
-        grid_factor = (estimated_grid_pos - 1) / (N_DRIVERS - 1)
-        return max(0.0, min(1.0, sc_prob * grid_factor))
-
-
-def compute_championship_pressure(driver_id: str) -> float:
-    """
-    Calculate championship pressure based on live standings.
-    Drivers mathematically still in title contention drive with different risk profiles
-    than those with nothing left to fight for.
-    
-    Returns:
-        Pressure factor: 0.0 (no pressure) to 1.0 (maximum pressure)
-        - Drivers with realistic title chances: higher pressure (0.6-1.0)
-        - Drivers out of title contention: lower pressure (0.0-0.4)
-    """
-    try:
-        from data.jolpica_client import get_jolpica_client
-        from data.fastf1_integration import is_fastf1_available
-        
-        # Get live driver standings
-        live_standings = get_live_driver_standings()
-        if not live_standings:
-            # Fallback to hardcoded data if live data unavailable
-            return 0.5  # Neutral pressure
-        
-        # Calculate championship pressure based on points gap to leader
-        current_points = live_standings.get(driver_id, {}).get('points', 0)
-        
-        # Find the leader's points
-        leader_points = max([standings.get('points', 0) for standings in live_standings.values()], default=0)
-        
-        # Find max points available (leader + remaining races * 25)
-        # Assuming 25 points for a win, calculate theoretical max
-        total_races = 24  # F1 typically has 23-24 races per season
-        completed_races = len([r for r in get_all_races() if r.get('completed', False)])  # Simplified
-        remaining_races = max(0, total_races - completed_races)
-        max_possible_points = current_points + remaining_races * 25
-        
-        # Calculate if driver still mathematically has title chance
-        still_in_contention = max_possible_points >= leader_points
-        
-        if not still_in_contention:
-            # Driver is mathematically out of title contention
-            return 0.2  # Low pressure
-        
-        # Calculate pressure based on points gap and remaining races
-        points_gap = leader_points - current_points
-        pressure_base = min(1.0, (max_possible_points - points_gap) / max_possible_points)
-        
-        # Adjust pressure based on proximity to title
-        if points_gap <= 50:  # Within 2 wins of leader
-            return min(1.0, 0.6 + (50 - points_gap) / 100.0)  # High pressure
-        elif points_gap <= 100:  # Within 4 wins of leader
-            return min(0.8, 0.4 + (100 - points_gap) / 150.0)  # Medium-high pressure
-        else:
-            return max(0.2, 0.4 - (points_gap - 100) / 200.0)  # Lower pressure but still in contention
-    
-    except Exception as e:
-        logger.warning(f"Error computing championship pressure for {driver_id}: {e}")
-        return 0.5  # Neutral pressure on error
-
-
-def get_all_races():
-    """Helper function to get all races for calculating championship pressure."""
-    try:
-        from data.calendar_2026 import CALENDAR_2026
-        return CALENDAR_2026.get(2026, [])
-    except:
-        # Return empty list if calendar not available
-        return []
+    except Exception:
+        return 0.25
 
 
 # ── Grid position score ────────────────────────────────────────────────────────
@@ -655,69 +554,17 @@ def compute_teammate_beat_probability(driver_id: str) -> float:
 
 # ── DNF probability estimation ─────────────────────────────────────────────────
 
-def build_empirical_dnf_rates(seasons: list[int], circuit_id: str) -> dict:
-    """Mine historical Jolpica results for real DNF statistics at this circuit."""
-    from data.jolpica_client import get_jolpica_client
-    
-    client = get_jolpica_client()
-    causes = {"accident": 0, "mechanical": 0, "finished": 0, "other": 0}
-    total_starts = 0
-    
-    for season in seasons:
-        try:
-            results = client.get_season_results(season)
-            for race in results:
-                if race.get("circuit") != circuit_id:
-                    continue
-                for entry in race.get("results", []):
-                    total_starts += 1
-                    status = entry.get("status", "").lower()
-                    if "finished" in status or "+1 lap" in status or "classified" in status:
-                        causes["finished"] += 1
-                    elif any(k in status for k in ("collision", "accident", "spun off", "crash", "barrier")):
-                        causes["accident"] += 1
-                    elif any(k in status for k in ("engine", "gearbox", "hydraulics", "brakes", "suspension", "electrical", "power unit", "turbo", "mguk", "mguh", "ers", "fuel", "oil", "water")):
-                        causes["mechanical"] += 1
-                    else:
-                        causes["other"] += 1
-        except Exception as e:
-            logger.warning(f"Could not fetch historical data for season {season}: {e}")
-            continue
-    
-    return {k: v / total_starts for k, v in causes.items()} if total_starts else {}
-
-
 def estimate_dnf_probability(driver_id: str, circuit_id: Optional[str] = None) -> float:
     """
     Estimate probability of DNF based on driver reliability and circuit risk.
-    
-    IMPROVEMENT: Uses empirical DNF rates from historical Jolpica data when available,
-    falling back to static driver stats if historical data is not available.
     """
     try:
         driver = get_driver(driver_id)
         
-        # Try to get empirical DNF rates from historical Jolpica data
-        empirical_dnf_rate = None
-        if circuit_id:
-            # Get historical data for the past 3-5 seasons
-            historical_seasons = list(range(datetime.now().year - 5, datetime.now().year))
-            historical_dnf_data = build_empirical_dnf_rates(historical_seasons, circuit_id)
-            
-            if historical_dnf_data:
-                # Calculate empirical DNF rate based on historical data
-                total_dnf = historical_dnf_data.get("accident", 0) + historical_dnf_data.get("mechanical", 0) + historical_dnf_data.get("other", 0)
-                empirical_dnf_rate = total_dnf if total_dnf > 0 else None
-        
-        # Base DNF rate from driver stats (fallback)
+        # Base DNF rate from driver stats
         career_dnf = driver.get("dnf_rate_career", 0.15)
         recent_dnf = driver.get("dnf_rate_recent", 0.15)
         base_dnf = 0.4 * career_dnf + 0.6 * recent_dnf
-        
-        # If we have empirical data, blend it with the driver stats
-        if empirical_dnf_rate is not None:
-            # Weight empirical data higher (0.7) with driver stats as backup (0.3)
-            base_dnf = 0.7 * empirical_dnf_rate + 0.3 * base_dnf
         
         # Adjust for circuit risk if provided
         if circuit_id:
@@ -745,9 +592,7 @@ def _load_fastf1_features_for_race(circuit_id: str, season: int = 2026) -> Optio
     
     Q-3 FIX: Falls back to previous season (2025) if current season data unavailable.
     """
-    from data.fastf1_integration import is_fastf1_available  # Import the function
-    
-    if not is_fastf1_available():
+    if not FASTF1_AVAILABLE:
         return None
 
     race = get_race_by_circuit(circuit_id)
@@ -811,56 +656,6 @@ def _get_fastf1_adjustment(driver_id: str, circuit_id: str, season: int = 2026) 
     return max(-0.1, min(0.15, adjustment))
 
 
-def calculate_age_based_experience_factor(driver_id: str) -> float:
-    """
-    Calculate an age and experience based factor for the driver.
-    
-    Younger drivers with less experience may have higher growth potential,
-    while veteran drivers with lots of experience have proven consistency.
-    
-    Returns:
-        Factor between 0.9 and 1.1 to multiply with composite score
-    """
-    try:
-        driver = get_driver(driver_id)
-        
-        # Get driver age and experience
-        age = driver.get("age", 30)  # Default to 30 if not specified
-        experience_years = driver.get("experience_years", 5)  # Years in F1 or racing
-        experience_races = driver.get("experience_races", 50)  # Total races
-        
-        # Base factor is 1.0 (neutral)
-        factor = 1.0
-        
-        # Adjust based on age
-        # Drivers in 20s (20-29) are considered optimal age range - slight boost
-        if 20 <= age <= 29:
-            factor += 0.02  # Slight positive adjustment
-        elif age < 20:  # Very young drivers
-            # Young drivers have potential but less experience
-            factor -= 0.02
-        elif age > 35:  # Older drivers
-            # Experience helps offset some physical decline
-            exp_factor = min(0.05, experience_years * 0.005)  # Experience bonus
-            age_factor = max(-0.05, -0.002 * (age - 35))  # Age penalty
-            factor = factor + exp_factor + age_factor
-        
-        # Adjust based on experience
-        if experience_races < 20:  # Rookie level
-            factor -= 0.05  # Penalty for inexperience
-        elif experience_races < 50:  # Novice level
-            factor -= 0.02  # Small penalty
-        elif experience_races > 200:  # Veteran level
-            factor += 0.03  # Bonus for extensive experience
-        
-        # Ensure factor stays within reasonable bounds
-        return max(0.9, min(1.1, factor))
-    except Exception as e:
-        logger.warning(f"Error calculating age/experience factor for {driver_id}: {e}")
-        # Return neutral factor on error
-        return 1.0
-
-
 # ── Composite score ────────────────────────────────────────────────────────────
 
 def compute_composite_score(
@@ -874,8 +669,6 @@ def compute_composite_score(
 
     FIX: grid_position now uses compute_grid_position_score() instead of hardcoded 0.5.
     FEATURE-4: Circuit history modifier applied to final composite score.
-    FEATURE-X: Championship pressure based on live standings added.
-    FEATURE-Y: Age/experience factor based on real driver data added.
     """
     driver = get_driver(driver_id)
     features = {
@@ -889,13 +682,8 @@ def compute_composite_score(
         # FIX: no longer hardcoded to 0.5
         "grid_position":        compute_grid_position_score(driver_id, actual_grid_pos),
         "fastf1_adjustment":   _get_fastf1_adjustment(driver_id, circuit_id),
-        "championship_pressure": compute_championship_pressure(driver_id),  # NEW: Championship pressure feature
-        "age_experience_factor": calculate_age_based_experience_factor(driver_id),  # NEW: Age-based experience factor
     }
-    # Calculate composite score with all features
-    base_composite = sum(FEATURE_WEIGHTS.get(k, 0.0) * v for k, v in features.items() if k != "age_experience_factor")
-    # Apply age experience factor as a multiplier to the final score
-    composite = base_composite * features["age_experience_factor"]
+    composite = sum(FEATURE_WEIGHTS.get(k, 0.0) * v for k, v in features.items())
     
     # FEATURE-4: Apply circuit-specific history modifier
     circuit_modifier = calculate_circuit_performance_modifier(driver_id, circuit_id)
@@ -908,8 +696,6 @@ def compute_composite_score(
         "dnf_probability":        round(estimate_dnf_probability(driver_id, circuit_id), 4),
         "teammate_beat_probability": round(compute_teammate_beat_probability(driver_id), 4),
         "circuit_history_modifier": round(circuit_modifier, 4),  # For transparency
-        "championship_pressure": round(features["championship_pressure"], 4),  # For transparency
-        "age_experience_factor": round(features["age_experience_factor"], 4),  # For transparency
     }
 
 

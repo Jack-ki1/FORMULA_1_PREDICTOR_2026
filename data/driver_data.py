@@ -12,11 +12,6 @@ Expected structure for all functions and constants.
 """
 
 from typing import Dict, List, Any, Optional
-import logging
-
-
-# Create a logger instance for this module
-logger = logging.getLogger(__name__)
 
 
 # Main driver data dictionary - based on typical 2026 driver lineup
@@ -779,102 +774,6 @@ def apply_live_driver_stats():
 
 # ── EXPORT ──────────────────────────────────────────────────────────────────────
 
-def enrich_driver_data_with_jolpica():
-    """
-    Enrich driver data with real information from Jolpica API.
-    
-    Updates driver profiles with:
-    - Real date of birth (for age/experience curve features)
-    - Nationality
-    - Permanent number
-    - Full name
-    """
-    from data.jolpica_client import get_jolpica_client
-    
-    client = get_jolpica_client()
-    updated_count = 0
-    
-    for driver_id in DRIVERS:
-        try:
-            # Map our internal driver ID to Jolpica ID
-            from config.api_settings import DRIVER_ID_TO_JOLPICA
-            jolpica_id = DRIVER_ID_TO_JOLPICA.get(driver_id)
-            
-            if not jolpica_id:
-                logger.warning(f"No Jolpica mapping found for driver: {driver_id}")
-                continue
-            
-            # Get detailed driver info from Jolpica
-            driver_info = client.get_driver_info(jolpica_id)
-            
-            if not driver_info:
-                logger.warning(f"No driver info found for {driver_id} ({jolpica_id})")
-                continue
-            
-            # Update the driver record with enriched data
-            if "date_of_birth" in driver_info and driver_info["date_of_birth"]:
-                DRIVERS[driver_id]["date_of_birth"] = driver_info["date_of_birth"]
-                
-                # Calculate age based on DOB
-                from datetime import datetime
-                dob = datetime.strptime(driver_info["date_of_birth"], "%Y-%m-%d")
-                age = (datetime.now() - dob).days // 365
-                DRIVERS[driver_id]["age"] = age
-            
-            if "nationality" in driver_info and driver_info["nationality"]:
-                DRIVERS[driver_id]["nationality"] = driver_info["nationality"]
-            
-            if "permanent_number" in driver_info and driver_info["permanent_number"]:
-                DRIVERS[driver_id]["permanent_number"] = driver_info["permanent_number"]
-            
-            if "given_name" in driver_info and "family_name" in driver_info:
-                DRIVERS[driver_id]["full_name"] = f"{driver_info['given_name']} {driver_info['family_name']}"
-            
-            if "code" in driver_info and driver_info["code"]:
-                DRIVERS[driver_id]["code"] = driver_info["code"]
-            
-            updated_count += 1
-            logger.info(f"Enriched data for {driver_id}: {driver_info.get('given_name', '')} {driver_info.get('family_name', '')}")
-            
-        except Exception as e:
-            logger.warning(f"Failed to enrich data for {driver_id}: {e}")
-            continue
-    
-    logger.info(f"Enriched data for {updated_count} drivers using Jolpica API")
-    return updated_count
-
-
-def calculate_age_based_experience_factor(driver_id: str) -> float:
-    """
-    Calculate an age/experience-based factor for the driver.
-    
-    Younger drivers (20-25) may have different risk profiles than veterans (35+).
-    Returns a factor between 0.8 and 1.2 where:
-    - 1.0 is neutral (average age/experience)
-    - >1.0 for young, potentially more aggressive drivers
-    - <1.0 for veteran drivers who may be more conservative
-    """
-    driver = get_driver(driver_id)
-    age = driver.get("age", 30)  # Default to 30 if unknown
-    
-    # Age-based factors
-    if age < 23:
-        # Very young drivers - may be more aggressive/risky
-        return 1.1
-    elif 23 <= age <= 27:
-        # Prime age drivers - optimal balance
-        return 1.05
-    elif 28 <= age <= 32:
-        # Experienced drivers - stable performance
-        return 1.0
-    elif 33 <= age <= 37:
-        # Veteran drivers - experienced but may be declining
-        return 0.95
-    else:
-        # Older drivers - more conservative approach
-        return 0.9
-
-
 __all__ = [
     "DRIVERS", 
     "get_driver", 
@@ -883,6 +782,4 @@ __all__ = [
     "calculate_circuit_performance_modifier",
     "refresh_driver_stats_from_api",       # NEW — fetch fresh stats from Jolpica
     "apply_live_driver_stats",             # NEW — apply live stats to global DRIVERS
-    "enrich_driver_data_with_jolpica",     # NEW — enrich with real driver info
-    "calculate_age_based_experience_factor", # NEW — age-based experience factor
 ]

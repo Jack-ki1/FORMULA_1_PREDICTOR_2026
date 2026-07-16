@@ -1,6 +1,4 @@
-# ─────────────────────────────────────────────────────
 # Python
-# ─────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -21,11 +19,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# ─────────────────────────────────────────────────────
 # Virtual Environments
-# ─────────────────────────────────────────────────────
 .env
 .venv
 env/
@@ -33,239 +28,99 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.conda/
 
-# ─────────────────────────────────────────────────────
-# IDE & Editor Files
-# ─────────────────────────────────────────────────────
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.project
-.pydevproject
-.settings/
-*.sublime-project
-*.sublime-workspace
+.DS_Store
 
-# ─────────────────────────────────────────────────────
-# Operating System Files
-# ─────────────────────────────────────────────────────
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Distribution / packaging
+.Python
+*.egg-info/
+dist/
+build/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+!data/*.db  # Keep database templates if any
+
+# Output files
+output/
+reports/*.html
+*.log
+
+# OS generated files
+Thumbs.db
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
 Desktop.ini
-$RECYCLE.BIN/
 
-# ─────────────────────────────────────────────────────
-# Jupyter Notebook
-# ─────────────────────────────────────────────────────
-.ipynb_checkpoints
-*.ipynb
+# Environment variables
+.env
+.env.local
+.env.production
 
-# ─────────────────────────────────────────────────────
-# Testing & Coverage
-# ─────────────────────────────────────────────────────
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-
-# ─────────────────────────────────────────────────────
-# Distribution / Packaging
-# ─────────────────────────────────────────────────────
-*.egg-info/
-dist/
-build/
-*.tar.gz
-*.zip
-*.whl
-
-# ─────────────────────────────────────────────────────
-# Database Files (Local/Development)
-# ─────────────────────────────────────────────────────
-*.db
-*.sqlite
-*.sqlite3
-f1_predictor.db
-instance/
-!data/*.db  # Keep database templates if any
-
-# ─────────────────────────────────────────────────────
-# FastF1 Cache (IMPORTANT - prevents large cache files)
-# ─────────────────────────────────────────────────────
-fastf1_cache/
-.cache/
-fastf1/
-*.fastf1
-
-# ─────────────────────────────────────────────────────
-# Output & Reports
-# ─────────────────────────────────────────────────────
-output/
-reports/*.html
-reports/*.json
-reports/*.csv
-predictions_*.json
-results_*.json
-
-# ─────────────────────────────────────────────────────
 # Logs
-# ─────────────────────────────────────────────────────
 *.log
 logs/
 *.log.*
-error.log
-access.log
 
-# ─────────────────────────────────────────────────────
-# Temporary Files
-# ─────────────────────────────────────────────────────
+# Temporary files
 tmp/
 temp/
 *.tmp
 *.bak
 *.cache
-*.temp
-*.swp
-*.swn
 
-# ─────────────────────────────────────────────────────
-# Node Modules (if using web tools)
-# ─────────────────────────────────────────────────────
+# Node modules (if using any web tools)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-yarn.lock
 
-# ─────────────────────────────────────────────────────
-# Hugging Face & ML Caches
-# ─────────────────────────────────────────────────────
+# Hugging Face
 .hf_cache/
 .huggingface/
-hf_home/
-*.pt
-*.pth
-*.bin
-checkpoints/
-models/
 
-# ─────────────────────────────────────────────────────
-# Environment Variables & Secrets
-# ─────────────────────────────────────────────────────
-.env
-.env.local
-.env.production
-.env.backup
+# GitLab CI
+.gitlab-ci.yml
+
+# GitHub Actions
+.github/
+
+# Documentation
+docs/_build/
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Data files that shouldn't be tracked (optional)
+# data/cache/
+# data/temp/
+
+# Secrets and credentials
 *.key
 *.pem
 secrets/
 credentials/
-*.secret
-*.password
-
-# ─────────────────────────────────────────────────────
-# Browser Cache & Web Assets
-# ─────────────────────────────────────────────────────
-*.min.js.map
-*.min.css.map
-.browser-cache/
-web-cache/
-
-# ─────────────────────────────────────────────────────
-# Docker
-# ─────────────────────────────────────────────────────
-docker-compose.override.yml
-.docker/
-
-# ─────────────────────────────────────────────────────
-# GitLab CI / GitHub Actions
-# ─────────────────────────────────────────────────────
-.gitlab-ci.yml
-.github/workflows/build.yml
-
-# ─────────────────────────────────────────────────────
-# Documentation Build
-# ─────────────────────────────────────────────────────
-docs/_build/
-site/
-*.pdf
-
-# ─────────────────────────────────────────────────────
-# Backup Files
-# ─────────────────────────────────────────────────────
-*.backup
-*.bak
-*.old
-*.orig
-*~
-
-# ─────────────────────────────────────────────────────
-# Data Cache (Prevents stale data from being tracked)
-# ─────────────────────────────────────────────────────
-data/cache/
-data/temp/
-data/*.cache
-data/*.tmp
-
-# ─────────────────────────────────────────────────────
-# Optuna Study Storage
-# ─────────────────────────────────────────────────────
-optuna.db
-study_*.db
-*.optuna
-
-# ─────────────────────────────────────────────────────
-# Plotly & Chart Cache
-# ─────────────────────────────────────────────────────
-.plotly/
-chart_cache/
-
-# ─────────────────────────────────────────────────────
-# SQLAlchemy & ORM Cache
-# ─────────────────────────────────────────────────────
-*.sqlalchemy
-orm_cache/
-
-# ─────────────────────────────────────────────────────
-# Compiled Python Extensions
-# ─────────────────────────────────────────────────────
-*.pyd
-*.pyo
-
-# ─────────────────────────────────────────────────────
-# Memory & Performance Profiles
-# ─────────────────────────────────────────────────────
-*.prof
-*.profile
-memory_profile/
-performance_logs/
-
-# ─────────────────────────────────────────────────────
-# AI Assistant Files (Qoder/Copilot/etc.)
-# ─────────────────────────────────────────────────────
-.qoder/
-.cursor/
-.claude/
-.ai/
-
-# ─────────────────────────────────────────────────────
-# API Response Cache (Prevents stale API data)
-# ─────────────────────────────────────────────────────
-cache/
-cache/api_responses/
-cache/api_responses/jolpica/
-cache/api_responses/openf1/
-*.json.cache

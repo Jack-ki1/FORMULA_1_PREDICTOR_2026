@@ -189,7 +189,7 @@ def _dashboard_payload(result: Dict[str, Any], session_type: str, grid_source: O
         "points_distribution": rows,
         "position_heatmap": [{"driver": p.get("driver"), "positions": list(range(1, min(11, len(rows) + 1))), "probabilities": (p.get("position_distribution") or [0] * 10)[:10]} for p in rows[:10]],
         "model_performance": {
-            "overall_confidence": round(float(meta.get("overall_model_confidence", 0.75) or 0.75) * 100, 1),  # Handle None value
+            "overall_confidence": round(float(meta.get("overall_model_confidence", 0.75)) * 100, 1),
             "convergence_rate": 88.0,
             "historical_accuracy": 78.0,
             "simulation_count": meta.get("n_simulations", 0),
@@ -705,43 +705,30 @@ def dashboard():
         historical_sessions = {"loaded": False, "message": "Load via /api/historical endpoint"}
         
         # ── Prediction ─────────────────────────────────────────────────────────
-        # FIX: Don't run predictions on initial page load. User must click "Run Prediction"
-        # to generate predictions. This prevents showing stale/incorrect data on Sunday
-        # before the user has made their selection.
-        predictions = []
-        meta = {}
-        podium = []
-        surprises = []
-        raw = None
-        data_confidence = {"score": 0, "level": "low", "reasons": ["No prediction run yet"]}
-        
-        # Only run prediction if explicitly triggered via URL parameter (?run=1)
-        should_run_prediction = request.args.get("run") == "1"
-        
-        if should_run_prediction:
-            try:
-                req = PredictionRequest(
-                    circuit_id=circuit_id,
-                    rain_probability=rain_prob,
-                    n_simulations=min(max(n_sims, 100), 50000),
-                    grid_overrides=grid_overrides,
-                    qualifying_completed=bool(grid_overrides),
-                    live_weather_override=_weather_rain_probability(live_data),
-                    session_type=weekend_phase.get("phase", "race"),
-                    sprint_weekend=bool(circuit.get("sprint_weekend")),
-                    live_context=live_data,
-                )
-                result = predict(req)
-                predictions = result.get("predictions", [])
-                meta = result.get("meta", {})
-                podium = result.get("podium_predictions", [])
-                surprises = result.get("likely_top_surprises", [])
-                raw = result.get("raw") if req.output_format == "full" else None
-                data_confidence = _data_confidence(result, live_data, grid_overrides)
-            except Exception as e:
-                logger.error(f"Prediction failed: {e}")
-                flash(f"Prediction error: {e}", "error")
-                data_confidence = {"score": 0, "level": "low", "reasons": [str(e)]}
+        try:
+            req = PredictionRequest(
+                circuit_id=circuit_id,
+                rain_probability=rain_prob,
+                n_simulations=min(max(n_sims, 100), 50000),
+                grid_overrides=grid_overrides,
+                qualifying_completed=bool(grid_overrides),
+                live_weather_override=_weather_rain_probability(live_data),
+                session_type=weekend_phase.get("phase", "race"),
+                sprint_weekend=bool(circuit.get("sprint_weekend")),
+                live_context=live_data,
+            )
+            result = predict(req)
+            predictions = result.get("predictions", [])
+            meta = result.get("meta", {})
+            podium = result.get("podium_predictions", [])
+            surprises = result.get("likely_top_surprises", [])
+            raw = result.get("raw") if req.output_format == "full" else None
+            data_confidence = _data_confidence(result, live_data, grid_overrides)
+        except Exception as e:
+            logger.error(f"Prediction failed: {e}")
+            flash(f"Prediction error: {e}", "error")
+            predictions, meta, podium, surprises, raw = [], {}, [], [], None
+            data_confidence = {"score": 0, "level": "low", "reasons": []}
         
         # ── Driver List for Grid Override UI ───────────────────────────────────
         all_drivers = get_all_drivers()
@@ -832,84 +819,8 @@ def api_weekend_phase(circuit_id: str):
         return jsonify({"success": True, "weekend_phase": get_weekend_phase(circuit_id)})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
-
-@app.route("/api/check-race-status/<circuit_id>")
-def api_check_race_status(circuit_id: str):
-    """
-    Check if a race has completed and determine what results to show.
-    
-    Returns comprehensive race status including:
-    - Whether race is completed
-    - Current weekend phase (practice/qualifying/sprint/race/post_race)
-    - Available session results
-    - Appropriate session results to display based on current day
-    - UI guidance (should_show_predictions, button state, banner message)
-    """
-    try:
-        from engine.predictor import _check_race_completed
-        
-        # Check if race is completed
-        race_status = _check_race_completed(circuit_id)
-        
-        # Get weekend phase for context
-        weekend_phase = get_weekend_phase(circuit_id)
-        
-        # Determine what to show based on completion status and phase
-        result = {
-            "success": True,
-            "circuit_id": circuit_id,
-            "completed": race_status.get("completed", False),
-            "race_date": race_status.get("race_date"),
-            "is_sprint_weekend": race_status.get("is_sprint_weekend", False),
-            "phase": weekend_phase.get("phase", "unknown"),
-            "available_sessions": race_status.get("available_sessions", []),
-            "sessions": race_status.get("sessions", {}),
-        }
-        
-        # Determine UI behavior
-        if race_status.get("completed"):
-            result["should_show_predictions"] = False
-            result["button_state"] = "completed"
-            result["button_text"] = "Race Complete - View Results"
-            result["button_class"] = "btn-success"
-            
-            # Determine which session results to highlight based on phase
-            phase = weekend_phase.get("phase", "post_race")
-            if phase in ["pre_weekend", "practice"]:
-                result["highlight_session"] = "fp3"  # Show latest practice
-                result["banner_message"] = f"🏃 Practice sessions completed - Viewing official practice results"
-            elif phase == "sprint":
-                result["highlight_session"] = "sprint"
-                result["banner_message"] = f"🏁 Sprint weekend completed - Viewing sprint results"
-            elif phase == "qualifying":
-                result["highlight_session"] = "qualifying"
-                result["banner_message"] = f"⏱️ Qualifying completed - Viewing official grid positions"
-            else:  # race, post_race, completed
-                result["highlight_session"] = "race"
-                result["banner_message"] = f"✅ Race completed on {race_status.get('race_date', 'N/A')} - Showing official results"
-        else:
-            result["should_show_predictions"] = True
-            result["button_state"] = "active"
-            result["button_text"] = "Run Prediction"
-            result["button_class"] = "btn-primary"
-            result["highlight_session"] = None
-            
-            # Banner message for upcoming races
-            days_until = weekend_phase.get("days_until_race", 0)
-            if days_until > 7:
-                result["banner_message"] = f"📅 Race weekend hasn't started — using historical data only"
-            elif days_until > 0:
-                result["banner_message"] = f"⏱️ Race in {days_until} days — predictions available"
-            else:
-                result["banner_message"] = f"🏁 Race weekend active — full prediction mode"
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Failed to check race status: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
 @app.route("/api/live-data/<circuit_id>")
+
 def api_live_data(circuit_id: str):
     """AJAX endpoint for live session data polling."""
     data = get_live_session_data(circuit_id)
