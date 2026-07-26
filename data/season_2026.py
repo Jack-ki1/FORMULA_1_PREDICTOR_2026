@@ -3,27 +3,19 @@
 
 Contains race results, driver standings, and constructor standings
 for the 2026 season. Used for championship tracking and historical analysis.
-
-FastF1 Integration: Can now load results from FastF1 instead of hardcoded values.
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, DefaultDict
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-# Try to import FastF1
-try:
-    from data.fastf1_integration import load_entire_season, FASTF1_AVAILABLE
-except ImportError:
-    FASTF1_AVAILABLE = False
-    logger.warning("FastF1 integration not available.")
-
 
 # Race results for completed races (R1-R6 as per calendar alignment)
 # Q-1 FIX: Round numbers now aligned with CALENDAR_2026 as single source of truth.
-# NOTE: These can be replaced by FastF1 data using load_season_results_from_fastf1()
+# NOTE: Results are updated dynamically via Jolpica/OpenF1 live data pipeline
 SEASON_RESULTS_2026: List[Dict[str, Any]] = [
     {
         "round": 1,
@@ -239,14 +231,7 @@ CURRENT_CONSTRUCTOR_STANDINGS = CONSTRUCTOR_STANDINGS_AFTER_R5
 
 
 def get_season_results(season: int = 2026) -> List[Dict[str, Any]]:
-    """
-    Return season race results, using FastF1 when available.
-    """
-    if FASTF1_AVAILABLE:
-        try:
-            return load_season_results_from_fastf1(season)
-        except Exception:
-            pass
+    """Return season race results."""
     return SEASON_RESULTS_2026
 
 
@@ -334,170 +319,7 @@ __all__ = [
     "get_driver_standings",
     "get_constructor_standings",
     "get_remaining_races",
-    "load_season_results_from_fastf1",  # NEW
-    "update_standings_from_fastf1",     # NEW
-    "FASTF1_AVAILABLE"                  # NEW
 ]
-
-
-# ── FastF1 Integration Functions (NEW) ──────────────────────────────────────────
-
-def load_season_results_from_fastf1(season: int = 2026) -> List[Dict[str, Any]]:
-    """
-    Load season results from FastF1 instead of hardcoded values.
-    
-    This function:
-    1. Fetches all race results from FastF1 for the specified season
-    2. Transforms them into the project's standard format
-    3. Returns structured race data with driver positions and points
-    
-    Args:
-        season: Year to load (default: 2026)
-    
-    Returns:
-        List of race dictionaries in the same format as SEASON_RESULTS_2026
-    
-    Example:
-        >>> results = load_season_results_from_fastf1(2026)
-        >>> print(f"Loaded {len(results)} races")
-        >>> print(f"Round 1 winner: {results[0]['results'][0]['driver']}")
-    """
-    if not FASTF1_AVAILABLE:
-        logger.warning("FastF1 not available. Returning hardcoded results.")
-        return SEASON_RESULTS_2026
-    
-    try:
-        # Load entire season from FastF1
-        season_data = load_entire_season(season, 'R')
-        
-        if not season_data:
-            logger.warning("No season data available from FastF1.")
-            return SEASON_RESULTS_2026
-        
-        # Transform to project format
-        transformed_results = []
-        for race in season_data:
-            if 'error' in race:
-                logger.warning(f"Skipping {race['race_name']}: {race['error']}")
-                continue
-            
-            results_list = []
-            for idx, driver_result in race['results'].iterrows():
-                results_list.append({
-                    "driver": str(driver_result['Abbreviation']).lower(),
-                    "position": int(driver_result['Position']),
-                    "points": float(driver_result['Points']),
-                    "status": str(driver_result['Status']),
-                })
-            
-            transformed_race = {
-                "round": race['round'],
-                "circuit": race['race_name'].lower().replace(' ', '_').replace('grand_prix', ''),
-                "name": race['race_name'],
-                "date": str(race['date']),
-                "sprint": False,  # Would need separate sprint session load
-                "results": results_list,
-            }
-            transformed_results.append(transformed_race)
-        
-        logger.info(f"Loaded {len(transformed_results)} races from FastF1")
-        return transformed_results
-        
-    except Exception as e:
-        logger.error(f"Failed to load season from FastF1: {e}")
-        return SEASON_RESULTS_2026
-
-
-def update_standings_from_fastf1(season: int = 2026) -> Dict[str, Any]:
-    """
-    Update driver and constructor standings using FastF1 data.
-    
-    This function:
-    1. Loads race results from FastF1
-    2. Calculates driver standings
-    3. Calculates constructor standings
-    4. Returns both standings dictionaries
-    
-    Args:
-        season: Year to calculate standings for (default: 2026)
-    
-    Returns:
-        Dictionary with:
-        - driver_standings: List of driver standings entries
-        - constructor_standings: List of constructor standings entries
-        - races_processed: Number of races used in calculation
-    """
-    if not FASTF1_AVAILABLE:
-        logger.warning("FastF1 not available. Returning existing standings.")
-        return {
-            "driver_standings": DRIVER_STANDINGS_AFTER_R5,
-            "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
-            "races_processed": 0,
-        }
-    
-    try:
-        # Load results from FastF1
-        results = load_season_results_from_fastf1(season)
-        
-        # Calculate driver points
-        driver_points = {}
-        driver_wins = {}
-        constructor_points = {}
-        
-        for race in results:
-            for result in race['results']:
-                driver = result['driver']
-                points = result['points']
-                
-                # Driver points
-                driver_points[driver] = driver_points.get(driver, 0) + points
-                
-                # Count wins
-                if result['position'] == 1:
-                    driver_wins[driver] = driver_wins.get(driver, 0) + 1
-                
-                # Constructor points
-                team = CONSTRUCTOR_MAPPING.get(driver)
-                if team:
-                    constructor_points[team] = constructor_points.get(team, 0) + points
-        
-        # Create driver standings
-        driver_standings = []
-        sorted_drivers = sorted(driver_points.items(), key=lambda x: x[1], reverse=True)
-        for i, (driver, points) in enumerate(sorted_drivers):
-            driver_standings.append({
-                "position": i + 1,
-                "driver": driver,
-                "points": points,
-                "wins": driver_wins.get(driver, 0),
-            })
-        
-        # Create constructor standings
-        constructor_standings = []
-        sorted_constructors = sorted(constructor_points.items(), key=lambda x: x[1], reverse=True)
-        for i, (team, points) in enumerate(sorted_constructors):
-            constructor_standings.append({
-                "position": i + 1,
-                "team": team,
-                "points": points,
-            })
-        
-        result = {
-            "driver_standings": driver_standings,
-            "constructor_standings": constructor_standings,
-            "races_processed": len(results),
-        }
-        
-        logger.info(f"Standings updated from FastF1: {len(results)} races processed")
-        return result
-        
-    except Exception as e:
-        logger.error(f"Failed to update standings from FastF1: {e}")
-        return {
-            "driver_standings": DRIVER_STANDINGS_AFTER_R5,
-            "constructor_standings": CONSTRUCTOR_STANDINGS_AFTER_R5,
-            "races_processed": 0,
-        }
 
 
 # ── Jolpica Live Standings ─────────────────────────────────────────────────────
@@ -573,8 +395,7 @@ def get_latest_standings(prefer_live: bool = True) -> Dict[str, Any]:
     
     Tries sources in order:
     1. Jolpica-F1 API (fastest, most current)
-    2. FastF1 (requires session loading)
-    3. Hardcoded data (always available)
+    2. Hardcoded data (always available)
     
     Args:
         prefer_live: If True, try live APIs first. If False, use hardcoded data.

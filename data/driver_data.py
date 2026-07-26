@@ -11,7 +11,10 @@ Contains all driver information including:
 Expected structure for all functions and constants.
 """
 
+import logging
 from typing import Dict, List, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # Main driver data dictionary - based on typical 2026 driver lineup

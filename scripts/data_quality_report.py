@@ -54,7 +54,7 @@ def run_all_checks() -> None:
             except Exception as exc:
                 errors.append(f"Circuit lookup failed for {circuit['id']}: {exc}")
 
-    # Feature engine sanity check (warning only - may need FastF1 setup)
+    # Feature engine sanity check
     try:
         comp = compute_all_drivers("canada", rain_probability=0.15)
         if not comp:
@@ -62,7 +62,7 @@ def run_all_checks() -> None:
     except Exception as exc:
         warnings.append(f"Feature engine test skipped: {exc}")
 
-    # Prediction engine smoke test (warning only - may need FastF1 setup)
+    # Prediction engine smoke test
     try:
         sample = predict(PredictionRequest(circuit_id="canada", rain_probability=0.15, n_simulations=250, seed=42))
         if "predictions" not in sample or not sample["predictions"]:

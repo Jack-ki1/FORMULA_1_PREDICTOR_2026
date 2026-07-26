@@ -46,6 +46,30 @@ PLATT_PARAMS = {
 
 SIMULATION_RUNS = 5000
 
+# ── Late-binding helpers for ensemble/XGBoost ─────────────────────────────────
+# These are resolved at call-time to avoid circular imports at module load.
+_ENSEMBLE_INSTANCE = None
+_XGBOOST_INSTANCE = None
+
+
+def _get_ensemble():
+    """Lazy-load the ensemble predictor singleton."""
+    global _ENSEMBLE_INSTANCE
+    if _ENSEMBLE_INSTANCE is None:
+        from engine.ensemble_predictor import EnsemblePredictor
+        _ENSEMBLE_INSTANCE = EnsemblePredictor()
+    return _ENSEMBLE_INSTANCE
+
+
+def _get_xgboost():
+    """Lazy-load the XGBoost ranker singleton."""
+    global _XGBOOST_INSTANCE
+    if _XGBOOST_INSTANCE is None:
+        from engine.ml_models import XGBoostRanker
+        _XGBOOST_INSTANCE = XGBoostRanker()
+        _XGBOOST_INSTANCE.load()
+    return _XGBOOST_INSTANCE
+
 # NEW-02 FIX: Derive FIELD_SIZE dynamically from actual active driver count.
 # Previously hardcoded to 20, then changed to 20 while having 21 active drivers (post-Zhou),
 # causing one driver's finishing position to be silently dropped every simulation.
@@ -194,10 +218,10 @@ def simulate_race(
     if driver_features is None:
         driver_features = compute_all_drivers(circuit_id, rain_probability, grid_overrides=grid_overrides)
 
-    # FEATURE-2: Initialize tire strategy model
+    # FEATURE-2: Initialize pit strategy model (using PitStrategySimulator)
     try:
-        from engine.tire_strategy import TireStrategyModel
-        tire_model = TireStrategyModel(circuit_id, circuit_laps)
+        from engine.pit_strategy import PitStrategySimulator, TireCompound
+        tire_model = PitStrategySimulator(circuit_id, circuit_laps)
         
         # Pre-compute optimal strategies for each driver based on team/car characteristics
         driver_strategies = {}
@@ -432,11 +456,10 @@ def simulate_h2h(
     feat_by_id = {d["driver_id"]: d for d in driver_features}
     if driver1_id not in feat_by_id or driver2_id not in feat_by_id:
         raise KeyError("Requested driver(s) not found in simulation driver set")
-
-    # Tire strategy model (optional)
+    # Tire strategy model (optional) — using PitStrategySimulator
     try:
-        from engine.tire_strategy import TireStrategyModel
-        tire_model = TireStrategyModel(circuit_id, circuit_laps)
+        from engine.pit_strategy import PitStrategySimulator, TireCompound
+        tire_model = PitStrategySimulator(circuit_id, circuit_laps)
         driver_strategies = {}
         for d in driver_features:
             driver_data = get_driver(d["driver_id"])
@@ -576,11 +599,32 @@ def predict_race(
     seed: Optional[int] = None,
     grid_overrides: Optional[dict] = None,
     vectorized: bool = False,
+    use_ensemble: bool = True,
+    include_strategy: bool = True,
+    include_sentiment: bool = False,
+    sentiment_news: Optional[List[str]] = None,
 ) -> dict:
     """Master prediction function — returns ranked driver list with all probability outputs.
     
-    FIX-3.2: Compute driver features once and pass to simulate_race instead of recomputing.
-    FEATURE-16: Include confidence intervals in predictions.
+    SOTA Enhancements:
+    - Ensemble integration: blends MC, XGBoost, Plackett-Luce, and composite
+    - Strategy simulation: tire strategy analysis per circuit
+    - Sentiment override: optional HuggingFace news-based adjustments
+    
+    Args:
+        circuit_id: Circuit identifier
+        rain_probability: Override rain probability
+        n_simulations: Number of Monte Carlo simulations
+        seed: Random seed
+        grid_overrides: Grid position overrides
+        vectorized: Use vectorized simulation
+        use_ensemble: Whether to use ensemble blending
+        include_strategy: Whether to include tire strategy analysis
+        include_sentiment: Whether to apply sentiment overrides
+        sentiment_news: Optional news texts for sentiment analysis
+    
+    Returns:
+        Dict with predictions, strategy, ensemble info
     """
     from engine.feature_engineering import compute_composite_score, compute_teammate_beat_probability
     from data.driver_data import get_all_drivers as _get_all
@@ -618,7 +662,7 @@ def predict_race(
         confidence_intervals = sim_result["confidence_intervals"]
 
     duration_ms = round((time.perf_counter() - t0) * 1000, 1)
-    logger.info(f"prediction.complete circuit={circuit_id} duration_ms={duration_ms}")
+    logger.info(f"prediction.simulate circuit={circuit_id} duration_ms={duration_ms}")
     
     all_drivers = {d["id"]: d for d in _get_all()}
 
@@ -659,20 +703,117 @@ def predict_race(
     predictions.sort(key=lambda x: x["expected_position_float"])
 
     # BUG-01 / NEW-01 FIX: Apply Platt calibration with separate parameters per outcome type.
-    # NOTE: We do NOT renormalize after Platt calibration because:
-    # 1. Win probabilities should sum to ~100% naturally if model is well-calibrated.
-    # 2. Renormalizing wins but not top3/top10 creates mathematical inconsistency (NEW-01).
-    # 3. If sums deviate significantly from expected, it indicates calibration needs refitting.
     for pred in predictions:
         pred["win_probability"]  = apply_platt(pred["win_probability"],  "win")
         pred["top3_probability"] = apply_platt(pred["top3_probability"], "top3")
         pred["top10_probability"]= apply_platt(pred["top10_probability"],"top10")
         pred["dnf_probability"]  = apply_platt(pred["dnf_probability"],  "dnf")
 
-    return {
+    # ── SOTA: Ensemble Blending ───────────────────────────────────────────
+    ensemble_info = {}
+    if use_ensemble:
+        try:
+            ensemble = _get_ensemble()
+            xgb_ranker = _get_xgboost()
+
+            # Get XGBoost rankings if available
+            xgb_rankings = None
+            if xgb_ranker and xgb_ranker.is_trained:
+                from engine.ml_models import get_ml_predictions
+                ml_result = get_ml_predictions(driver_features, circuit_id)
+                xgb_rankings = ml_result.rankings
+
+            # Get Plackett-Luce rankings
+            pl_rankings = None
+            try:
+                from engine.ml_models import PlackettLuceModel
+                pl = PlackettLuceModel()
+                pl_rankings = pl.predict_full(driver_features)
+            except Exception:
+                pass
+
+            # Run ensemble prediction
+            ensemble_result = ensemble.predict(
+                mc_predictions=predictions,
+                xgb_rankings=xgb_rankings,
+                pl_rankings=pl_rankings,
+                composite_scores=driver_features,
+                circuit_id=circuit_id,
+            )
+
+            # Apply ensemble probabilities to predictions
+            ensemble_preds = {p.driver_id: p for p in ensemble_result.predictions}
+            for pred in predictions:
+                did = pred["driver_id"]
+                if did in ensemble_preds:
+                    ep = ensemble_preds[did]
+                    pred["ensemble_win_probability"] = ep.ensemble_win_prob
+                    pred["ensemble_top3_probability"] = ep.ensemble_top3_prob
+                    pred["model_breakdown"] = ep.model_breakdown
+                    # Blend: 60% ensemble, 40% MC (as default — weights adapt over time)
+                    blended_win = 0.6 * ep.ensemble_win_prob + 0.4 * pred["win_probability"]
+                    blended_top3 = 0.6 * ep.ensemble_top3_prob + 0.4 * pred["top3_probability"]
+                    pred["win_probability"] = blended_win
+                    pred["top3_probability"] = blended_top3
+
+            ensemble_info = {
+                "active_models": list(ensemble_result.model_weights.keys()),
+                "model_weights": ensemble_result.model_weights,
+                "ensemble_confidence": ensemble_result.ensemble_confidence,
+                "calibration_score": ensemble_result.calibration_score,
+                "num_ensemble_sources": ensemble_result.num_sources,
+                "winning_model": ensemble_result.winning_model,
+            }
+
+            logger.info(f"Ensemble blended: {ensemble_result.num_sources} sources, "
+                        f"confidence={ensemble_result.ensemble_confidence:.3f}")
+
+        except Exception as e:
+            logger.warning(f"Ensemble blending failed (continuing with MC only): {e}")
+            ensemble_info = {"error": str(e), "active_models": ["monte_carlo_only"]}
+
+    # ── SOTA: Sentiment Override ──────────────────────────────────────────
+    sentiment_info = {}
+    if include_sentiment and sentiment_news:
+        try:
+            from engine.hf_sentiment import adjust_predictions_with_sentiment
+            predictions = adjust_predictions_with_sentiment(predictions, sentiment_news)
+            sentiment_info = {"news_items_processed": len(sentiment_news), "applied": True}
+        except Exception as e:
+            logger.warning(f"Sentiment override failed: {e}")
+            sentiment_info = {"error": str(e), "applied": False}
+
+    # ── SOTA: Strategy Analysis ───────────────────────────────────────────
+    strategy_info = {}
+    if include_strategy:
+        try:
+            circuit = _get_circuit(circuit_id)
+            race_laps = circuit.get("lap_count", 60)
+            sc_prob = circuit.get("safety_car_probability", 0.5)
+
+            from engine.pit_strategy import analyze_race_strategy, strategy_to_dict
+            strategy_result = analyze_race_strategy(
+                circuit_id=circuit_id,
+                race_laps=race_laps,
+                sc_probability=sc_prob,
+            )
+            strategy_info = strategy_to_dict(strategy_result)
+        except Exception as e:
+            logger.warning(f"Strategy analysis failed: {e}")
+            strategy_info = {"error": str(e)}
+
+    result = {
         "circuit_id":       circuit_id,
         "rain_probability": rain_probability,
         "n_simulations":    n_simulations,
         "predictions":      predictions,
+        "ensemble":         ensemble_info,
+        "strategy":         strategy_info,
+        "sentiment":        sentiment_info,
     }
+
+    total_ms = round((time.perf_counter() - t0) * 1000, 1)
+    logger.info(f"prediction.complete circuit={circuit_id} total_ms={total_ms}")
+
+    return result
 

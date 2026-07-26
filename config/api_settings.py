@@ -5,7 +5,6 @@ Manages endpoints, rate limits, API keys, caching, and feature flags for:
   - OpenF1 API (live telemetry, positions, race control)
   - Jolpica-F1 API (historical results, standings, schedules)
   - API-Sports F1 (optional — schedules, standings, results)
-  - FastF1 (existing — already configured in fastf1_integration.py)
 """
 
 from typing import Dict, Any, Optional
@@ -111,7 +110,7 @@ FEATURE_FLAGS = {
     "cache_api_responses":     CACHE_ENABLED,
 }
 
-DATA_SOURCE_PRIORITY = ["openf1", "fastf1", "jolpica", "local"]
+DATA_SOURCE_PRIORITY = ["openf1", "jolpica", "local"]
 
 
 # ── Driver ID Mapping ─────────────────────────────────────────────────────────

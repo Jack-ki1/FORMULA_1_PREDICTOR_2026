@@ -150,7 +150,7 @@ def predict(race: str, rain: float, sims: int, seed: int,
         title="Race Info",
     ))
 
-    console.print("\n[bold green]Predicted Podium:[/]  " + "  →  ".join(
+    console.print("\n[bold green]Predicted Podium:[/]  " + " -> ".join(
         f"{'🥇🥈🥉'[i]} {name}" for i, name in enumerate(result["podium_predictions"])
     ))
 
@@ -199,7 +199,7 @@ def predict(race: str, rain: float, sims: int, seed: int,
             from reports.html_report import generate_report
             with console.status("[cyan]Generating HTML report…[/]"):
                 path = generate_report(race, rain_probability=rain, n_simulations=sims)
-            console.print(f"\n[green]✓ HTML report saved → {path}[/]")
+            console.print(f"\n[green]✓ HTML report saved -> {path}[/]")
         except Exception as e:
             console.print(f"[yellow]Warning: Could not generate HTML report:[/] {e}")
     
@@ -224,7 +224,7 @@ def predict(race: str, rain: float, sims: int, seed: int,
                             'top10_pct': p['top10_pct'],
                             'dnf_pct': p['dnf_pct'],
                         })
-            console.print(f"[green]✓ Predictions exported → {export}[/]")
+            console.print(f"[green]✓ Predictions exported -> {export}[/]")
         except Exception as e:
             console.print(f"[yellow]Warning: Could not export:[/] {e}")
     
@@ -326,7 +326,7 @@ def optimize_weights(trials: int, output: str):
         module = importlib.import_module("scripts.optimize_weights_v3")
         run_weight_optimization = getattr(module, "run_weight_optimization")
         _ = run_weight_optimization(n_trials=trials, save_path=output)
-        console.print(f"\n[green]✓ Optimized weights saved → {output}[/]")
+        console.print(f"\n[green]✓ Optimized weights saved -> {output}[/]")
     except ModuleNotFoundError as e:
         console.print(f"[red]Optimization module not found:[/] {e}"); sys.exit(1)
     except Exception as e:
@@ -338,7 +338,7 @@ def optimize_weights(trials: int, output: str):
 @cli.command("migrate-db")
 def migrate_db():
     """Migrate data from static Python modules to SQLite database (NEW v3.0)."""
-    console.print("\n[bold cyan]Database Migration:[/] Static modules → SQLite\n")
+    console.print("\n[bold cyan]Database Migration:[/] Static modules -> SQLite\n")
     
     try:
         from database.models import migrate_from_static
@@ -347,22 +347,6 @@ def migrate_db():
     except Exception as e:
         console.print(f"[red]Migration failed:[/] {e}"); sys.exit(1)
 
-
-# ── sync-fastf1 (NEW v3.0) ─────────────────────────────────────────────────────
-
-@cli.command("sync-fastf1")
-@click.option("--seasons", "-s", multiple=True, type=int, default=[2024, 2025])
-def sync_fastf1(seasons):
-    """Sync historical data from Fast-F1 library (NEW v3.0)."""
-    console.print(f"\n[bold cyan]Fast-F1 Sync:[/] Importing data for seasons {list(seasons)}\n")
-    
-    try:
-        from data.fastf1_integration import sync_all_historical_data
-        sync_all_historical_data(list(seasons))
-    except ImportError:
-        console.print("[red]fastf1 library not installed.[/] Run: pip install fastf1"); sys.exit(1)
-    except Exception as e:
-        console.print(f"[red]Sync failed:[/] {e}"); sys.exit(1)
 
 
 # ── evaluate-race (NEW v3.0) ───────────────────────────────────────────────────
@@ -503,7 +487,7 @@ def championship_sim(remaining: int, sims: int):
 @click.option("--port", "-p", type=int, default=5000, help="Dashboard port")
 def dashboard(port: int):
     """Start the interactive web dashboard (NEW v3.0)."""
-    console.print(f"\n[bold cyan]F1 Predictor Dashboard v3.0[/] → http://127.0.0.1:{port}\n")
+    console.print(f"\n[bold cyan]F1 Predictor Dashboard v3.0[/] -> http://127.0.0.1:{port}\n")
     
     try:
         import subprocess

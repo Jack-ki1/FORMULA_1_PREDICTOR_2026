@@ -1,0 +1,26 @@
+{
+  "monte_carlo": {
+    "weight": 0.3333333333333333,
+    "brier_score": Infinity,
+    "n_evaluations": 0,
+    "enabled": true
+  },
+  "xgboost": {
+    "weight": 0.25,
+    "brier_score": Infinity,
+    "n_evaluations": 0,
+    "enabled": false
+  },
+  "plackett_luce": {
+    "weight": 0.3333333333333333,
+    "brier_score": Infinity,
+    "n_evaluations": 0,
+    "enabled": true
+  },
+  "composite": {
+    "weight": 0.3333333333333333,
+    "brier_score": Infinity,
+    "n_evaluations": 0,
+    "enabled": true
+  }
+}

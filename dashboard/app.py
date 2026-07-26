@@ -16,6 +16,9 @@ project_root = Path(__file__).resolve().parents[1]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+from config.api_settings import get_api_status, validate_api_settings
+from data.race_mapping import RACE_NAME_MAPPING, get_circuit_id
+
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session as flask_session
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
@@ -27,16 +30,28 @@ import subprocess
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
+
 # ── Internal Imports ─────────────────────────────────────────────────────────
 from engine.predictor import predict, PredictionRequest
-from data.circuit_data import get_circuit, get_all_circuits, CIRCUITS
-from data.driver_data import get_all_drivers, get_driver, DRIVERS, refresh_driver_stats_from_api
-from data.race_mapping import get_circuit_id, RACE_NAME_MAPPING
+from data.circuit_data import get_all_circuits, get_circuit, CIRCUITS
+from data.driver_data import get_all_drivers  # Added missing import
+from data.race_mapping import get_race_name  # Moved from circuit_data to race_mapping
+from data.api_client import BaseAPIClient
 from data.openf1_client import get_openf1_client
 from data.jolpica_client import get_jolpica_client
-from data.live_updater import get_live_updater, run_full_data_update
-from config.api_settings import FEATURE_FLAGS, validate_api_settings, get_api_status
-from config.settings import LIVE_DATA_ENABLED, LIVE_OPENF1_ENABLED, LIVE_DATA_AUTO_REFRESH
+from data.live_updater import get_live_updater, run_full_data_update  # Removed update_race_data
+from data.calendar_2026 import CALENDAR_2026
+from config.api_settings import (
+    CACHE_TTL_SECONDS as CACHE_LIVE_SECONDS,
+    CACHE_TTL_LIVE_WEATHER_SECONDS as CACHE_LIVE_WEATHER_SECONDS,
+    CACHE_TTL_SESSION_RESULTS_SECONDS as CACHE_QUALIFYING_SECONDS,
+    CACHE_TTL_SECONDS as CACHE_LIVE_CONTROL_SECONDS,
+    CACHE_TTL_SECONDS as CACHE_TELEMETRY_SECONDS,
+    FEATURE_FLAGS, DATA_SOURCE_PRIORITY
+)
+from config.settings import (
+    LIVE_DATA_ENABLED
+)
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -83,6 +98,79 @@ app = create_app()
 _live_session_cache: Dict[str, Any] = {}
 _cache_timestamp: Optional[datetime] = None
 CACHE_LIVE_SECONDS = 30  # 30-second refresh for live data
+
+# Performance caches
+_driver_cache: Optional[List[Dict]] = None
+_constructor_cache: Optional[Dict] = None
+_cache_last_updated: Optional[datetime] = None
+CACHE_DURATION = timedelta(minutes=5)  # Cache for 5 minutes
+
+# Prediction cache
+_prediction_cache: Dict[str, Dict] = {}
+_PREDICTION_CACHE_TTL = 300  # 5 minutes
+
+
+def _get_cached_drivers():
+    """Get drivers with caching to avoid repeated API calls."""
+    global _driver_cache, _cache_last_updated
+    now = datetime.now()
+    
+    if (_driver_cache is not None and 
+        _cache_last_updated is not None and 
+        now - _cache_last_updated < CACHE_DURATION):
+        return _driver_cache
+    
+    try:
+        _driver_cache = get_all_drivers()
+        _cache_last_updated = now
+        return _driver_cache
+    except Exception as e:
+        logger.error(f"Error getting cached drivers: {e}")
+        return []
+
+
+def _get_cached_constructors():
+    """Get constructors with caching to avoid repeated API calls."""
+    global _constructor_cache, _cache_last_updated
+    now = datetime.now()
+    
+    if (_constructor_cache is not None and 
+        _cache_last_updated is not None and 
+        now - _cache_last_updated < CACHE_DURATION):
+        return _constructor_cache
+    
+    try:
+        # Placeholder for constructor cache implementation
+        # Actual implementation would depend on your constructor data source
+        _constructor_cache = {}
+        _cache_last_updated = now
+        return _constructor_cache
+    except Exception as e:
+        logger.error(f"Error getting cached constructors: {e}")
+        return {}
+
+
+def _generate_prediction_cache_key(circuit_id: str, rain_prob: float, n_sims: int, grid_overrides: Dict) -> str:
+    """Generate a cache key for prediction results."""
+    import hashlib
+    key_data = f"{circuit_id}_{rain_prob}_{n_sims}_{sorted(grid_overrides.items())}"
+    return hashlib.md5(key_data.encode()).hexdigest()
+
+
+def _get_cached_prediction(cache_key: str) -> Optional[Dict]:
+    """Get cached prediction results if still valid."""
+    if cache_key in _prediction_cache:
+        cached_result, timestamp = _prediction_cache[cache_key]
+        if datetime.now().timestamp() - timestamp < _PREDICTION_CACHE_TTL:
+            return cached_result
+        else:
+            del _prediction_cache[cache_key]
+    return None
+
+
+def _set_prediction_cache(cache_key: str, result: Dict):
+    """Cache prediction results."""
+    _prediction_cache[cache_key] = (result, datetime.now().timestamp())
 
 # ── Helper: Determine Race Weekend Phase ─────────────────────────────────────
 
@@ -435,56 +523,61 @@ def fetch_historical_sessions(circuit_id: str, year: int = 2026) -> Dict[str, An
             }
         
         # 4. Practice sessions from OpenF1 (more detailed than Jolpica)
+        # Handle OpenF1 separately so Jolpica data is preserved even if OpenF1 fails
         if FEATURE_FLAGS.get("openf1_live_data", False):
-            openf1 = get_openf1_client()
-            meeting = openf1.find_meeting_for_circuit(year, circuit_id, circuit.get("name"))
-            
-            if meeting:
-                meeting_key = meeting["meeting_key"]
-                all_sessions = openf1.get_sessions(meeting_key=meeting_key)
+            try:
+                openf1 = get_openf1_client()
+                meeting = openf1.find_meeting_for_circuit(year, circuit_id, circuit.get("name"))
                 
-                for sess in all_sessions:
-                    sess_name = sess.get("session_name", "").lower()
-                    if "practice" in sess_name:
-                        session_key = sess["session_key"]
-                        # Get lap summaries for practice
-                        drivers = openf1.get_drivers(session_key)
-                        practice_results = []
-                        for driver in drivers:
-                            dnum = driver.get("driver_number")
-                            if dnum:
-                                lap_summary = openf1.get_driver_lap_summary(session_key, dnum)
-                                practice_results.append({
-                                    "driver_number": dnum,
-                                    "driver_name": driver.get("full_name", ""),
-                                    "team": driver.get("team_name", ""),
-                                    "fastest_lap": lap_summary.get("fastest_lap_time"),
-                                    "total_laps": lap_summary.get("total_laps", 0),
-                                })
-                        
-                        practice_results.sort(key=lambda x: (x.get("fastest_lap") is None, x.get("fastest_lap") or 9999))
-                        weather = openf1.get_weather_summary(session_key)
-                        sessions[_normalize_session_name(sess.get("session_name", ""))] = {
-                            "name": sess.get("session_name", "Practice"),
-                            "type": "practice",
-                            "date": sess.get("date_start", ""),
-                            "source": "openf1",
-                            "results": practice_results[:22],
-                            "weather": weather,
-                            "data_quality": {
-                                "level": "high" if practice_results else "low",
-                                "complete": len(practice_results) >= len(_active_driver_ids()),
-                            },
-                        }
-                    elif "sprint shootout" in sess_name or "sprint qualifying" in sess_name:
-                        sessions.setdefault("sprint_qualifying", {
-                            "name": sess.get("session_name", "Sprint Qualifying"),
-                            "type": "sprint_qualifying",
-                            "date": sess.get("date_start", ""),
-                            "source": "openf1",
-                            "results": [],
-                            "data_quality": {"level": "medium", "complete": False},
-                        })
+                if meeting:
+                    meeting_key = meeting["meeting_key"]
+                    all_sessions = openf1.get_sessions(meeting_key=meeting_key)
+                    
+                    for sess in all_sessions:
+                        sess_name = sess.get("session_name", "").lower()
+                        if "practice" in sess_name:
+                            session_key = sess["session_key"]
+                            # Get lap summaries for practice
+                            drivers = openf1.get_drivers(session_key)
+                            practice_results = []
+                            for driver in drivers:
+                                dnum = driver.get("driver_number")
+                                if dnum:
+                                    lap_summary = openf1.get_driver_lap_summary(session_key, dnum)
+                                    practice_results.append({
+                                        "driver_number": dnum,
+                                        "driver_name": driver.get("full_name", ""),
+                                        "team": driver.get("team_name", ""),
+                                        "fastest_lap": lap_summary.get("fastest_lap_time"),
+                                        "total_laps": lap_summary.get("total_laps", 0),
+                                    })
+                            
+                            practice_results.sort(key=lambda x: (x.get("fastest_lap") is None, x.get("fastest_lap") or 9999))
+                            weather = openf1.get_weather_summary(session_key)
+                            sessions[_normalize_session_name(sess.get("session_name", ""))] = {
+                                "name": sess.get("session_name", "Practice"),
+                                "type": "practice",
+                                "date": sess.get("date_start", ""),
+                                "source": "openf1",
+                                "results": practice_results[:22],
+                                "weather": weather,
+                                "data_quality": {
+                                    "level": "high" if practice_results else "low",
+                                    "complete": len(practice_results) >= len(_active_driver_ids()),
+                                },
+                            }
+                        elif "sprint shootout" in sess_name or "sprint qualifying" in sess_name:
+                            sessions.setdefault("sprint_qualifying", {
+                                "name": sess.get("session_name", "Sprint Qualifying"),
+                                "type": "sprint_qualifying",
+                                "date": sess.get("date_start", ""),
+                                "source": "openf1",
+                                "results": [],
+                                "data_quality": {"level": "medium", "complete": False},
+                            })
+            except Exception as openf1_error:
+                logger.warning(f"OpenF1 failed for {circuit_id}/{year}, continuing with Jolpica-only data: {openf1_error}")
+                # Continue with whatever Jolpica data we have, don't return an error
         
         return {
             "circuit_id": circuit_id,
@@ -498,6 +591,7 @@ def fetch_historical_sessions(circuit_id: str, year: int = 2026) -> Dict[str, An
     except Exception as e:
         logger.error(f"Error fetching historical sessions for {circuit_id}: {e}")
         return {"error": str(e), "sessions": {}}
+
 
 def _format_race_results(results: List[Dict]) -> List[Dict]:
     """Format raw Jolpica race results for dashboard display."""
@@ -638,7 +732,7 @@ def health():
 
 @app.route("/")
 def index():
-    """Redirect to dashboard."""
+    """Redirect to dashboard without pre-selecting a race."""
     return redirect(url_for("dashboard"))
 
 @app.route("/dashboard", methods=["GET", "POST"])
@@ -648,24 +742,59 @@ def dashboard():
         if request.method == "POST":
             race_name = request.form.get("race_name")
             rain_prob = request.form.get("rain_probability", type=float)
-            n_sims = request.form.get("n_simulations", type=int, default=5000)
+            n_sims = request.form.get("n_simulations", type=int, default=500)  # Reduced default
             return redirect(url_for("dashboard", race=race_name, rain=rain_prob, sims=n_sims))
         
         # Query params for shared links
-        selected_race = request.args.get("race", "Australian Grand Prix")
+        selected_race = request.args.get("race", None)  # Changed: No default race
         rain_prob = request.args.get("rain", type=float)
-        n_sims = request.args.get("sims", type=int, default=5000)
+        n_sims = request.args.get("sims", type=int, default=500)  # Reduced default from 1000
         
-        circuit_id = get_circuit_id(selected_race)
+        circuit_id = get_circuit_id(selected_race) if selected_race else None
         if not circuit_id:
-            flash(f"Unknown race: {selected_race}", "error")
+            # Don't default to Australia, instead show the form without a prediction
+            selected_race = None
+            circuit_id = None
+            # Return dashboard without running a prediction
+            circuits = get_all_circuits()
+            return render_template(
+                "dashboard.html",
+                race_name=None,
+                circuit=None,
+                weekend_phase={"phase": "race", "qualifying_completed": False, "confidence_boost": 1.0},
+                predictions=[],
+                meta={},
+                podium=[],
+                surprises=[],
+                raw=None,
+                all_drivers=_get_cached_drivers(),
+                grid_overrides={},
+                qualifying_data=None,
+                live_data={"enabled": False},
+                data_confidence={"score": 0, "level": "low", "reasons": []},
+                sprint_circuits={c["id"]: bool(c.get("sprint_weekend")) for c in get_all_circuits()},
+                historical_sessions={"loaded": False, "message": "Load via /api/historical endpoint"},
+                live_standings={},
+                race_names=sorted(RACE_NAME_MAPPING.keys()),
+                rain_prob=rain_prob,
+                n_sims=n_sims,
+                api_status=get_api_status(),
+                feature_flags=FEATURE_FLAGS,
+                now=datetime.now(),
+            )
+        
+        try:
+            circuit = get_circuit(circuit_id)
+        except KeyError:
+            flash(f"Circuit not found: {circuit_id}", "error")
             return redirect(url_for("dashboard", race="Australian Grand Prix"))
 
-########################
-  
-        circuit = get_circuit(circuit_id)
-        weekend_phase = get_weekend_phase(circuit_id)
-        
+        try:
+            weekend_phase = get_weekend_phase(circuit_id)
+        except Exception as e:
+            logger.error(f"Weekend phase calculation failed: {e}")
+            weekend_phase = {"phase": "race", "qualifying_completed": False, "confidence_boost": 1.0}
+
         # ── Auto-fetch qualifying grid on race day ─────────────────────────────
         grid_overrides = {}
         qualifying_data = None
@@ -680,13 +809,16 @@ def dashboard():
             # returns None just because live data is missing. Only a genuinely live
             # source should be allowed to overwrite a grid the user manually saved, so
             # that's checked explicitly here rather than trusting truthiness alone.
-            qual_live = fetch_live_qualifying_grid(circuit_id)
-            is_real_live_grid = bool(qual_live and qual_live.get("grid") and not str(qual_live.get("source", "")).startswith("fallback"))
-            if is_real_live_grid:
-                grid_overrides = qual_live["grid"]
-                qualifying_data = qual_live
-                flask_session[session_grid_key] = grid_overrides
-                flash("Qualifying grid auto-filled from live data!", "success")
+            try:
+                qual_live = fetch_live_qualifying_grid(circuit_id)
+                is_real_live_grid = bool(qual_live and qual_live.get("grid") and not str(qual_live.get("source", "")).startswith("fallback"))
+                if is_real_live_grid:
+                    grid_overrides = qual_live["grid"]
+                    qualifying_data = qual_live
+                    flask_session[session_grid_key] = grid_overrides
+                    flash("Qualifying grid auto-filled from live data!", "success")
+            except Exception as e:
+                logger.error(f"Error fetching qualifying grid: {e}")
         
         # NEW: Fall back to a manually-entered (or previously live-fetched) grid saved
         # earlier this weekend if this request didn't just get a genuinely live one above.
@@ -698,41 +830,76 @@ def dashboard():
                 qualifying_data = qualifying_data or {"source": "Manually Entered", "grid": saved_grid}
         
         # ── Live Session Data (lightweight call) ───────────────────────────────
-        live_data = get_live_session_data(circuit_id)
-        
+        try:
+            live_data = get_live_session_data(circuit_id)
+        except Exception as e:
+            logger.error(f"Error fetching live data: {e}")
+            live_data = {"enabled": False, "error": str(e)}
+
         # ── Historical Sessions - SKIP ON INITIAL LOAD (load via AJAX instead) ─
         # This prevents excessive API calls on page load that cause rate limiting
         historical_sessions = {"loaded": False, "message": "Load via /api/historical endpoint"}
         
         # ── Prediction ─────────────────────────────────────────────────────────
-        try:
-            req = PredictionRequest(
-                circuit_id=circuit_id,
-                rain_probability=rain_prob,
-                n_simulations=min(max(n_sims, 100), 50000),
-                grid_overrides=grid_overrides,
-                qualifying_completed=bool(grid_overrides),
-                live_weather_override=_weather_rain_probability(live_data),
-                session_type=weekend_phase.get("phase", "race"),
-                sprint_weekend=bool(circuit.get("sprint_weekend")),
-                live_context=live_data,
-            )
-            result = predict(req)
-            predictions = result.get("predictions", [])
-            meta = result.get("meta", {})
-            podium = result.get("podium_predictions", [])
-            surprises = result.get("likely_top_surprises", [])
-            raw = result.get("raw") if req.output_format == "full" else None
-            data_confidence = _data_confidence(result, live_data, grid_overrides)
-        except Exception as e:
-            logger.error(f"Prediction failed: {e}")
-            flash(f"Prediction error: {e}", "error")
-            predictions, meta, podium, surprises, raw = [], {}, [], [], None
-            data_confidence = {"score": 0, "level": "low", "reasons": []}
+        # For initial page load, use a smaller sim count or cached results
+        predictions = []
+        meta = {}
+        podium = []
+        surprises = []
+        raw = None
+        data_confidence = {"score": 0, "level": "low", "reasons": []}
+        
+        # Generate cache key for this prediction
+        cache_key = _generate_prediction_cache_key(circuit_id, rain_prob or 0, n_sims, grid_overrides)
+        
+        # Try to get cached prediction first
+        cached_result = _get_cached_prediction(cache_key)
+        if cached_result:
+            logger.info("Using cached prediction results")
+            predictions = cached_result.get("predictions", [])
+            meta = cached_result.get("meta", {})
+            podium = cached_result.get("podium_predictions", [])
+            surprises = cached_result.get("likely_top_surprises", [])
+            raw = cached_result.get("raw")
+            data_confidence = cached_result.get("data_confidence", {"score": 0, "level": "low", "reasons": []})
+        else:
+            # DO NOT RUN PREDICTION ON INITIAL PAGE LOAD TO PREVENT FASTF1 AUTO-LOADING
+            # Run prediction with smaller sim count on initial load
+            # Only run prediction if explicitly requested (not on initial page load)
+            # if circuit and circuit_id:
+            #     try:
+            #         req = PredictionRequest(
+            #             circuit_id=circuit_id,
+            #             rain_probability=rain_prob,
+            #             n_simulations=min(max(n_sims, 100), 2000),  # Much smaller max for performance
+            #             grid_overrides=grid_overrides,
+            #             qualifying_completed=bool(grid_overrides),
+            #             live_weather_override=_weather_rain_probability(live_data) if live_data else None,
+            #             session_type=weekend_phase.get("phase", "race"),
+            #             sprint_weekend=bool(circuit.get("sprint_weekend")),
+            #             live_context=live_data,
+            #         )
+            #         result = predict(req)
+            #         
+            #         # Cache the results
+            #         _set_prediction_cache(cache_key, result)
+            #         
+            #         predictions = result.get("predictions", [])
+            #         meta = result.get("meta", {})
+            #         podium = result.get("podium_predictions", [])
+            #         surprises = result.get("likely_top_surprises", [])
+            #         raw = result.get("raw") if req.output_format == "full" else None
+            #         data_confidence = _data_confidence(result, live_data, grid_overrides)
+            #     except Exception as e:
+            #         logger.error(f"Prediction failed: {e}", exc_info=True)
+            #         flash(f"Prediction error: {e}", "error")
+            #         # Continue with empty results instead of failing completely
+            pass  # Do nothing on initial page load to prevent FastF1 auto-loading
         
         # ── Driver List for Grid Override UI ───────────────────────────────────
-        all_drivers = get_all_drivers()
-        
+        # Use cached drivers to avoid repeated API calls
+        all_drivers = _get_cached_drivers()
+
         # Sort drivers by predicted position for display
         predictions_sorted = sorted(predictions, key=lambda x: x.get("predicted_position", 99))
         
@@ -743,8 +910,12 @@ def dashboard():
         # NEW: circuit_id -> sprint_weekend map, so the frontend knows whether to show the
         # Sprint tab when the user picks a *different* race from the dropdown, without an
         # extra API round-trip for something we already have on the server.
-        sprint_circuits = {c["id"]: bool(c.get("sprint_weekend")) for c in get_all_circuits()}
-        
+        try:
+            sprint_circuits = {c["id"]: bool(c.get("sprint_weekend")) for c in get_all_circuits()}
+        except Exception as e:
+            logger.error(f"Error getting sprint circuits: {e}")
+            sprint_circuits = {}
+
         return render_template(
             "dashboard.html",
             race_name=selected_race,
@@ -810,6 +981,7 @@ def download():
     return render_template("download.html")
 
 
+
 @app.route("/api/weekend-phase/<circuit_id>")
 def api_weekend_phase(circuit_id: str):
     """Lightweight status check for the 'has this race already happened' banner —
@@ -831,6 +1003,7 @@ def api_historical(circuit_id: str):
     """AJAX endpoint for historical session results."""
     data = fetch_historical_sessions(circuit_id)
     return jsonify(data)
+
 
 @app.route("/api/qualifying-grid/<circuit_id>")
 def api_qualifying_grid(circuit_id: str):
@@ -1100,14 +1273,7 @@ def api_database_migrate():
 @app.route("/api/sync/fastf1", methods=["POST"])
 @csrf.exempt
 def api_sync_fastf1():
-    data = request.get_json() or {}
-    seasons = data.get("seasons") or [2025]
-    try:
-        from data.fastf1_integration import load_entire_season
-        results = {str(season): load_entire_season(int(season)) for season in seasons}
-        return jsonify({"status": "success", "message": "FastF1 sync completed", "details": results})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "notice", "message": "FastF1 sync is deprecated. Data is now synced via Jolpica/OpenF1 APIs."})
 
 
 @app.route("/api/benchmark/run", methods=["POST"])

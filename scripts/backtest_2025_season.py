@@ -185,7 +185,7 @@ def run_backtest(seasons: List[int] = [2025], n_simulations: int = 10000):
         print("\n[ERROR] No historical data available for backtesting!")
         print("\nTo enable backtesting:")
         print("  1. Add completed race results to data/season_2026.py")
-        print("  2. Or sync FastF1 data: python main.py sync-fastf1 --seasons 2024 2025")
+        print("  2. Or fetch live data via Jolpica API")
         return
     
     print(f"\nTotal races to evaluate: {len(historical_races)}")

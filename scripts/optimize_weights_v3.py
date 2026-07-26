@@ -24,9 +24,13 @@ if sys.platform == 'win32':
 
 import os
 import json
+import logging
 import argparse
 from typing import Dict, List, Tuple
 import numpy as np
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -153,7 +157,7 @@ def run_weight_optimization(n_trials: int = 100, save_path: str = "weights_optim
         print("\nNo historical data available for optimization.")
         print("To enable real optimization:")
         print("  1. Add completed race results to data/season_2026.py")
-        print("  2. Or implement FastF1 sync: python main.py sync-fastf1 --seasons 2024 2025")
+        print("  2. Or fetch live data via Jolpica API")
         print("\nReturning default weights...")
         from config.settings import FEATURE_WEIGHTS
         return {"weights": FEATURE_WEIGHTS, "brier_score": None, "note": "No historical data"}

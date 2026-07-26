@@ -14,12 +14,10 @@ __pycache__
 
 # Database files (will be regenerated)
 f1_predictor.db
-fastf1_cache.sqlite
 
 # Cache directories
 output/
 cache/
-.fastf1_cache/
 
 # Generated reports and data
 *.json

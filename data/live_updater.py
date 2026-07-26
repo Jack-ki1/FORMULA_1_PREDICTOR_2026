@@ -5,7 +5,7 @@ Bridges external APIs (Jolpica, OpenF1) with the project's internal data layer:
   - Auto-updates driver standings and recent form from Jolpica
   - Auto-updates constructor strength ratings from live points
   - Syncs calendar race statuses from Jolpica schedule
-  - Enriches FastF1 data with OpenF1 live supplements
+  - Enriches race data with OpenF1 live supplements
   - Computes updated DNF rates from actual results
   - Generates data freshness reports
 

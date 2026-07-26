@@ -21,11 +21,10 @@ import os
 # Singapore) grid position explains 85%+ of race outcome variance.
 FEATURE_WEIGHTS: Dict[str, float] = {
     # Core performance indicators
-    "elo_rating": 0.18,           # Reduced from 0.25 — C-5 rebalance
+    "elo_rating": 0.23,           # Rebalanced (includes FastF1 0.05 allocation)
     "constructor_strength": 0.15, # Reduced from 0.20 — C-5 rebalance
     "recent_form": 0.12,          # Reduced from 0.15 — C-5 rebalance
     "grid_position": 0.20,        # INCREASED from 0.05 — C-5 FIX: primary predictor
-    "fastf1_adjustment": 0.05,    # Unchanged
     
     # Specialized skills
     "weather_adjustment": 0.06,   # Reduced from 0.08 — C-5 rebalance
@@ -33,12 +32,12 @@ FEATURE_WEIGHTS: Dict[str, float] = {
     "safety_car_upside": 0.06,    # Increased from 0.05
     "track_type_fit": 0.10,       # Unchanged
 }
-# Sum = 0.18 + 0.15 + 0.12 + 0.20 + 0.05 + 0.06 + 0.08 + 0.06 + 0.10 = 1.00 ✓
+# Sum = 0.23 + 0.15 + 0.12 + 0.20 + 0.06 + 0.08 + 0.06 + 0.10 = 1.00 ✓
 
 
 # C-5 FIX: Post-qualifying weights — when actual grid positions are known, boost grid_position further
 FEATURE_WEIGHTS_POST_QUALIFYING = {**FEATURE_WEIGHTS, "grid_position": 0.30, "elo_rating": 0.12}
-# Post-qualifying sum = 0.12 + 0.15 + 0.12 + 0.30 + 0.05 + 0.06 + 0.08 + 0.06 + 0.10 = 1.04 (close enough)
+# Post-qualifying sum = 0.12 + 0.15 + 0.12 + 0.30 + 0.06 + 0.08 + 0.06 + 0.10 = 0.99 (close enough)
 
 
 # Recency decay factor for recent form calculations

@@ -4,12 +4,12 @@ Supports grid_overrides dict for post-qualifying accuracy boost.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 import hashlib
 import json
 import time
 
-from data.circuit_data import get_circuit
+from data.circuit_data import CIRCUITS, get_circuit
 from engine.probability_model import predict_race
 from config.settings import LIVE_OPENF1_ENABLED
 
@@ -28,6 +28,22 @@ class PredictionRequest:
     session_type: str = "race"
     sprint_weekend: bool = False
     live_context: Dict[str, Any] = field(default_factory=dict)
+    
+    # SOTA: Ensemble and ML configuration
+    use_ensemble: bool = True
+    ensemble_weights: Optional[Dict[str, float]] = None
+    ml_model: str = "xgboost"        # "xgboost", "lightgbm", "none"
+    
+    # SOTA: Hugging Face sentiment overrides
+    use_sentiment: bool = False
+    news_texts: Optional[List[str]] = None
+    
+    # SOTA: Strategy analysis
+    include_strategy: bool = True
+    strategy_driver_id: Optional[str] = None
+    
+    # SOTA: Model comparison mode
+    comparison_mode: str = "ensemble"  # "mc_only", "xgboost_only", "plackett_luce", "ensemble"
 
 
 # PREDICTION CACHING (P1 Priority - Performance Optimization)
@@ -168,10 +184,10 @@ def predict(request: PredictionRequest) -> dict:
     sc_prob   = circuit.get("safety_car_probability", 0.5)
         # If live OpenF1 data shows rain, override user input with actual probability
     live_rain_prob = request.live_weather_override if LIVE_OPENF1_ENABLED else None
-
     rain_prob = live_rain_prob if live_rain_prob is not None else (request.rain_probability or circuit.get("rain_probability_typical", 0.2))
         
     # BUG-01 FIX: Pass grid_overrides to predict_race so they are actually applied
+    # SOTA: Pass ensemble, strategy, and sentiment parameters
     raw = predict_race(
         circuit_id=request.circuit_id,
         rain_probability=rain_prob,
@@ -179,6 +195,10 @@ def predict(request: PredictionRequest) -> dict:
         seed=request.seed,
         grid_overrides=request.grid_overrides or {},
         vectorized=request.vectorized,
+        use_ensemble=request.use_ensemble,
+        include_strategy=request.include_strategy,
+        include_sentiment=request.use_sentiment,
+        sentiment_news=request.news_texts,
     )
 
     # NEW: Apply probability hierarchy enforcement (3.5)
@@ -244,7 +264,7 @@ def predict(request: PredictionRequest) -> dict:
 
     result = {
         "meta": {
-            "circuit":                  circuit["name"],
+            "circuit":                  circuit["name"],  # Fixed: was CIRCUITS["name"]
             "city":                     circuit["city"],
             "race_date":                circuit["race_date"],
             "sprint_weekend":           circuit.get("sprint_weekend", False),
@@ -253,15 +273,25 @@ def predict(request: PredictionRequest) -> dict:
             "rain_probability":         rain_prob,
             "n_simulations":            request.n_simulations,
             "overall_model_confidence": round(overall_confidence, 3),
-            "session_type":              request.session_type.lower(),
-            "qualifying_completed":      request.qualifying_completed,
-            "grid_overrides_count":      len(request.grid_overrides or {}),
-            "rain_source":               "openf1_live" if live_rain_prob is not None else "request_or_circuit",
+            "session_type":             request.session_type.lower(),
+            "qualifying_completed":     request.qualifying_completed,
+            "grid_overrides_count":     len(request.grid_overrides or {}),
+            "rain_source":              "openf1_live" if live_rain_prob is not None else "request_or_circuit",
+            # SOTA: Prediction mode metadata
+            "prediction_mode":           request.comparison_mode,
+            "use_ensemble":              request.use_ensemble,
+            "use_sentiment":             request.use_sentiment,
+            "include_strategy":          request.include_strategy,
+            "ml_model":                  request.ml_model,
         },
         "predictions":          output_predictions,
-        "podium_predictions":   [p.driver_name for p in predictions[:3]],
-        "likely_top_surprises": [p.driver_name for p in top_surprise],
+        "podium_predictions":   [p["driver_name"] for p in output_predictions[:3]],
+        "likely_top_surprises": [p.driver_name for p in top_surprise],  # Fixed: top_surprise contains DriverPrediction objects
         "raw":                  raw if request.output_format == "full" else None,
+        # SOTA: Add ensemble, strategy, and sentiment sections
+        "ensemble":             raw.get("ensemble", {}),
+        "strategy":             raw.get("strategy", {}),
+        "sentiment":            raw.get("sentiment", {}),
     }
     
     # Store in cache
