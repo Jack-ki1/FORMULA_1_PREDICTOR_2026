@@ -20,7 +20,25 @@ async function downloadReport(fmt) {
             showToast('JSON export downloaded');
         } catch(e) { hideLoading(); showToast('Error: '+e.message); }
     } else if (fmt === 'csv') {
-        showToast('CSV export — use HTML report and copy the table.');
+        showLoading('Building CSV export…');
+        try {
+            const r = await fetch('/api/predict', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({race: Object.keys(CIRCUIT_LOOKUP).find(k=>CIRCUIT_LOOKUP[k]===race)||race, session_type:'RACE', simulations:10000})
+            });
+            const d = await r.json();
+            hideLoading();
+            const predictions = d.results?.predictions || d.prediction?.predictions || [];
+            let csv = "Position,Driver,Team,Win_Pct,Top3_Pct,Top10_Pct,DNF_Pct,Expected_Points,Confidence\n";
+            predictions.forEach((p, idx) => {
+                const pos = p.predicted_position || (idx + 1);
+                const name = `"${p.driver || p.driver_name || ''}"`;
+                const team = `"${p.team || ''}"`;
+                csv += `${pos},${name},${team},${p.win_pct || 0},${p.top3_pct || 0},${p.top10_pct || 0},${p.dnf_pct || 0},${p.expected_points || 0},${p.confidence || ''}\n`;
+            });
+            triggerDownload(new Blob([csv], {type:'text/csv;charset=utf-8;'}), race+'_prediction.csv');
+            showToast('CSV export downloaded');
+        } catch(e) { hideLoading(); showToast('Error: '+e.message); }
     }
 }
 function triggerDownload(blob, filename) {
