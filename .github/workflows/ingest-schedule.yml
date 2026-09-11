@@ -1,0 +1,58 @@
+name: Ingest schedule
+
+# Vercel's Hobby plan caps cron jobs at 2/day — unusable for anything
+# during a live race weekend (PLAN.md §8). GitHub Actions' free scheduled
+# workflows have no such cap, so this is what actually drives the
+# precompute-predictions/sync-data/score-picks pipeline.
+#
+# Tune the schedule for race weekends manually (denser polling Fri-Sun)
+# or trigger ad hoc via the "Run workflow" button (workflow_dispatch).
+on:
+  schedule:
+    - cron: "0 * * * *"   # hourly by default
+  workflow_dispatch: {}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: apps/api/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r apps/api/requirements.txt
+
+      # FastF1's disk cache is what apps/data/fastf1_integration.py uses
+      # to avoid re-downloading session data every run — persisting it
+      # across workflow runs (not just within one run) is the point of
+      # doing ingestion here rather than in a stateless Vercel function
+      # (PLAN.md §8).
+      - name: Restore FastF1 cache
+        uses: actions/cache@v4
+        with:
+          path: apps/api/cache/fastf1_cache
+          key: fastf1-cache-${{ github.run_id }}
+          restore-keys: fastf1-cache-
+
+      - name: Apply database migrations
+        working-directory: apps/api
+        run: alembic upgrade head
+
+      - name: Sync live data
+        working-directory: apps/ingest
+        run: python sync_data.py
+
+      - name: Precompute predictions for upcoming races
+        working-directory: apps/ingest
+        run: python run_predictions.py
+
+      - name: Score fantasy league picks for completed races
+        working-directory: apps/ingest
+        run: python evaluate_accuracy.py

@@ -1,126 +1,29 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-
-# Distribution / packaging
-.Python
-*.egg-info/
-dist/
-build/
-
-# Database files
 *.db
 *.sqlite
-*.sqlite3
-!data/*.db  # Keep database templates if any
+.pytest_cache/
+apps/api/cache/fastf1_cache/
+apps/api/cache/api_responses/*.json
 
-# Output files
-output/
-reports/*.html
-*.log
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
 
-# OS generated files
-Thumbs.db
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Desktop.ini
-
-# Environment variables
+# Env files (examples stay tracked)
 .env
 .env.local
-.env.production
+.env.*.local
 
-# Logs
-*.log
-logs/
-*.log.*
+# Editor/OS
+.DS_Store
+.vscode/*
+!.vscode/settings.json
 
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.bak
-*.cache
-
-# Node modules (if using any web tools)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Hugging Face
-.hf_cache/
-.huggingface/
-
-# GitLab CI
-.gitlab-ci.yml
-
-# GitHub Actions
-.github/
-
-# Documentation
-docs/_build/
-
-# Backup files
-*.backup
-*.bak
-*.old
-
-# Data files that shouldn't be tracked (optional)
-# data/cache/
-# data/temp/
-
-# Secrets and credentials
-*.key
-*.pem
-secrets/
-credentials/
+# Generated (regenerate via packages/api-types)
+# (schema.d.ts is tracked deliberately so `npm install` alone works
+# without needing the API running — see packages/api-types/README.md)

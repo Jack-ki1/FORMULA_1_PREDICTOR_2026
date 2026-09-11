@@ -1,0 +1,10 @@
+tests/
+alembic/
+alembic.ini
+*.db
+__pycache__/
+*.pyc
+.pytest_cache/
+cache/fastf1_cache/
+cache/api_responses/
+.env
