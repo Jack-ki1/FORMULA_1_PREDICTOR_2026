@@ -1,0 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+:root {
+  --red: #E10600; --red-dark: #B80500; --red-tint: #FDEDEC; --bg: #F4F5F7; --surface: #FFFFFF; --surface-alt: #EEF0F3; --border: #E3E5EA; --text: #15151E; --sub: #6B7280; --muted: #9AA0AC; --navy: #16233F; --navy-light: #22345A; --purple: #9D4EDD; --purple-tint: #F4EBFC; --green: #1DA36B; --amber: #D97B0A; --gridline: #ECEDF1;
+}
+[data-theme="dark"] {
+  --red: #FF3B30; --red-dark: #E8002D; --red-tint: rgba(255,59,48,0.14); --bg: #0A0C10; --surface: #15181F; --surface-alt: #1C2028; --border: #2B3039; --text: #F1F2F5; --sub: #9BA2AF; --muted: #6B7280; --navy: #0D1526; --navy-light: #16233F; --purple: #B983F2; --purple-tint: rgba(157,78,221,0.2); --green: #2ECC8F; --amber: #F0A93B; --gridline: #2B3039;
+}

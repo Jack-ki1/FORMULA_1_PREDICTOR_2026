@@ -1,0 +1,423 @@
+{
+  "input": {
+    "race_id": "au",
+    "session_type": "qualifying",
+    "sub_session": "q3",
+    "weather": "dry",
+    "simulation_count": 1000,
+    "feature_weights": {
+      "chaos_level": 50
+    }
+  },
+  "output": {
+    "race_id": "au",
+    "session_type": "qualifying",
+    "sub_session": "q3",
+    "grid_positions": {
+      "BOR": 17,
+      "HUL": 18,
+      "PER": 19,
+      "BEA": 20,
+      "ALB": 21,
+      "BOT": 22,
+      "STR": 11,
+      "LIN": 12,
+      "GAS": 13,
+      "OCO": 14,
+      "SAI": 15,
+      "COL": 16,
+      "ANT": 1,
+      "HAM": 2,
+      "RUS": 3,
+      "LEC": 4,
+      "NOR": 5,
+      "VER": 6,
+      "PIA": 7,
+      "HAD": 8,
+      "ALO": 9,
+      "LAW": 10
+    },
+    "predictions": {
+      "q3": {
+        "target_id": "q3",
+        "target_label": "Qualifying Q3",
+        "predictions": [
+          {
+            "driver_code": "ANT",
+            "probability": 0.070812,
+            "percentage": 7.08
+          },
+          {
+            "driver_code": "HAM",
+            "probability": 0.067382,
+            "percentage": 6.74
+          },
+          {
+            "driver_code": "RUS",
+            "probability": 0.065572,
+            "percentage": 6.56
+          },
+          {
+            "driver_code": "LEC",
+            "probability": 0.063068,
+            "percentage": 6.31
+          },
+          {
+            "driver_code": "NOR",
+            "probability": 0.061027,
+            "percentage": 6.1
+          },
+          {
+            "driver_code": "VER",
+            "probability": 0.057828,
+            "percentage": 5.78
+          },
+          {
+            "driver_code": "PIA",
+            "probability": 0.05625,
+            "percentage": 5.62
+          },
+          {
+            "driver_code": "HAD",
+            "probability": 0.054209,
+            "percentage": 5.42
+          },
+          {
+            "driver_code": "ALO",
+            "probability": 0.048464,
+            "percentage": 4.85
+          },
+          {
+            "driver_code": "LAW",
+            "probability": 0.04596,
+            "percentage": 4.6
+          },
+          {
+            "driver_code": "STR",
+            "probability": 0.04415,
+            "percentage": 4.41
+          },
+          {
+            "driver_code": "LIN",
+            "probability": 0.041414,
+            "percentage": 4.14
+          },
+          {
+            "driver_code": "GAS",
+            "probability": 0.040762,
+            "percentage": 4.08
+          },
+          {
+            "driver_code": "OCO",
+            "probability": 0.038026,
+            "percentage": 3.8
+          },
+          {
+            "driver_code": "SAI",
+            "probability": 0.036911,
+            "percentage": 3.69
+          },
+          {
+            "driver_code": "COL",
+            "probability": 0.034638,
+            "percentage": 3.46
+          },
+          {
+            "driver_code": "BOR",
+            "probability": 0.034217,
+            "percentage": 3.42
+          },
+          {
+            "driver_code": "HUL",
+            "probability": 0.031019,
+            "percentage": 3.1
+          },
+          {
+            "driver_code": "PER",
+            "probability": 0.02944,
+            "percentage": 2.94
+          },
+          {
+            "driver_code": "BEA",
+            "probability": 0.028093,
+            "percentage": 2.81
+          },
+          {
+            "driver_code": "ALB",
+            "probability": 0.026515,
+            "percentage": 2.65
+          },
+          {
+            "driver_code": "BOT",
+            "probability": 0.024242,
+            "percentage": 2.42
+          }
+        ],
+        "confidence": 0.0158,
+        "source": "model",
+        "top_prediction": [
+          "ANT",
+          0.07081228956228956
+        ],
+        "target_info": {
+          "id": "q3",
+          "label": "Qualifying Q3",
+          "short": "Q3",
+          "sum": 10,
+          "exp": 1.6,
+          "accuracy": 0.74,
+          "session": "qualifying",
+          "baseline_accuracy": 0.45,
+          "note": "Pure pace, no race-day chaos \u2014 but low fuel + track evolution add noise session to session."
+        }
+      },
+      "qualifying_q3": {
+        "target_id": "qualifying_q3",
+        "target_label": "Qualifying Q3",
+        "predictions": [
+          {
+            "driver_code": "ANT",
+            "probability": 0.070812,
+            "percentage": 7.08
+          },
+          {
+            "driver_code": "HAM",
+            "probability": 0.067382,
+            "percentage": 6.74
+          },
+          {
+            "driver_code": "RUS",
+            "probability": 0.065572,
+            "percentage": 6.56
+          },
+          {
+            "driver_code": "LEC",
+            "probability": 0.063068,
+            "percentage": 6.31
+          },
+          {
+            "driver_code": "NOR",
+            "probability": 0.061027,
+            "percentage": 6.1
+          },
+          {
+            "driver_code": "VER",
+            "probability": 0.057828,
+            "percentage": 5.78
+          },
+          {
+            "driver_code": "PIA",
+            "probability": 0.05625,
+            "percentage": 5.62
+          },
+          {
+            "driver_code": "HAD",
+            "probability": 0.054209,
+            "percentage": 5.42
+          },
+          {
+            "driver_code": "ALO",
+            "probability": 0.048464,
+            "percentage": 4.85
+          },
+          {
+            "driver_code": "LAW",
+            "probability": 0.04596,
+            "percentage": 4.6
+          },
+          {
+            "driver_code": "STR",
+            "probability": 0.04415,
+            "percentage": 4.41
+          },
+          {
+            "driver_code": "LIN",
+            "probability": 0.041414,
+            "percentage": 4.14
+          },
+          {
+            "driver_code": "GAS",
+            "probability": 0.040762,
+            "percentage": 4.08
+          },
+          {
+            "driver_code": "OCO",
+            "probability": 0.038026,
+            "percentage": 3.8
+          },
+          {
+            "driver_code": "SAI",
+            "probability": 0.036911,
+            "percentage": 3.69
+          },
+          {
+            "driver_code": "COL",
+            "probability": 0.034638,
+            "percentage": 3.46
+          },
+          {
+            "driver_code": "BOR",
+            "probability": 0.034217,
+            "percentage": 3.42
+          },
+          {
+            "driver_code": "HUL",
+            "probability": 0.031019,
+            "percentage": 3.1
+          },
+          {
+            "driver_code": "PER",
+            "probability": 0.02944,
+            "percentage": 2.94
+          },
+          {
+            "driver_code": "BEA",
+            "probability": 0.028093,
+            "percentage": 2.81
+          },
+          {
+            "driver_code": "ALB",
+            "probability": 0.026515,
+            "percentage": 2.65
+          },
+          {
+            "driver_code": "BOT",
+            "probability": 0.024242,
+            "percentage": 2.42
+          }
+        ],
+        "confidence": 0.0158,
+        "source": "model",
+        "top_prediction": [
+          "ANT",
+          0.07081228956228956
+        ],
+        "target_info": {
+          "id": "qualifying_q3",
+          "label": "Qualifying Q3",
+          "short": "Q3",
+          "sum": 10,
+          "exp": 1.6,
+          "accuracy": 0.74,
+          "session": "qualifying",
+          "baseline_accuracy": 0.45,
+          "note": "Final qualifying segment - pole position shootout for top 10."
+        }
+      }
+    },
+    "winner_probabilities": {
+      "NOR": 0.06024831649831649,
+      "PIA": 0.055710227272727265,
+      "LEC": 0.06218750000000001,
+      "HAM": 0.06628577441077443,
+      "VER": 0.05720959595959596,
+      "HAD": 0.05377104377104377,
+      "RUS": 0.06456649831649833,
+      "ANT": 0.06954440235690236,
+      "ALO": 0.04831334175084175,
+      "STR": 0.04421506734006734,
+      "SAI": 0.03733796296296297,
+      "ALB": 0.027462121212121212,
+      "HUL": 0.03174031986531987,
+      "BOR": 0.03477904040404041,
+      "GAS": 0.040996422558922566,
+      "COL": 0.03517887205387206,
+      "OCO": 0.03839751683501684,
+      "BEA": 0.0289614898989899,
+      "LAW": 0.04593434343434344,
+      "LIN": 0.04161616161616162,
+      "PER": 0.03024095117845118,
+      "BOT": 0.025303030303030306
+    },
+    "confidence_intervals": {
+      "NOR": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "PIA": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "LEC": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "HAM": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "VER": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "HAD": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "RUS": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "ANT": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "ALO": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "STR": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "SAI": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "ALB": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "HUL": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "BOR": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "GAS": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "COL": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "OCO": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "BEA": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "LAW": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "LIN": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "PER": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "BOT": {
+        "lower": 0.0,
+        "upper": 0.001
+      }
+    }
+  }
+}

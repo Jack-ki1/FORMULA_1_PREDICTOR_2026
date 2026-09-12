@@ -30,4 +30,12 @@ cache/model_cache/
 # Build artifacts
 build/
 dist/
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
 *.egg-info/
+
+# Golden fixtures are generated, but keep versioned fixtures
+# tests/fixtures/golden/ is tracked
+# OS
+Thumbs.db

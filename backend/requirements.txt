@@ -1,0 +1,2 @@
+# Backend uses root requirements.txt (Flask, SQLAlchemy, Redis, etc.)
+-r ../requirements.txt

@@ -136,7 +136,7 @@ class LiveUpdater:
                 time.sleep(1)
     
     def start(self):
-        """Start the background updater."""
+        """Start the background updater — non-blocking (initial cycle in background)."""
         if self.running:
             print("Live updater is already running")
             return
@@ -147,14 +147,22 @@ class LiveUpdater:
         if SCHEDULE_AVAILABLE:
             schedule.every(self.update_interval).seconds.do(self._run_update_cycle)
         
-        # Run initial update
-        self._run_update_cycle()
-        
-        # Start scheduler thread
-        self.thread = threading.Thread(target=self._scheduler_loop, daemon=True)
+        # Start scheduler thread that runs initial update in background
+        # so Flask health endpoint is available immediately (previously blocked ~20s)
+        def _background_initial_and_loop():
+            try:
+                # small delay so Flask can bind port before heavy FastF1 fetch
+                time.sleep(0.5)
+                self._run_update_cycle()
+            except Exception as e:
+                print(f"Initial live update failed (non-fatal): {e}")
+            # then enter normal scheduler loop
+            self._scheduler_loop()
+
+        self.thread = threading.Thread(target=_background_initial_and_loop, daemon=True)
         self.thread.start()
         
-        print(f"Live updater started with {self.update_interval}s interval")
+        print(f"Live updater started with {self.update_interval}s interval (initial sync in background)")
     
     def stop(self):
         """Stop the background updater."""

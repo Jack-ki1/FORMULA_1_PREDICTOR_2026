@@ -1,0 +1,1 @@
+export function ReportsPage(){ return <div className="px-4 sm:px-8 py-6"><h2 className="f1-display text-xl font-bold">Reports</h2><p className="text-sub mt-2">Exports are handled from the Dashboard. API: POST /api/v1/reports/export with format csv|json|pdf|share</p></div> }

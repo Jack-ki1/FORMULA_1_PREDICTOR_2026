@@ -1,67 +1,49 @@
-# F1 Prediction Platform Architecture
+# Architecture — Decoupled Full-Stack (React + Flask API + Engine)
 
-## Current Architecture Overview
-
-The system follows a layered architecture with the following key components:
-
-1. **Data Ingestion Layer**
-   - Jolpica API Client: Handles championship standings, race results, and qualifying data
-   - OpenF1 API Client: Provides live session and telemetry data
-   - FastF1 Integration: Delivers detailed lap-by-lap telemetry for advanced analysis
-   - Hugging Face Dataset: Optional historical data source
-
-2. **Data Processing Layer**
-   - `session_context.py`: Translates external F1 data into model inputs
-   - Feature engineering: Driver strength adjustments based on standings
-   - Grid position mapping from qualifying results
-
-3. **Prediction Engine**
-   - ML Probability Model: Base prediction engine
-   - Monte Carlo Simulations: 1,000 simulations by default
-   - Grid Modeling: Qualifying position predictions
-
-4. **Presentation Layer**
-   - Flask Dashboard: Web interface for predictions
-   - Analytics Settings: User-configurable parameters
-   - Leaderboard System: Fantasy pick tracking
-
-## Data Flow
+Target matches transformation_improvements.md final architecture:
 
 ```
-API Clients → session_context → Feature Engineering → Prediction Engine → Dashboard
-       ↑            ↑                ↑                   ↑
-  (Jolpica)  (Strength/Grid)  (Probability Model)  (Visualization)
-       |            |                |
-  (OpenF1)      (Monte Carlo)    (Grid Model)
-       |
-  (FastF1)
+Browser
+  React + TypeScript + Vite + Tailwind + React Router + TanStack Query
+    ↓ HTTPS/JSON (X-Request-ID, JWT)
+Flask REST API (/api/v1 + legacy /dashboard/api/* for dual-run)
+  ├─ API layer: validation, rate limiting, request_id, security headers, observability
+  ├─ Service layer: backend/app/services/* (thin orchestration, logging, cache keys)
+  └─ Domain engine: engine/* (predictor, monte_carlo, grid_model, probability_model preserved)
+       ├─ Redis (race/standings/H2H/prediction cache)
+       └─ SQLAlchemy → SQLite (dev) / PostgreSQL (prod)
+  External F1 APIs: Jolpica, OpenF1, FastF1
 ```
 
-## Technical Debt & Known Issues
+## Frontend
 
-1. **Missing API Integration Tests**
-   - `test_api_integration.py` does not exist
-   - Critical for validating Phase 13 requirements
+- `frontend/src/app` App/Router/Providers (QueryClient)
+- `frontend/src/pages/*` Home, Dashboard, Standings, H2H, Constructors, Analytics, Reports
+- `frontend/src/components/*` layout, navigation, dashboard, prediction, charts, shared
+- `frontend/src/features/*` manual-grid, ai-assistant, theme, exports
+- `frontend/src/api/*` typed client (fetch + Zod-ready), query hooks
+- `frontend/src/styles` variables.css (tokens), legacy.css (preserved verbatim from dashboard/static/css/styles.css), globals.css
 
-2. **Probability Validation Gaps**
-   - No strict enforcement that winner probabilities sum to exactly 1.0
-   - Current code uses renormalization but lacks validation
+State split per Phase 7/9:
+- Server state (TanStack Query): races, drivers, standings, prediction, H2H, constructors, analytics
+- Client state (small store): draft race/weather/simCount, session/subSession, manualGrid, AI mode/model/weight/temperature (mirrors localStorage, API key not persisted)
 
-3. **Hardcoded Configuration**
-   - Monte Carlo simulation count (1000) is hardcoded
-   - Should be configurable via settings
+## Backend
 
-4. **Logging Deficiencies**
-   - Production code uses `print()` statements instead of structured logging
-   - Missing error context in production logs
+- `dashboard/app.py` factory: legacy blueprints + v1 blueprints + middleware (request_id, security headers, timing, rate-limit stub, CORS)
+- `backend/app/services/*` orchestration (no algorithm changes)
+- `backend/app/api/schemas` Pydantic contracts
+- `backend/app/api/routes/*` v1 endpoints (+ OpenAPI at /api/v1/openapi.json)
+- `backend/app/security/middleware` request-id, rate-limit, headers
+- `engine/*` retained 1:1 (MonteCarlo, GridModel, probability_model, calibration, elo, etc.)
+- `database` SQLAlchemy, `cache/redis` Redis + DictCache fallback
 
-5. **Data Pipeline Limitations**
-   - No centralized data normalization layer
-   - Fallback strategies are implemented per-client rather than system-wide
+## Deployment
 
-## Next Steps for Phase 1
+`docker-compose.yml` runs backend:5000, frontend:80 (nginx proxy /api → backend), redis:6379. Frontend can scale independently; prediction workers could later move to Celery/RQ behind Flask API.
 
-- Complete documentation of all data sources
-- Document model parameters and validation requirements
-- Formalize API contracts for all endpoints
-- Identify deprecated components for Phase 5 replacement
+## Invariants
+
+- Same inputs → same engine → same outputs (prediction parity harness in PREDICTION_PARITY.md)
+- DB failure never breaks prediction delivery (predictor catches persistence errors)
+- Manual grid takes precedence; GridModel → _strength_based_grid fallback with seeded noise noted for parity

@@ -1,90 +1,80 @@
-# F1 Prediction Platform API Contracts
+# API Contracts — /api/v1 (Versioned) + Legacy
 
-## Dashboard API Endpoints
+Legacy Jinja endpoints remain for dual-run (see MIGRATION.md Phase 3):
 
-### Prediction Endpoint (`/api/predict`)
-- **Method**: POST
-- **Request Body**:
-  ```json
-  {
-    "race_id": "2026-bahrain",
-    "session_type": "race",
-    "target": "winner",
-    "drivers": ["VER", "HAM", "LEC"]
-  }
-  ```
-- **Response Schema**:
-  ```json
-  {
-    "predictions": [
-      {"driver": "VER", "probability": 0.45, "confidence": 0.92},
-      {"driver": "HAM", "probability": 0.32, "confidence": 0.87},
-      {"driver": "LEC", "probability": 0.23, "confidence": 0.81}
-    ],
-    "data_sources": ["jolpica", "openf1"],
-    "model_version": "v1.0",
-    "timestamp": "2026-03-02T14:30:00Z"
-  }
-  ```
-- **Validation Requirements**:
-  - `race_id` must be a valid race identifier
-  - `session_type` must be one of: "race", "qualifying", "practice"
-  - `target` must be one of: "winner", "podium", "points", "q3"
-  - Driver list must contain 3-20 drivers
+```
+Legacy (Jinja-era, still active):
+  GET  /dashboard/api/races
+  GET  /dashboard/api/race-result/<race_id>
+  POST /dashboard/api/predict-session
+  POST /dashboard/api/ai-chat
+  GET  /standings/api/driver-standings
+  GET  /standings/api/constructor-standings
+  GET  /h2h/api/drivers
+  POST /h2h/api/compare
+  GET  /constructors/api/teams
+  GET  /constructors/api/power-rankings
+  GET  /analytics/api/accuracy
+  GET  /analytics/api/feature-weights
+  POST /analytics/api/feature-weights
+  GET  /analytics/api/targets
+  POST /reports/api/export
+```
 
-### Analytics Settings Endpoint (`/api/analytics/settings`)
-- **Method**: GET/POST
-- **GET Response**:
-  ```json
-  {
-    "simulation_count": 1000,
-    "confidence_threshold": 0.85,
-    "display_uncertainty": true,
-    "scenario_controls": {"safety_car": true, "rain": false}
-  }
-  ```
-- **POST Request Body**:
-  ```json
-  {
-    "simulation_count": 2000,
-    "confidence_threshold": 0.90
-  }
-  ```
-- **Validation Requirements**:
-  - `simulation_count` must be between 100 and 10000
-  - `confidence_threshold` must be between 0.5 and 0.99
+Versioned contract (new React frontend, OpenAPI at /api/v1/openapi.json):
 
-## External API Contracts
+```
+V1 (authoritative, typed):
+  GET  /api/v1/races
+  GET  /api/v1/races/<race_id>/result   (also /api/v1/race-result/<id> for compat)
+  POST /api/v1/predictions              (alias /api/v1/predict , /api/v1/predict-session)
+  POST /api/v1/ai/chat
+  GET  /api/v1/standings/drivers
+  GET  /api/v1/standings/constructors
+  GET  /api/v1/h2h/drivers
+  POST /api/v1/h2h/compare
+  GET  /api/v1/constructors/teams
+  GET  /api/v1/constructors/power-rankings
+  GET  /api/v1/analytics/accuracy
+  GET  /api/v1/analytics/feature-weights
+  POST /api/v1/analytics/feature-weights
+  GET  /api/v1/analytics/targets
+  POST /api/v1/reports/export
+  GET  /api/v1/health
+  GET  /api/v1/openapi.json
+```
 
-### Jolpica API Contract
-- **Base URL**: `https://api.jolpica.f1`
-- **Rate Limit**: 100 requests/minute
-- **Authentication**: None (public API)
-- **Data Format**: JSON with consistent MRData structure
+## Error Contract
 
-### OpenF1 API Contract
-- **Base URL**: `https://api.openf1.org`
-- **Rate Limit**: 60 requests/minute
-- **Authentication**: None (public API)
-- **Data Format**: JSON with session_key-based identifiers
+All v1 endpoints return `{"error":{"code":string,"message":string,"details":object,"request_id":string}}` with `X-Request-ID` header (echoed). Legacy endpoints return `{"error": "..."}` — kept for backward compat.
 
-### FastF1 Integration Contract
-- **Data Format**: Pandas DataFrames with standardized column names
-- **Telemetry Schema**: Speed, Throttle, Brake, Gear, RPM, Distance
-- **Lap Time Schema**: LapNumber, LapTime, Sector1Time, Sector2Time, Sector3Time
+## Request Validation
 
-## Validation Requirements
+Pydantic schemas (`backend/app/api/schemas/prediction.py`):
+- race_id: str required
+- session_type: race|qualifying|practice
+- weather: dry|mixed|wet
+- simulation_count: 100–100000 (clamped in engine)
+- feature_weights: {chaos_level:0-100,…}
+- AI keys never persisted server-side; weight 0–1, temperature 0–2.
 
-1. **Input Validation**: All API endpoints must validate request parameters
-2. **Output Validation**: All responses must conform to documented schemas
-3. **Error Handling**: Consistent error response format across all endpoints
-4. **Rate Limiting**: Enforce rate limits at the API gateway level
-5. **Caching**: Implement appropriate cache headers for all endpoints
+## Headers
 
-## Technical Debt
+- X-Request-ID: client may send; server echoes; always present.
+- X-Response-Time / X-Prediction-Latency: latency observability.
+- Cache-Control: `public, max-age=300` for races, `max-age=60` for standings.
+- Security headers from config.settings.SECURITY_HEADERS.
 
-1. **Missing Schema Validation**: No Pydantic models for request/response validation
-2. **Inconsistent Error Responses**: Different error formats across endpoints
-3. **No Rate Limit Documentation**: Current rate limits not documented in API contracts
-4. **Missing Authentication Contracts**: No specification for future authentication requirements
-5. **Incomplete Scenario Controls**: Safety car and rain scenarios not fully implemented
+## Cache Keys (Redis)
+
+```
+races:2026
+standings:drivers:2026
+standings:constructors:2026
+h2h:{A}:{B}
+prediction:{race}:{session}:{hash}  (implicit via service)
+```
+
+## Authentication
+
+JWT bearer (`Authorization: Bearer <token>`) via security/auth.py (`require_auth`, `require_role`). Active v1 endpoints currently allow anonymous but validate token if present — consistent with Phase 1 decision to reconcile auth after cutover. See SECURITY_ENHANCEMENTS.md.

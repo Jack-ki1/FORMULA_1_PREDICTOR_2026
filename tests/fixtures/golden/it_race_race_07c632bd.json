@@ -1,0 +1,560 @@
+{
+  "input": {
+    "race_id": "it",
+    "session_type": "race",
+    "weather": "dry",
+    "simulation_count": 500,
+    "grid_positions": {
+      "VER": 1,
+      "LEC": 2,
+      "NOR": 3
+    },
+    "feature_weights": {
+      "chaos_level": 30
+    }
+  },
+  "output": {
+    "race_id": "it",
+    "session_type": "race",
+    "sub_session": "",
+    "grid_positions": {
+      "VER": 1,
+      "LEC": 2,
+      "NOR": 3,
+      "ALB": 4,
+      "ALO": 5,
+      "ANT": 6,
+      "BEA": 7,
+      "BOR": 8,
+      "BOT": 9,
+      "COL": 10,
+      "GAS": 11,
+      "HAD": 12,
+      "HAM": 13,
+      "HUL": 14,
+      "LAW": 15,
+      "LIN": 16,
+      "OCO": 17,
+      "PER": 18,
+      "PIA": 19,
+      "RUS": 20,
+      "SAI": 21,
+      "STR": 22
+    },
+    "predictions": {
+      "winner": {
+        "target_id": "winner",
+        "target_label": "Race Winner",
+        "predictions": [
+          {
+            "driver_code": "VER",
+            "probability": 0.300102,
+            "percentage": 30.01
+          },
+          {
+            "driver_code": "LEC",
+            "probability": 0.260742,
+            "percentage": 26.07
+          },
+          {
+            "driver_code": "ANT",
+            "probability": 0.185302,
+            "percentage": 18.53
+          },
+          {
+            "driver_code": "NOR",
+            "probability": 0.088542,
+            "percentage": 8.85
+          },
+          {
+            "driver_code": "HAM",
+            "probability": 0.019662,
+            "percentage": 1.97
+          },
+          {
+            "driver_code": "RUS",
+            "probability": 0.014742,
+            "percentage": 1.47
+          },
+          {
+            "driver_code": "PIA",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "HAD",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "ALO",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "STR",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "SAI",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "ALB",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "HUL",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "BOR",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "GAS",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "COL",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "OCO",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "BEA",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "LAW",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "LIN",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "PER",
+            "probability": 0.008182,
+            "percentage": 0.82
+          },
+          {
+            "driver_code": "BOT",
+            "probability": 0.008182,
+            "percentage": 0.82
+          }
+        ],
+        "confidence": 0.5511,
+        "source": "model",
+        "top_prediction": [
+          "VER",
+          0.3001018181818182
+        ],
+        "target_info": {
+          "id": "winner",
+          "label": "Race Winner",
+          "short": "WIN",
+          "sum": 1,
+          "exp": 5.6,
+          "accuracy": 0.58,
+          "session": "race",
+          "baseline_accuracy": 0.05,
+          "note": "Exact winner is the hardest honest target \u2014 chaos (safety cars, contact, strategy) dominates."
+        }
+      },
+      "podium": {
+        "target_id": "podium",
+        "target_label": "Podium (Top 3)",
+        "predictions": [
+          {
+            "driver_code": "VER",
+            "probability": 0.253448,
+            "percentage": 25.34
+          },
+          {
+            "driver_code": "LEC",
+            "probability": 0.232948,
+            "percentage": 23.29
+          },
+          {
+            "driver_code": "ANT",
+            "probability": 0.223008,
+            "percentage": 22.3
+          },
+          {
+            "driver_code": "NOR",
+            "probability": 0.145978,
+            "percentage": 14.6
+          },
+          {
+            "driver_code": "HAM",
+            "probability": 0.05466,
+            "percentage": 5.47
+          },
+          {
+            "driver_code": "RUS",
+            "probability": 0.033539,
+            "percentage": 3.35
+          },
+          {
+            "driver_code": "PIA",
+            "probability": 0.008069,
+            "percentage": 0.81
+          },
+          {
+            "driver_code": "HAD",
+            "probability": 0.004342,
+            "percentage": 0.43
+          },
+          {
+            "driver_code": "ALO",
+            "probability": 0.00372,
+            "percentage": 0.37
+          },
+          {
+            "driver_code": "STR",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "SAI",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "ALB",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "HUL",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "BOR",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "GAS",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "COL",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "OCO",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "BEA",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "LAW",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "LIN",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "PER",
+            "probability": 0.003099,
+            "percentage": 0.31
+          },
+          {
+            "driver_code": "BOT",
+            "probability": 0.003099,
+            "percentage": 0.31
+          }
+        ],
+        "confidence": 0.5511,
+        "source": "model",
+        "top_prediction": [
+          "VER",
+          0.25344765840220385
+        ],
+        "target_info": {
+          "id": "podium",
+          "label": "Podium (Top 3)",
+          "short": "PODIUM",
+          "sum": 3,
+          "exp": 3.0,
+          "accuracy": 0.89,
+          "session": "race",
+          "baseline_accuracy": 0.14,
+          "note": "Highest-accuracy race target: the fastest 3-4 cars usually supply the podium most weekends."
+        }
+      },
+      "points": {
+        "target_id": "points",
+        "target_label": "Points (Top 10)",
+        "predictions": [
+          {
+            "driver_code": "NOR",
+            "probability": 0.098241,
+            "percentage": 9.82
+          },
+          {
+            "driver_code": "VER",
+            "probability": 0.097263,
+            "percentage": 9.73
+          },
+          {
+            "driver_code": "RUS",
+            "probability": 0.097067,
+            "percentage": 9.71
+          },
+          {
+            "driver_code": "LEC",
+            "probability": 0.096676,
+            "percentage": 9.67
+          },
+          {
+            "driver_code": "HAM",
+            "probability": 0.096676,
+            "percentage": 9.67
+          },
+          {
+            "driver_code": "ANT",
+            "probability": 0.09648,
+            "percentage": 9.65
+          },
+          {
+            "driver_code": "PIA",
+            "probability": 0.091392,
+            "percentage": 9.14
+          },
+          {
+            "driver_code": "HAD",
+            "probability": 0.090805,
+            "percentage": 9.08
+          },
+          {
+            "driver_code": "ALO",
+            "probability": 0.064776,
+            "percentage": 6.48
+          },
+          {
+            "driver_code": "ALB",
+            "probability": 0.033855,
+            "percentage": 3.39
+          },
+          {
+            "driver_code": "BOR",
+            "probability": 0.025048,
+            "percentage": 2.5
+          },
+          {
+            "driver_code": "LAW",
+            "probability": 0.020938,
+            "percentage": 2.09
+          },
+          {
+            "driver_code": "GAS",
+            "probability": 0.018981,
+            "percentage": 1.9
+          },
+          {
+            "driver_code": "BEA",
+            "probability": 0.012327,
+            "percentage": 1.23
+          },
+          {
+            "driver_code": "STR",
+            "probability": 0.011936,
+            "percentage": 1.19
+          },
+          {
+            "driver_code": "LIN",
+            "probability": 0.009392,
+            "percentage": 0.94
+          },
+          {
+            "driver_code": "COL",
+            "probability": 0.009,
+            "percentage": 0.9
+          },
+          {
+            "driver_code": "SAI",
+            "probability": 0.00763,
+            "percentage": 0.76
+          },
+          {
+            "driver_code": "OCO",
+            "probability": 0.00626,
+            "percentage": 0.63
+          },
+          {
+            "driver_code": "HUL",
+            "probability": 0.005478,
+            "percentage": 0.55
+          },
+          {
+            "driver_code": "PER",
+            "probability": 0.00489,
+            "percentage": 0.49
+          },
+          {
+            "driver_code": "BOT",
+            "probability": 0.00489,
+            "percentage": 0.49
+          }
+        ],
+        "confidence": 0.5511,
+        "source": "model",
+        "top_prediction": [
+          "NOR",
+          0.09824126708613581
+        ],
+        "target_info": {
+          "id": "points",
+          "label": "Points (Top 10)",
+          "short": "POINTS",
+          "sum": 10,
+          "exp": 1.8,
+          "accuracy": 0.81,
+          "session": "race",
+          "baseline_accuracy": 0.45,
+          "note": "Wide enough margin to absorb one bad session per driver, still tight enough to be useful."
+        }
+      }
+    },
+    "winner_probabilities": {
+      "NOR": 0.08638745454545456,
+      "PIA": 0.010045454545454548,
+      "LEC": 0.24997745454545456,
+      "HAM": 0.020951454545454547,
+      "VER": 0.28736945454545454,
+      "HAD": 0.010045454545454548,
+      "RUS": 0.016277454545454546,
+      "ANT": 0.17830945454545455,
+      "ALO": 0.010045454545454548,
+      "STR": 0.010045454545454548,
+      "SAI": 0.010045454545454548,
+      "ALB": 0.010045454545454548,
+      "HUL": 0.010045454545454548,
+      "BOR": 0.010045454545454548,
+      "GAS": 0.010045454545454548,
+      "COL": 0.010045454545454548,
+      "OCO": 0.010045454545454548,
+      "BEA": 0.010045454545454548,
+      "LAW": 0.010045454545454548,
+      "LIN": 0.010045454545454548,
+      "PER": 0.010045454545454548,
+      "BOT": 0.010045454545454548
+    },
+    "confidence_intervals": {
+      "NOR": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "PIA": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "LEC": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "HAM": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "VER": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "HAD": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "RUS": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "ANT": {
+        "lower": 0.0,
+        "upper": 0.001
+      },
+      "ALO": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "STR": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "SAI": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "ALB": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "HUL": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "BOR": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "GAS": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "COL": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "OCO": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "BEA": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "LAW": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "LIN": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "PER": {
+        "lower": 0.0,
+        "upper": 0.0
+      },
+      "BOT": {
+        "lower": 0.0,
+        "upper": 0.0
+      }
+    }
+  }
+}
