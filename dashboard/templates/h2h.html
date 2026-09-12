@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}H2H Comparison — F1 Predictor 2026{% endblock %}
+
+{% block content %}
+<div id="driver-data" data-drivers='{{ drivers | tojson | safe }}'></div>
+
+<section class="px-4 sm:px-8 py-6">
+  <!-- Image Banner Row for H2H COMPARISON TAB -->
+  <div class="image-banner-row flex flex-wrap items-center justify-center gap-8 mb-8">
+    <!-- Driver A Slot -->
+    <div class="img-slot rounded-xl border-2 border-blue-500/30 flex flex-col items-center justify-center p-6 hover:border-blue-500 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl" style="flex: 1; min-width: 300px; height: 360px; position: relative; background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.08));">
+      <span id="driver-a-badge" class="absolute top-3 left-3 bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-lg z-10">DRV-A</span>
+      <div class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+        <img id="driver-a-image" src="/static/img/racer1.png" alt="Driver A Photo" class="max-w-full max-h-full object-contain transition-all duration-300 hover:brightness-110">
+      </div>
+      <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md rounded-lg p-3 text-center z-10">
+        <span id="driver-a-label" class="text-white text-sm font-bold">Driver A</span>
+      </div>
+    </div>
+    <!-- VS Text Divider -->
+    <div class="flex items-center justify-center w-20 h-20 rounded-full bg-red-600 text-white font-bold text-2xl shadow-2xl transform hover:scale-110 transition-all duration-300" style="background: var(--red);">
+      VS
+    </div>
+    <!-- Driver B Slot -->
+    <div class="img-slot rounded-xl border-2 border-green-500/30 flex flex-col items-center justify-center p-6 hover:border-green-500 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl" style="flex: 1; min-width: 300px; height: 360px; position: relative; background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.08));">
+      <span id="driver-b-badge" class="absolute top-3 left-3 bg-green-600 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-lg z-10">DRV-B</span>
+      <div class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+        <img id="driver-b-image" src="/static/img/racer2.png" alt="Driver B Photo" class="max-w-full max-h-full object-contain transition-all duration-300 hover:brightness-110">
+      </div>
+      <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md rounded-lg p-3 text-center z-10">
+        <span id="driver-b-label" class="text-white text-sm font-bold">Driver B</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="fs-11 uppercase tracking-widest font-bold mb-3 text-sub">Driver vs. Driver</div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5 max-w-2xl">
+    <select id="driver-a-select" class="f1-select"></select>
+    <select id="driver-b-select" class="f1-select"></select>
+  </div>
+
+  <div id="h2h-error"></div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-6">
+        <div id="badge-a" class="flex items-center gap-2"></div>
+        <span class="f1-display text-xl font-black text-muted">VS</span>
+        <div id="badge-b" class="flex items-center gap-2" style="flex-direction:row-reverse;text-align:right"></div>
+      </div>
+
+      <div id="attribute-bars" class="space-y-4"></div>
+
+      <div class="mt-6 pt-4" style="border-top:1px solid var(--border)">
+        <div class="fs-11 uppercase tracking-widest font-semibold mb-1 text-sub">Elo-based season win probability</div>
+        <div class="relative h-3 rounded-full overflow-hidden surface-alt">
+          <div id="prob-bar-a" class="absolute left-0 top-0 h-full" style="width:50%"></div>
+          <div id="prob-bar-b" class="absolute right-0 top-0 h-full" style="width:50%"></div>
+        </div>
+        <div id="prob-labels" class="flex items-center justify-between mt-2 f1-mono text-sm font-semibold"></div>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <div class="f1-display font-bold mb-1">Attribute Radar</div>
+      <p class="text-xs mb-2 text-sub">Strength, reliability and wet-weather skill — the three attributes the prediction engine actually uses per driver.</p>
+      <div class="chart-box" style="height:340px"><canvas id="chart-radar"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Additional H2H Analysis Charts -->
+  <div class="fs-11 uppercase tracking-widest font-bold mb-3 text-sub">Performance Comparison</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Race Performance History</div>
+      <div class="chart-box tall"><canvas id="chart-h2h-race-history"></canvas></div>
+    </div>
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Qualifying Head-to-Head</div>
+      <div class="chart-box tall"><canvas id="chart-h2h-quali"></canvas></div>
+    </div>
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Pace Comparison</div>
+      <div class="chart-box tall"><canvas id="chart-h2h-pace"></canvas></div>
+    </div>
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Consistency Analysis</div>
+      <div class="chart-box tall"><canvas id="chart-h2h-consistency"></canvas></div>
+    </div>
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Overtaking Skills</div>
+      <div class="chart-box tall"><canvas id="chart-h2h-overtake"></canvas></div>
+    </div>
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Wet Weather Performance</div>
+      <div class="chart-box tall"><canvas id="chart-h2h-wet"></canvas></div>
+    </div>
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Tire Management</div>
+      <div class="chart-box tall"><canvas id="chart-h2h-tyres"></canvas></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/h2h.js') }}"></script>
+{% endblock %}

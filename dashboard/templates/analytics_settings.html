@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Analytics &amp; Settings — F1 Predictor 2026{% endblock %}
+
+{% block content %}
+<section class="px-4 sm:px-8 py-6">
+  <!-- Image Banner Row for ANALYTICS & SETTINGS TAB -->
+  <div class="image-banner-row flex flex-wrap gap-4 mb-8">
+    <!-- Wide Image Slot -->
+    <div class="img-slot rounded-xl border-2 border-emerald-500/30 flex flex-col items-center justify-center p-6 w-full hover:border-emerald-500 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl" style="height: 280px; position: relative; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08));">
+      <div class="absolute top-3 left-3 bg-emerald-600 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-lg z-10">
+        🔧 Race Engineering / Telemetry Wall
+      </div>
+      <div class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+        <img src="/static/img/car_parts.png" alt="Engineering Wall" class="max-w-full max-h-full object-contain transition-all duration-300 hover:brightness-110">
+      </div>
+      <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md rounded-lg p-3 text-center z-10">
+        <span class="text-white text-base font-bold">Advanced Analytics & Model Configuration</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="sub-tabs" class="flex flex-wrap gap-1.5 p-1 rounded-lg mb-5 w-fit surface-alt" style="border:1px solid var(--border)">
+    <button data-sub="accuracy" class="target-pill is-active">Accuracy</button>
+    <button data-sub="tuning" class="target-pill">Model Tuning</button>
+    <button data-sub="display" class="target-pill">Display &amp; Preferences</button>
+  </div>
+
+  <!-- ACCURACY -->
+  <div id="panel-accuracy">
+    <div class="card p-5">
+      <p class="text-xs leading-relaxed mb-4 text-sub">
+        Different questions have different ceilings. Exact-winner prediction fights genuine race-day chaos;
+        asking "podium or not" averages that chaos out. Each target below reports its own backtested accuracy
+        against its own random-guess baseline — never one blended number.
+      </p>
+      <div id="accuracy-cards" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"></div>
+      <div class="chart-box tall"><canvas id="chart-accuracy"></canvas></div>
+      <div id="recommendations" class="mt-4 space-y-1"></div>
+    </div>
+  </div>
+
+  <!-- MODEL TUNING -->
+  <div id="panel-tuning" style="display:none">
+    <div class="card p-5 space-y-6 max-w-2xl">
+      <p class="text-xs leading-relaxed text-sub">
+        These parameters are sent as <code>feature_weights</code> on every prediction call from the Dashboard and
+        Reports pages until you reset them — they're saved to this browser, not to the server.
+      </p>
+      <div id="tuning-sliders" class="space-y-6"></div>
+      <button id="tuning-reset" class="btn-ghost text-xs uppercase tracking-wide">Reset to defaults</button>
+      <div id="tuning-saved" class="fs-11 text-green" style="display:none">Saved — new predictions will use these weights.</div>
+    </div>
+  </div>
+
+  <!-- DISPLAY -->
+  <div id="panel-display" style="display:none">
+    <div class="card p-5 space-y-5 max-w-2xl">
+      <div>
+        <div class="text-sm font-semibold mb-2">Default session on load</div>
+        <div id="default-session-buttons" class="flex gap-2"></div>
+      </div>
+      <div>
+        <div class="text-sm font-semibold mb-2">Default weather</div>
+        <div id="default-weather-buttons" class="flex gap-2"></div>
+      </div>
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-sm font-semibold">Compact grid rows</div>
+          <div class="fs-11 text-sub">Tighter row height in prediction tables.</div>
+        </div>
+        <button id="toggle-compact" class="f1-switch" role="switch" aria-checked="false"><span class="knob"></span></button>
+      </div>
+      <div class="fs-11 pt-2 text-muted" style="border-top:1px solid var(--border)">
+        Light/dark theme lives in the top-right of the nav bar so it's reachable from every page.
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,16 @@
+{# Reusable image banner macro: renders 1-3 dashed image slots #}
+{% macro ImageBannerRow(slots, gap=12) -%}
+<div style="display:flex;align-items:flex-end;gap:{{ gap }}px;margin-bottom:16px;">
+  {% for s in slots %}
+    <div class="img-slot" style="flex:{{ s.flex or 1 }}; height:{{ s.height or 130 }}px; border:2px dashed var(--border); background:var(--surface-alt); border-radius:12px; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+      {% if s.badge %}
+        <span style="position:absolute;top:8px;left:8px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:var(--red);">{{ s.badge }}</span>
+      {% endif %}
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;text-align:center;color:var(--muted);">
+        <svg width="28" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted);opacity:0.9"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7" stroke-linecap="round" stroke-linejoin="round"></path><rect x="8" y="3" width="8" height="5" rx="1" stroke-linecap="round" stroke-linejoin="round"></rect></svg>
+        <div style="margin-top:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">{{ s.label }}</div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{%- endmacro %}

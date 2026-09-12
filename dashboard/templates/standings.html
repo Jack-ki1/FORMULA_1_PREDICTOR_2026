@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Standings — F1 Predictor 2026{% endblock %}
+
+{% block content %}
+<section class="px-4 sm:px-8 py-6">
+  <!-- Image Banner Row for STANDINGS TAB -->
+  <div class="image-banner-row flex flex-wrap gap-6 mb-8">
+    <!-- P2 Slot (medium height) -->
+    <div class="img-slot rounded-xl border-2 border-red-500/30 flex flex-col items-center justify-center p-6 hover:border-red-500 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl" style="flex: 1; min-width: 240px; height: 320px; position: relative; background: linear-gradient(135deg, rgba(225,6,0,0.15), rgba(225,6,0,0.08));">
+      <span class="absolute top-3 left-3 bg-red-600 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-lg z-10">P2</span>
+      <div class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+        <img src="/static/img/p2.png" alt="P2 Photo" class="max-w-full max-h-full object-contain transition-all duration-300 hover:brightness-110">
+      </div>
+      <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md rounded-lg p-3 text-center z-10">
+        <span class="text-white text-sm font-bold">P2 Position</span>
+      </div>
+    </div>
+    <!-- P1 Slot (tallest, center) -->
+    <div class="img-slot rounded-xl border-2 border-red-600 flex flex-col items-center justify-center p-6 hover:border-yellow-400 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl" style="flex: 1; min-width: 280px; height: 380px; position: relative; background: linear-gradient(135deg, rgba(225,6,0,0.25), rgba(255,215,0,0.15)); box-shadow: 0 0 30px rgba(225,6,0,0.4);">
+      <span class="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-sm font-bold px-4 py-2 rounded-lg shadow-lg z-10">P1</span>
+      <div class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+        <img src="/static/img/p1.png" alt="P1 Photo" class="max-w-full max-h-full object-contain transition-all duration-300 hover:brightness-110">
+      </div>
+      <div class="absolute bottom-3 left-3 right-3 bg-gradient-to-r from-yellow-500/90 to-yellow-600/90 backdrop-blur-md rounded-lg p-3 text-center z-10">
+        <span class="text-white text-base font-bold">🏆 Championship Leader</span>
+      </div>
+    </div>
+    <!-- P3 Slot (shortest) -->
+    <div class="img-slot rounded-xl border-2 border-red-500/30 flex flex-col items-center justify-center p-6 hover:border-red-500 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl" style="flex: 1; min-width: 240px; height: 280px; position: relative; background: linear-gradient(135deg, rgba(225,6,0,0.15), rgba(225,6,0,0.08));">
+      <span class="absolute top-3 left-3 bg-red-600 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-lg z-10">P3</span>
+      <div class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+        <img src="/static/img/p3.png" alt="P3 Photo" class="max-w-full max-h-full object-contain transition-all duration-300 hover:brightness-110">
+      </div>
+      <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md rounded-lg p-3 text-center z-10">
+        <span class="text-white text-sm font-bold">P3 Position</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div class="fs-11 uppercase tracking-widest font-bold text-sub">2026 Championship</div>
+    <span id="source-badge" class="fs-10 font-semibold px-2 py-1 rounded surface-alt text-sub"></span>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Driver Points</div>
+      <p class="text-xs mb-2 text-sub">Current championship points by driver, coloured by constructor.</p>
+      <div class="chart-box tall"><canvas id="chart-driver-points"></canvas></div>
+    </div>
+    <div class="card p-4">
+      <div class="f1-display font-bold mb-1">Constructors' Points Share</div>
+      <p class="text-xs mb-2 text-sub">Share of total constructor points scored so far.</p>
+      <div class="chart-box tall"><canvas id="chart-points-share"></canvas></div>
+    </div>
+  </div>
+
+  <div class="fs-11 uppercase tracking-widest font-bold mb-3 text-sub">Drivers' Championship</div>
+  <div id="driver-table-wrap" class="card mb-6" style="overflow-x:auto"></div>
+
+  <div class="fs-11 uppercase tracking-widest font-bold mb-3 text-sub">Constructors' Championship</div>
+  <div id="constructor-table-wrap" class="card" style="overflow-x:auto"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/standings.js') }}"></script>
+{% endblock %}

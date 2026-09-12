@@ -1,0 +1,59 @@
+# --- Data sourcing & processing ---
+fastf1>=3.3.0
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+requests>=2.31.0
+requests-cache>=1.0.0
+python-dotenv>=1.0.0
+
+# --- Web framework ---
+Flask>=3.0.0
+Flask-CORS>=4.0.0
+Werkzeug>=3.0.0
+Jinja2>=3.1.0
+MarkupSafe>=2.1.0
+itsdangerous>=2.1.0
+Click>=8.0.0
+
+# --- Settings / config ---
+pydantic-settings>=2.0.0
+
+# --- Database (raw SQLAlchemy — no Flask-SQLAlchemy/Flask-Migrate/alembic in use) ---
+SQLAlchemy>=2.0.0
+
+# --- Auth (security/auth.py — PyJWT, not the unrelated "jwt" package) ---
+PyJWT>=2.8.0
+
+# --- ML models (engine/ml_models.py, calibration.py, ensemble_predictor.py) ---
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+lightgbm>=4.0.0
+
+# --- AI providers (ai/local/ollama_provider.py talks to a local
+# OpenAI-compatible endpoint via the official openai SDK) ---
+openai>=1.0.0
+
+# --- Caching / monitoring ---
+redis>=5.0.0
+prometheus_client>=0.19.0
+
+# --- Reports (reports/pdf_generator.py, reports/csv_excel_report.py —
+# without these, PDF/XLSX export silently falls back to mislabeled
+# HTML/CSV; see AUDIT.md B-5) ---
+weasyprint>=60.0
+openpyxl>=3.1.0
+
+# NOTE: chromadb==0.5.13 was previously removed for Python 3.13
+# compatibility (replaced with SimpleVectorStore); intentionally not
+# re-added here.
+#
+# NOTE: the following packages were removed from this file during the
+# repo audit (see AUDIT.md, B-1/M-4) because they either don't exist on
+# PyPI as declared, or nothing in the codebase imports them:
+#   sqlite3            -- stdlib module, not a pip package, broke every install
+#   Flask-SQLAlchemy, Flask-Migrate, Flask-Login, Flask-WTF, alembic,
+#   psycopg2-binary, seaborn, matplotlib  -- unused; the app uses raw
+#   SQLAlchemy + SQLite/PostgreSQL URLs directly, no ORM Flask extension,
+#   no migrations framework beyond migrations/_001_initial_schema.py, and
+#   no charting via matplotlib/seaborn anywhere in the codebase.

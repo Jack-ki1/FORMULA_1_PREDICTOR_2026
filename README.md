@@ -1,182 +1,251 @@
-# F1 Predictor
+# F1 Predictor 2026
 
-A prediction + fantasy-league app for the 2026/2027 F1 seasons: Monte
-Carlo race simulations, ML-assisted probability models, head-to-head
-driver comparisons, and a season-long pick-em leaderboard.
+A comprehensive Formula 1 race prediction system for the 2026 season, featuring ML-based predictions, live data integration, and interactive dashboards.
 
-This is the result of migrating an original Flask monolith into a real
-frontend/backend split — see [`PLAN.md`](PLAN.md) for the full research
-and design rationale, and [`AUDIT.md`](AUDIT.md) for the history of bugs
-found and fixed in the original codebase before this migration. This
-README is the practical "how do I run/deploy this" reference.
+## Features
 
-## Architecture
+- **ML-Powered Predictions**: Gradient boosting models with ensemble methods for race winner, podium, points, and qualifying predictions
+- **Live Data Integration**: Real-time data from Jolpica, OpenF1, and FastF1 APIs
+- **Interactive Dashboard**: Flask-based web interface with multiple views (Dashboard, Standings, H2H, Constructors, Analytics, Reports)
+- **Tunable Model Parameters**: Adjustable chaos level, wet-weather influence, reliability factors, and strategy aggressiveness
+- **Grid Position Modeling**: Real qualifying results with manual override capabilities
+- **Fantasy Scoring**: Real F1 Fantasy rules implementation
+- **Championship Tracking**: Driver and constructor standings with historical progression
+- **Export Reports**: CSV, JSON, PDF, and shareable summary cards
 
-```
-apps/web/       Next.js 15 + TypeScript frontend (deployed to Vercel)
-apps/api/       FastAPI backend — Monte Carlo engine, ML models, DB,
-                auth (deployed to Vercel as its own project, see below)
-apps/ingest/    Scheduled jobs: sync live data, precompute predictions,
-                score fantasy-league picks (run by GitHub Actions)
-packages/api-types/  TypeScript types generated from apps/api's OpenAPI
-                     schema — the frontend/backend contract
-```
+## Quick Start
 
-**One adjustment from the original plan worth flagging up front:**
-[`PLAN.md`](PLAN.md) originally described one Vercel project hosting
-both the frontend and the Python API together (via a `/api/*` rewrite
-inside a single deployment). Building it, the cleaner and more robust
-setup turned out to be **two separate Vercel projects** in this one
-repo — one with Root Directory `apps/web`, one with Root Directory
-`apps/api` — rather than fighting Vercel's monorepo multi-runtime
-config. Same result (both still deploy from this repo, both still free,
-both still "just Vercel"), just two projects instead of one. Everything
-else in `PLAN.md` (Neon, Upstash, GitHub Actions for scheduling, the
-precompute-predictions architecture) is unchanged.
+### Prerequisites
 
-Data flow: GitHub Actions runs `apps/ingest` on a schedule → writes to
-Neon Postgres → `apps/api` serves fast reads from Postgres → `apps/web`
-renders them. The one on-demand compute path left in the request cycle
-is the "what-if" slider panel (`POST /api/predictions/{id}/recompute`),
-by design — see `PLAN.md` §3.
+- Python 3.9 or higher
+- pip or poetry for package management
 
-## Local development
+### Installation
 
-You need Python 3.12+, Node 20+, and (optionally) Docker if you'd rather
-run Postgres/Redis locally than use SQLite/in-memory fallbacks — nothing
-below requires it.
-
-### Backend
-
+1. Clone the repository:
 ```bash
-cd apps/api
-python -m venv venv && source venv/bin/activate
+git clone <repository-url>
+cd FORMULA_1_PREDICTOR_2026_2027_V2
+```
+
+2. Create a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
 pip install -r requirements.txt
-
-cp .env.example .env    # defaults to local SQLite — no further setup needed
-alembic upgrade head    # creates f1_predictions.db with the full schema
-
-uvicorn main:app --reload --port 8000
-# API docs: http://localhost:8000/api/docs
 ```
 
-Run the test suite:
+4. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+5. Initialize the database:
+```bash
+python scripts/migrate_db.py
+python scripts/seed_2026_calendar.py
+```
+
+6. Run the application:
+```bash
+python main.py
+```
+
+The dashboard will be available at `http://localhost:5000`
+
+## Project Structure
+
+```
+f1_predictor_2026/
+├── main.py                          # Application entry point
+├── config/                          # Configuration modules
+├── dashboard/                       # Flask application and templates
+├── data/                            # Data sources and API clients
+├── engine/                          # ML models and prediction logic
+├── database/                        # Database models and migrations
+├── reports/                         # Report generation
+├── scripts/                         # Utility scripts
+├── tests/                           # Test suite
+└── cache/                           # Cached data and models
+```
+
+## Configuration
+
+Key configuration files:
+
+- `.env` - Environment variables and API settings
+- `config/settings.py` - Application settings
+- `config/feature_weights.py` - Model parameter defaults
+- `config/constants.py` - Team colors, points system, target definitions
+
+## Model Architecture
+
+The prediction system uses an ensemble of ML models:
+
+- **Gradient Boosting (XGBoost/LightGBM)**: Primary tabular predictor
+- **Random Forest**: Secondary model for diversity
+- **Logistic Regression**: Interpretable baseline
+- **Elo Rating System**: Driver skill tracking
+- **Monte Carlo Simulation**: Race outcome simulation
+- **Grid Model**: Qualifying-to-race conversion with empirical pole-to-win weighting
+
+## Data Sources
+
+- **Jolpica**: Historical standings, race results, qualifying data
+- **OpenF1**: Live session timing and telemetry
+- **FastF1**: Lap-by-lap telemetry and practice/qualifying data
+- **Hugging Face**: Historical race data archive (tracinginsights/RaceData)
+
+## Dashboard Views
+
+- **Dashboard**: Main prediction interface with session-specific forecasts
+- **Standings**: Live driver and constructor championship standings
+- **H2H Comparison**: Head-to-head driver comparisons
+- **Constructors**: Team performance analysis
+- **Analytics & Settings**: Model accuracy metrics and parameter tuning
+- **Reports**: Export predictions in various formats
+
+## Development
+
+### Running Tests
 
 ```bash
-pip install pytest httpx
-pytest tests/ -v
+pytest tests/
 ```
 
-### Frontend
+### Code Style
 
 ```bash
-cd apps/web
-npm install
-cp .env.example .env.local   # defaults already point at localhost:8000
-npm run dev
-# http://localhost:3000
+black .
+flake8 .
 ```
 
-Sign-in without setting up a real GitHub OAuth app: in development, an
-extra "Dev login" option appears on `/account` that mints an account
-from just a display name (see `lib/auth.ts` — this provider is never
-registered when `NODE_ENV=production`).
-
-### Ingestion scripts (optional locally)
+### Database Migrations
 
 ```bash
-cd apps/ingest
-export DATABASE_URL=sqlite:///../api/f1_predictions.db
-python sync_data.py            # warms standings cache, records a freshness marker
-python run_predictions.py      # precomputes predictions for every upcoming race
-python evaluate_accuracy.py    # scores any pending picks for completed races
+python scripts/migrate_db.py
 ```
 
-## Deploying (all free tiers, see `PLAN.md` §1 for the research behind these choices)
+## Docker Deployment
 
-1. **Neon** (Postgres) — create a project, copy the **pooled** connection
-   string (the one with `-pooler` in the hostname — required for
-   serverless; see `apps/api/database/db.py`'s comments on why).
-2. **Upstash** (Redis) — create a database, copy the `rediss://` URL.
-3. **Vercel project 1 — API**: import this repo, set Root Directory to
-   `apps/api`. Environment variables: `DATABASE_URL` (Neon), `REDIS_URL`
-   (Upstash), `AUTH_SYNC_SECRET` (generate a random string), `SECRET_KEY`
-   (another random string), `ALLOWED_ORIGINS` (your web project's URL,
-   added after step 4). Deploy. Then run `alembic upgrade head` against
-   the Neon URL once, from your machine or CI, to create the schema.
-4. **Vercel project 2 — Web**: import this repo again, set Root
-   Directory to `apps/web`. Environment variables: `NEXT_PUBLIC_API_URL`
-   and `API_INTERNAL_URL` (project 1's URL + `/api`), `AUTH_SYNC_SECRET`
-   (same value as project 1), `AUTH_SECRET` (`npx auth secret`),
-   `AUTH_GITHUB_ID`/`AUTH_GITHUB_SECRET` (from a GitHub OAuth App whose
-   callback URL is `https://<this-project>.vercel.app/api/auth/callback/github`).
-   Deploy.
-5. Go back to **project 1** and set `ALLOWED_ORIGINS` to project 2's
-   real URL, redeploy.
-6. **GitHub Actions**: add repo secrets `DATABASE_URL` (same Neon URL).
-   The `ingest-schedule.yml` workflow runs hourly by default — tune the
-   cron expression for denser polling on race weekends, or trigger it
-   manually from the Actions tab.
+```bash
+docker build -t f1-predictor-2026 .
+docker run -p 5000:5000 f1-predictor-2026
+```
 
-### Fallback: API on Render instead of Vercel (PLAN.md §9)
+## License
 
-If the Python function bundle (numpy/scipy/scikit-learn/xgboost/
-lightgbm/fastf1/weasyprint all together) ever gets uncomfortably large
-or slow to cold-start on Vercel: deploy `apps/api` to Render's free web
-service instead (same code, `uvicorn main:app --host 0.0.0.0 --port
-$PORT` as the start command), and point the web project's
-`NEXT_PUBLIC_API_URL`/`API_INTERNAL_URL` at Render's URL. Nothing else
-changes.
+[Your License Here]
 
-## What's built vs. what's a documented next step
+## Contributing
 
-Built and tested end-to-end (backend test suite + a real frontend build
-+ a live cross-service smoke test, all reproduced in this repo's CI):
+Contributions are welcome! Please read our contributing guidelines before submitting pull requests.
 
-- All prediction/standings/H2H/constructors/reports endpoints, ported
-  1:1 from the original Flask blueprints
-- Real Alembic migrations (replacing the original's two competing
-  hand-rolled schema-creation paths — see `AUDIT.md` M-3)
-- A consolidated single database module (was two duplicated ones)
-- Real JWT auth wired to an actual sign-in flow (was dead code with no
-  login route at all — `AUDIT.md` B-6)
-- A working Redis-backed rate limiter (the original's rate limiter
-  stored counters in Flask's per-request `g`, so it silently never
-  limited anything — this is fixed, not just ported)
-- The fantasy league feature end-to-end: sign in, submit a pick, get
-  scored after the race, see the leaderboard — built almost entirely on
-  top of `UserPick`/`LeaderboardEntry` tables and
-  `engine/fantasy_scoring.py` logic that existed in the original
-  codebase but nothing ever called
+## Support
 
-Explicitly **not** built, with the reasoning documented rather than
-silently skipped:
+For issues and questions, please open an issue on the repository or contact support@f1predictor.com
 
-- **Live qualifying-result ingestion for "pole" picks**
-  (`apps/ingest/evaluate_accuracy.py`) — race results are fully wired
-  up; pole picks correctly stay in `pending` status until qualifying
-  result parsing is added. Small, well-scoped follow-up.
-- **Full relational ingestion** of Jolpica/OpenF1 data into
-  `database/models.py`'s Team/Driver/Circuit/Race/QualifyingResult/
-  RaceResult tables — the prediction engine reads from the static
-  `config/team_driver_lineup_2026.py`/`data/calendar_2026.py` today, not
-  those tables, so building a full ingestion mapper for them now would
-  have no consumer. `apps/ingest/sync_data.py` documents this scope
-  decision inline.
-- **`packages/api-types` is generated but not yet consumed** — `apps/web`'s
-  hand-written API types match it today (both were written against the
-  same routers) but nothing enforces that they stay in sync. Switching
-  `lib/api-client.ts` to import from `@f1-predictor/api-types` (e.g. via
-  `openapi-fetch`) closes that gap — see that package's README.
-- **Live Ergast/Jolpica JSON parsing in `evaluate_accuracy.py`** is
-  written to the documented schema but only exercised against the local
-  fallback data in this environment (no network access to the live
-  Jolpica API from where this was built) — it degrades to skipping a
-  race and logging a warning rather than crashing if the live shape
-  doesn't parse as expected, but is worth a real smoke test against
-  live data before relying on it for a real race weekend.
-- **Prometheus-style metrics** — replaced with a small real `/api/status`
-  JSON endpoint instead of porting the original's Prometheus exporter,
-  which was never wired up in the original app anyway and would need a
-  Prometheus server (which nothing in this stack runs) to be useful.
-  Documented in `PLAN.md` §6.
+
+## Documentation
+
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Current system architecture and technical debt
+- [DATA_SOURCES.md](docs/DATA_SOURCES.md) - All data sources, their roles, and fallback strategies
+- [MODEL_OVERVIEW.md](docs/MODEL_OVERVIEW.md) - Current ML models, parameters, and validation requirements
+- [API_CONTRACTS.md](docs/API_CONTRACTS.md) - API contracts, endpoints, and validation requirements
+- [DATA_PIPELINE.md](docs/DATA_PIPELINE.md) - Centralized data pipeline architecture and implementation
+- [MODEL_VALIDATION.md](docs/MODEL_VALIDATION.md) - Model validation, probability enforcement, and drift detection
+- [AI_PROVIDERS.md](docs/AI_PROVIDERS.md) - AI provider integration and fallback strategies
+- [DASHBOARD_ENHANCEMENTS.md](docs/DASHBOARD_ENHANCEMENTS.md) - Dashboard enhancements and real-time visualization
+- [TESTING_AND_VALIDATION.md](docs/TESTING_AND_VALIDATION.md) - Comprehensive testing framework and validation
+- [SECURITY_ENHANCEMENTS.md](docs/SECURITY_ENHANCEMENTS.md) - Security enhancements and protection measures
+- [MONITORING.md](docs/MONITORING.md) - Monitoring and observability system
+- [PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md) - Performance optimization measures
+- [API_INTEGRATION_TESTS.md](docs/API_INTEGRATION_TESTS.md) - Comprehensive API integration tests
+- [FINAL_HANDOFF.md](docs/FINAL_HANDOFF.md) - Final handoff guide and deployment documentation
+
+## Architecture Audit Summary
+
+The current F1 prediction platform follows a layered architecture with three primary data sources (Jolpica, OpenF1, FastF1), a session context processing layer, and a prediction engine using both ML models and Monte Carlo simulations.
+
+A full, verified audit of this codebase — including what's actually wired
+into the running app versus what exists as unused code — lives in
+[`AUDIT.md`](AUDIT.md). The summary below was previously inaccurate about
+several items' real status; it's corrected here.
+
+### Key Technical Debt Items (verified status)
+
+- **Missing API Integration Tests**: `test_api_integration.py` still does not exist. Not addressed.
+- **Probability Validation Gaps**: `engine/probability_model.py::enforce_probability_sum` normalises winner probabilities to sum to 1.0 — addressed, and covered by `tests/test_predictor.py`.
+- **Hardcoded Configuration**: Monte Carlo simulation count is configurable via the `simulation_count` parameter on `generate_prediction()` (see `engine/predictor.py`) — addressed.
+- **Logging Deficiencies**: Most library code (`engine/`, `data/`, `database/`) uses `logging`; the Flask blueprint route handlers and CLI scripts still use `print()` — partially addressed, tracked as a nit in `AUDIT.md`.
+- **Data Pipeline Limitations**: `data/pipeline.py` / `pipeline_utils.py` / `pipeline_config.py` provide a shared normalization layer — addressed.
+- **Database Configuration**: Configurable via `DATABASE_URL` in `config/settings.py` — addressed, though see `AUDIT.md` M-3 for a caveat (two separate connection-pooling implementations exist).
+- **AI Provider Integration**: `engine/ai_client.py` / `ai/provider.py` integrate Gemini, OpenAI, Anthropic, Groq, Mistral, Cohere, HuggingFace, and local Ollama — addressed.
+- **Dashboard Enhancements**: Multi-view Flask dashboard exists — addressed.
+- **Comprehensive Testing**: 12 tests exist and pass, but large parts of the codebase (most of `engine/`, all of `security/`, `data/api_client.py`, `reports/`) remain untested — partially addressed. See `AUDIT.md` T-1.
+- **Security Enhancements**: `security/auth.py` and `security/middleware.py` implement real JWT auth, security headers, and input validation — **but neither module is imported by any route the running app actually registers** (`dashboard/app.py`). The only blueprints that used them (`dashboard.py`, `health.py`) are not wired into the app, and there is no login endpoint anywhere to issue a token even if they were. **Not actually addressed in the running application** — see `AUDIT.md` B-6.
+- **Monitoring and Observability**: `monitoring/blueprint.py` implements a real Prometheus `/metrics` endpoint, but it is never registered by `dashboard/app.py` or `main.py`. **Not actually addressed in the running application** — see `AUDIT.md` m-3.
+- **Performance Optimization**: Response caching (`cache/redis.py`) and DB connection pooling exist — addressed.
+- **API Integration Tests**: Same as above — still just the 3 existing test files, no dedicated API integration suite.
+- **Final Documentation and Handoff**: This section itself was the main inaccuracy found; corrected as part of the repo audit (see `AUDIT.md`).
+
+> **Note on the sections below:** these "Phase N Implementation Summary"
+> write-ups predate this audit and describe intended/aspirational state
+> rather than verified fact — e.g. Phase 13 below claims "Full Coverage:
+> All Jolpica, OpenF1, and FastF1 endpoints tested," but `tests/` contains
+> only `test_ai_client.py`, `test_dashboard_blueprints.py`, and
+> `test_predictor.py` — none of which test `jolpica_client.py`,
+> `openf1_client.py`, or `fastf1_integration.py` at all. Similarly, Phase
+> 11's monitoring claim is real code (`monitoring/blueprint.py`) that is
+> never registered by the running app (see `AUDIT.md` m-3). Treat the
+> sections below as a roadmap/wishlist, not a changelog, until each claim
+> has been re-verified.
+
+### Phase 11 Implementation Summary
+
+Monitoring and observability has been implemented with:
+
+- **Prometheus Metrics**: Comprehensive application, prediction, database, and AI provider metrics
+- **Grafana Integration**: Ready for dashboard creation
+- **Alerting System**: Email and Slack alerting configuration
+- **Log Aggregation**: Centralized logging with retention policies
+
+### Phase 12 Implementation Summary
+
+Performance optimization has been implemented with:
+
+- **Redis Caching**: Distributed caching layer for predictions and database queries
+- **Database Optimization**: Connection pooling, query optimization, and indexing
+- **Response Optimization**: Compression and cache headers for API responses
+- **Cache Invalidation**: Automatic cache invalidation on data changes
+
+### Phase 13 Implementation Summary
+
+Comprehensive API integration tests have been implemented with:
+
+- **Full Coverage**: All Jolpica, OpenF1, and FastF1 endpoints tested
+- **Error Handling**: Comprehensive testing of all HTTP error codes
+- **End-to-End Testing**: Full prediction flow testing
+- **Fallback Testing**: Testing of fallback strategies when primary sources fail
+
+### Phase 14 Implementation Summary
+
+Final documentation and handoff has been implemented with:
+
+- **Deployment Guide**: Step-by-step installation and configuration instructions
+- **Maintenance Guide**: Database, monitoring, and security maintenance procedures
+- **Future Roadmap**: Short-term, medium-term, and long-term development plans
+- **Technical Debt Summary**: Comprehensive summary of remaining technical debt
+- **Contact Information**: Project ownership and support contact details
+
+### Next Steps
+
+1. Complete Phase 14 documentation (FINAL_HANDOFF.md created above)
+2. Conduct final code review and quality assurance
+3. Prepare for production deployment
+4. Begin post-deployment monitoring and optimization

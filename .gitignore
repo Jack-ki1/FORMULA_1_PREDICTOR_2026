@@ -1,29 +1,33 @@
-# Python
+# Byte-compiled / cache
 __pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables (real secrets/config; .env.example stays tracked)
+.env
+
+# Databases (local dev state — not source)
 *.db
 *.sqlite
-.pytest_cache/
-apps/api/cache/fastf1_cache/
-apps/api/cache/api_responses/*.json
+*.sqlite3
 
-# Node / Next.js
-node_modules/
-.next/
-out/
-*.tsbuildinfo
-next-env.d.ts
+# Runtime caches (regenerated on demand, not source)
+cache/fastf1_cache/
+cache/api_responses/*.json
+cache/model_cache/
 
-# Env files (examples stay tracked)
-.env
-.env.local
-.env.*.local
-
-# Editor/OS
+# Editor/OS noise
 .DS_Store
 .vscode/*
 !.vscode/settings.json
 
-# Generated (regenerate via packages/api-types)
-# (schema.d.ts is tracked deliberately so `npm install` alone works
-# without needing the API running — see packages/api-types/README.md)
+# Build artifacts
+build/
+dist/
+*.egg-info/
