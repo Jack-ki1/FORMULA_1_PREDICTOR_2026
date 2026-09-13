@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: f1-predictor-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      # Free-tier Render web services have no persistent disk, so SQLite
+      # (the default DATABASE_URL) resets on every deploy/restart. Point
+      # this at a free hosted Postgres (Neon, Supabase, or Render's own
+      # Postgres) if predictions/accuracy history need to survive restarts.
+      - key: DATABASE_URL
+        sync: false
+      # Optional — Redis is not required (see "Data & cache" above).
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      # Restrict CORS to the deployed frontend once you know its domain
+      # (Option B path above).
+      - key: CORS_ORIGINS
+        sync: false

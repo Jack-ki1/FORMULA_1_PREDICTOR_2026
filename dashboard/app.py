@@ -27,8 +27,16 @@ def create_app():
     app.config['DEBUG'] = settings.DEBUG
     app.config['FLASK_ENV'] = settings.FLASK_ENV
 
-    # Enable CORS
-    CORS(app, supports_credentials=True)
+    # Enable CORS. CORS_ORIGINS defaults to "*" (fine for local dev and the
+    # docker-compose stack, where nginx/Vite proxy same-origin anyway). Set
+    # it to a comma-separated allowlist in production if the frontend calls
+    # this API cross-origin (Option B above).
+    _cors_origins = settings.CORS_ORIGINS
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=_cors_origins.split(',') if _cors_origins != '*' else '*',
+    )
 
     # === Global middleware: request ID, rate limiting stub, timing ===
     @app.before_request
@@ -116,6 +124,57 @@ def create_app():
     @app.route('/health')
     def health():
         return jsonify({'status': 'healthy', 'version': '1.0.0'})
+
+    # === Serve React frontend (built via `npm run build` in frontend/) on same port (5000) ===
+    # The React SPA is built to `frontend/dist` (Vite, base: '/app/') and served at `/app` on the
+    # same Flask port. This keeps a clear backend (Flask/python) + frontend (React/tsx/npm)
+    # separation but removes the separate Vite dev server on 5173 — the only browsable
+    # port is now 5000. Legacy Jinja pages (/, /dashboard/, /standings/ etc.) keep precedence;
+    # React is available at /app, /app/dashboard, /app/standings ... and shares the same /api/v1.
+    # If `frontend/dist` doesn't exist (fresh clone before `npm run build`), these routes 404
+    # gracefully and the legacy UI + API still work.
+    try:
+        import pathlib as _pl
+        from flask import send_from_directory
+        _frontend_dist = _pl.Path(__file__).resolve().parent.parent / "frontend" / "dist"
+        if _frontend_dist.is_dir():
+            @app.route("/app")
+            @app.route("/app/<path:path>")
+            def _serve_frontend(path=""):
+                # Serve built assets directly if they exist — hashed assets get long cache
+                if path and (_frontend_dist / path).is_file():
+                    # hashed assets (e.g. /app/assets/index-*.js) -> 1y immutable, index.html/sw.js -> no-cache
+                    if path.startswith("assets/"):
+                        return send_from_directory(str(_frontend_dist), path, max_age=31536000)
+                    if path in ("sw.js", "workbox-*.js", "manifest.webmanifest", "registerSW.js"):
+                        return send_from_directory(str(_frontend_dist), path, max_age=0)
+                    return send_from_directory(str(_frontend_dist), path, max_age=31536000 if "." in path else 0)
+                # SPA fallback — all /app/* routes serve index.html for React Router (no-cache)
+                index = _frontend_dist / "index.html"
+                if index.is_file():
+                    return send_from_directory(str(_frontend_dist), "index.html", max_age=0)
+                return jsonify({"error": {"code": "NOT_FOUND", "message": "Frontend not built — run `cd frontend && npm run build`", "details": {}, "request_id": getattr(g, "request_id", "")}}), 404
+
+            # Also serve Vite assets at /app/assets/* when index.html references /app/assets/*
+            # (already covered by the `path` check above, but explicitly allow /assets for safety)
+            @app.route("/assets/<path:path>")
+            def _serve_frontend_assets(path):
+                assets_dir = _frontend_dist / "assets"
+                if (assets_dir / path).is_file():
+                    return send_from_directory(str(assets_dir), path, max_age=31536000)
+                return jsonify({"error": {"code": "NOT_FOUND", "message": "Asset not found", "details": {}, "request_id": getattr(g, "request_id", "")}}), 404
+            # Serve /app/assets/* directly (duplicate for base '/app/' builds)
+            @app.route("/app/assets/<path:path>")
+            def _serve_frontend_app_assets(path):
+                assets_dir = _frontend_dist / "assets"
+                if (assets_dir / path).is_file():
+                    return send_from_directory(str(assets_dir), path, max_age=31536000)
+                return jsonify({"error": {"code": "NOT_FOUND", "message": "Asset not found", "details": {}, "request_id": getattr(g, "request_id", "")}}), 404
+            # PWA: serve manifest and sw at /app/* (vite-plugin-pwa generates at dist root)
+            for _pwa_file in ("manifest.webmanifest", "sw.js", "workbox-*.js", "registerSW.js"):
+                pass  # handled by /app/<path> above
+    except Exception as _e:
+        logger.warning("Frontend static serving not configured: %s", _e)
 
     # Standardized error handlers with request_id
     @app.errorhandler(404)

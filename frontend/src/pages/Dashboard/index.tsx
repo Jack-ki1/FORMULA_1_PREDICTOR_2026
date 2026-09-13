@@ -17,12 +17,19 @@ export function DashboardPage(){
   const session=useDashboardStore(s=>s.session) as any
   const subSession=useDashboardStore(s=>s.subSession) as any
   const targetId=useDashboardStore(s=>s.targetId) as any
+  const saveResult = (r:any)=> {
+    setResult(r)
+    try{
+      localStorage.setItem('f1-last-prediction', JSON.stringify({ raceId: r.race_id || draft.raceId, predictions: r.predictions }))
+      window.dispatchEvent(new Event('f1-prediction'))
+    } catch{}
+  }
   return (
     <div className="px-4 sm:px-8 py-6 space-y-4">
       <RaceSelector />
       <SessionSelector />
       <WeatherSelector />
-      <PredictionControls onResult={setResult} />
+      <PredictionControls onResult={saveResult} />
       {session==='race' && (
         <div className="card p-4 flex items-center gap-2">
           <span>Grid source: {result?.grid_positions? 'auto (Q3 model)': 'none'}</span>

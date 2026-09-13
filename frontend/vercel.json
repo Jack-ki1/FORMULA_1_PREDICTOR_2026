@@ -1,0 +1,16 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://YOUR-BACKEND-HOST.example.com/api/$1" },
+    { "source": "/dashboard/(.*)", "destination": "https://YOUR-BACKEND-HOST.example.com/dashboard/$1" },
+    { "source": "/standings/(.*)", "destination": "https://YOUR-BACKEND-HOST.example.com/standings/$1" },
+    { "source": "/h2h/(.*)", "destination": "https://YOUR-BACKEND-HOST.example.com/h2h/$1" },
+    { "source": "/constructors/(.*)", "destination": "https://YOUR-BACKEND-HOST.example.com/constructors/$1" },
+    { "source": "/analytics/(.*)", "destination": "https://YOUR-BACKEND-HOST.example.com/analytics/$1" },
+    { "source": "/reports/(.*)", "destination": "https://YOUR-BACKEND-HOST.example.com/reports/$1" },
+    { "source": "/health", "destination": "https://YOUR-BACKEND-HOST.example.com/health" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

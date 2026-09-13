@@ -81,14 +81,41 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = 'HS256'
     JWT_EXPIRATION_HOURS: int = 24
 
+    # CORS — only matters if the frontend calls this API cross-origin (e.g.
+    # Vercel frontend -> Render backend directly, without a rewrite proxy in
+    # front of it). Comma-separated origins, e.g.
+    # "https://f1-predictor.vercel.app,https://f1-predictor-2026.vercel.app".
+    # Defaults to "*" so local dev / docker-compose keep working unchanged.
+    CORS_ORIGINS: str = '*'
+
     # Rate limiting
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_DEFAULT: str = '100/hour'
     RATE_LIMIT_AUTHED: str = '500/hour'
 
     # Security headers
+    #
+    # NOTE: the previous value here was a bare "default-src 'self'". Every
+    # Jinja page (base.html + homepage.html) loads Tailwind, Chart.js, Google
+    # Fonts and Font Awesome from CDNs, plus a handful of inline
+    # <script>/style="" attributes. A bare default-src silently blocked all
+    # of that — CSS/JS never executed, so the browser fell back to unstyled
+    # markup ("raw HTML"). This is the root cause of the port-5000 rendering
+    # bug. The policy below explicitly allowlists exactly the external
+    # origins this app actually uses; nothing else is relaxed. See "Phase 1
+    # follow-up" below for self-hosting these assets so this can tighten
+    # back to a bare 'self'.
     SECURITY_HEADERS: Dict[str, str] = {
-        'Content-Security-Policy': "default-src 'self'",
+        'Content-Security-Policy': (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+            "img-src 'self' data: blob:; "
+            "media-src 'self' blob:; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'"
+        ),
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'DENY',
         'X-XSS-Protection': '1; mode=block',

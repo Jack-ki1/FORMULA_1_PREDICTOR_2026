@@ -47,15 +47,20 @@ def main():
     print("[OK] Flask application created")
     
     # Run Flask app
-    print(f"\nStarting Flask server on {settings.FLASK_HOST}:{settings.FLASK_PORT}...")
+    # Most free hosts (Render, Railway, Fly.io) assign a port at runtime via
+    # $PORT and expect the process to bind to it — they don't let you set
+    # FLASK_PORT to match. Prefer $PORT when present; fall back to
+    # FLASK_PORT/5000 for local dev and the existing docker-compose setup.
+    run_port = int(os.environ.get("PORT", settings.FLASK_PORT))
+    print(f"\nStarting Flask server on {settings.FLASK_HOST}:{run_port}...")
     print(f"Debug mode: {settings.DEBUG}")
     print(f"Season: {settings.SEASON_YEAR}")
     print("=" * 60)
-    
+
     try:
         app.run(
             host=settings.FLASK_HOST,
-            port=settings.FLASK_PORT,
+            port=run_port,
             debug=settings.DEBUG,
             use_reloader=False,  # Don't use reloader in production
         )

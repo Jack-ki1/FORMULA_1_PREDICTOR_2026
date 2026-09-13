@@ -17,4 +17,4 @@ export const router = createBrowserRouter([
     { path:'analytics', element:<AnalyticsPage />},
     { path:'reports', element:<ReportsPage />},
   ]}
-])
+], { basename: '/app' })

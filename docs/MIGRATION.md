@@ -32,7 +32,9 @@ Authoritative order from transformation_improvements.md:
 
 ## Cutover Checklist
 
-- [ ] `docker-compose up --build` — frontend 5173/80, backend 5000, redis 6379
+- [ ] `docker-compose up --build` — backend 5000 (serves legacy `/` + React `/app` + API `/api/v1/*`) + redis 6379 — single port, no frontend 5173
+- [ ] `cd frontend && npm run build` then `python3 main.py` — verify `http://localhost:5000/` (legacy 2090 lines) + `http://localhost:5000/app` (React) + `curl http://localhost:5000/api/v1/races`
 - [ ] `pytest tests/test_api_v1.py tests/test_prediction_parity.py -v`
 - [ ] Manual: compare Jinja dashboard vs React dashboard with same race/session/weather/grid
 - [ ] Verify X-Request-ID, error contract, latency headers, cache keys
+- [ ] Verify no `5173` listening: `ss -tlnp | grep 5173` should be empty; `curl http://localhost:5173` should refuse

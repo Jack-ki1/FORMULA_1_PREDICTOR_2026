@@ -4,7 +4,9 @@
 >
 > Same inputs → same `engine.predictor.generate_prediction()` → same outputs → same UX, now with a typed API boundary and an independently-deployable SPA. Built as a controlled **Strangler Fig migration** (Jinja → React) over the existing Flask domain — not a rewrite.
 
-Live local stack: React `http://localhost:5173` (Vite HMR, proxies `/api` → Flask) + Flask `http://localhost:5000` + Redis `6379`. Production: static `frontend/dist/` behind `nginx` (`frontend/nginx.conf`) proxying `/api` to Flask, deployable via `docker-compose.yml`.
+Live local stack: Flask `http://localhost:5000` **single port** serves everything — legacy Jinja UI at `/`, `/dashboard/`, `/standings/`… (the “right” UI), built React SPA at `/app` (`/app/dashboard`, `/app/standings`…), API at `/api/v1/*`, plus Redis `6379`. No separate Vite dev server on `5173`. `frontend/` remains a standalone `npm` + `TSX` + `Vite` project whose `npm run build` (→ `frontend/dist`, `base: '/app/'`) is served by Flask on the same `5000`.
+
+> **2026-09-13 Transformation + 2026-09-13 Single-Port Consolidation:** CSP raw-HTML bug fixed (`config/settings.py` allowlists Tailwind/Chart.js/Fonts), `main.py` honors `$PORT`, `Dockerfile` multi-stage builds `frontend/dist` + adds WeasyPrint libs, `CORS_ORIGINS` configurable, React Home/Reports + start-lights/countdown/ticker (`frontend/src/pages/Home`). **Sep 13 single-port:** removed `5173` — Vite dev server no longer exposed; Flask now serves `frontend/dist` at `/app` on `5000` (legacy `5000` remains primary). `docker-compose.yml` is now `backend:5000` + `redis:6379` only. Verified `python3 -m pytest 27 passed` + `npm run build 123 modules 448kB` + `curl http://localhost:5000/` (legacy 2090 lines) + `curl http://localhost:5000/app` (React).
 
 ---
 
@@ -14,9 +16,9 @@ Live local stack: React `http://localhost:5173` (Vite HMR, proxies `/api` → Fl
 2. [Architecture at a Glance](#architecture-at-a-glance)
 3. [Repository Map](#repository-map)
 4. [Prerequisites](#prerequisites)
-5. [Run — The Two Ways](#run--the-two-ways)
-   - [A. Docker Compose (one command)](#a-docker-compose-one-command)
-   - [B. Manual: Backend + Frontend separately](#b-manual-backend--frontend-separately)
+5. [Run — Single Port (5000)](#run--single-port-5000)
+   - [A. Docker Compose (one command, single port)](#a-docker-compose-one-command-single-port)
+   - [B. Manual: Build Frontend + Run Backend (single port)](#b-manual-build-frontend--run-backend-single-port)
 6. [Backend Deep Dive](#backend-deep-dive)
 7. [Frontend Deep Dive](#frontend-deep-dive)
 8. [API Reference](#api-reference)
@@ -76,6 +78,8 @@ The product invariant is **prediction parity** — the migration changes deliver
      Redis      SQLAlchemy  ←─────────  Jolpica / OpenF1 / FastF1
   cache/redis   → SQLite (dev) / PostgreSQL (prod)
 ```
+
+Single-port (5000) note: `frontend/dist` (Vite `base: '/app/'`) is built via `npm run build` and served by Flask at `/app` (`/app/assets/*` + SPA fallback) on the **same** `5000` — no separate `5173`. Legacy Jinja (`/`, `/dashboard/`…) keeps precedence at the root; React (`/app`, `/app/dashboard`…) and API (`/api/v1/*`) share the same origin. `frontend/` remains a standalone `npm`/`TSX` codebase; `Dockerfile` multi-stage builds it into the Flask image.
 
 **State split (modern analytics pattern — `docs/ARCHITECTURE.md`):**
 
@@ -243,95 +247,113 @@ FORMULA_1_PREDICTOR_2026/
 
 ---
 
-## Run — The Two Ways (both verified 2026-09-12 — pick ONE, they share host ports 5000/5173)
+## Run — Single Port (5000) — verified 2026-09-13
+
+> **Single-port model:** Flask on `5000` is the *only* browsable port. It serves legacy Jinja UI (`/`, `/dashboard/`, `/standings/`, `/h2h/`, `/constructors/`, `/analytics/` — the “right” UI you see on `5000`) **and** the built React SPA at `/app` (`/app`, `/app/dashboard`, `/app/standings`…) **and** the API at `/api/v1/*`. `frontend/` remains a separate `npm` + `TSX` + `Vite` project (`base: '/app/'`, `router basename: '/app'`) whose `npm run build` → `frontend/dist` is served by Flask (see `dashboard/app.py`). No Vite dev server on `5173` is exposed — `5173` was the previous dev proxy and is now removed.
 
 > **If `docker compose up` or `python main.py` appeared to hang/fail before, the fixes below address it:**
 > - `data/live_updater.py:138` now starts Flask in `4s` (health `200` immediately); previously it blocked `20s` on `FastF1` fetch before `app.run`.
-> - `Dockerfile:6` now installs `curl` for the backend `HEALTHCHECK` (`curl -f http://localhost:5000/health`).
-> - `frontend/nginx.conf:5` now proxies all backend paths (`/api`, `/dashboard`, `/health`, `/standings`, `/h2h`, `/constructors`, `/analytics`, `/reports`) and correctly forwards `$http_x_request_id`.
-> - `DATABASE_URL` unified to `sqlite:///./f1_predictions.db` in both `config/settings.py:36` and `.env.example:23` (previously `.env` used `f1_predictor.db` → two empty DB files).
+> - `Dockerfile:1` is now multi-stage: `node:20-alpine` builds `frontend/dist` (123 modules, 448kB) then `python:3.11-slim` copies it to `./frontend/dist` and serves it at `/app` on the same `5000` (plus `curl` + WeasyPrint `libpango/libcairo/fonts-liberation` for PDF).
+> - `main.py:54` honors `$PORT` (Render/Railway/Fly) falling back to `FLASK_PORT`.
+> - `config/settings.py:89` CSP fixed from bare `default-src 'self'` to `cdn.tailwindcss.com/cdn.jsdelivr.net/cdnjs/fonts.googleapis.com` — previously blocked Tailwind/Chart.js/Fonts and made every page look like raw HTML. Verify: `curl -I http://localhost:5000/ | grep -i content-security`.
+> - `dashboard/app.py` now serves `frontend/dist` at `/app` with SPA fallback and `CORS_ORIGINS` handling; legacy Jinja keeps precedence at `/`.
+> - `frontend/vite.config.ts` `base: '/app/'` + `frontend/src/app/router.tsx` `basename: '/app'` + `frontend/package.json` `dev` no longer starts `5173`.
+> - `DATABASE_URL` unified to `sqlite:///./f1_predictions.db`.
+> - `docker-compose.yml` is now `backend:5000` + `redis:6379` only — no `frontend:5173` service.
 
-### A. Docker Compose — one command, production-like (no local Python/Node needed)
+### A. Docker Compose — one command, single port (no local Python/Node needed)
 
-Prereq: Docker Engine 20+ and Compose v2 (`docker --version`, `docker compose version`).
+Prereq: Docker Engine 20+ and Compose v2 (`docker --version`, `docker compose version`). If `docker: command not found` in WSL, enable WSL Integration in Docker Desktop Settings → Resources → WSL Integration, then `wsl --shutdown` and restart; otherwise use **B. Manual** below.
 
 ```bash
 # 1) from repo root
 cp .env.example .env          # edit SECRET_KEY if you want (default works for dev)
 # .env DATABASE_URL is now sqlite:///./f1_predictions.db — no change needed for quick start
 
-# 2) build & start all three services (backend:5000, frontend:80→5173, redis:6379)
-#    first build takes ~160s backend (pip: xgboost/lightgbm/fastf1) + ~15s frontend (npm 205 pkgs)
+# 2) build & start both services (backend:5000 includes built frontend at /app, redis:6379)
+#    first build takes ~160s backend (pip: xgboost/lightgbm/fastf1) + ~15s frontend (npm 205 pkgs) — now in one image
 docker compose up --build -d
 
-# 3) follow logs until you see “* Running on http://127.0.0.1:5000” (~5s, no longer 20s)
+# 3) follow logs until you see “* Running on http://127.0.0.1:5000” (~5s)
 docker compose logs -f backend   # Ctrl+C to stop tailing (containers keep running)
-docker compose logs -f frontend  # nginx 1.31.5 ready in ~2s
 
-# 4) verify — backend is healthy immediately (non-blocking updater):
+# 4) verify — single port hosts everything:
 curl -s http://localhost:5000/health | jq        # → {"status":"healthy","version":"1.0.0"}
 curl -s http://localhost:5000/api/v1/health | jq # → {"status":"healthy",…}
 curl -s http://localhost:5000/api/v1/races | jq 'length'  # → 23
+curl -s http://localhost:5000/ | grep -o "F1 Predict" | head -n1      # → legacy homepage 2090 lines (the “right” UI)
+curl -s http://localhost:5000/app | grep -o "F1 Predictor 2026" | head -n1  # → React SPA at /app
+curl -s http://localhost:5000/app/assets/index-*.css 2>&1 | head -c 50  # → @import or css
 curl -s -X POST http://localhost:5000/api/v1/predictions \
   -H 'Content-Type: application/json' \
-  -d '{"race_id":"au","session_type":"race","simulation_count":300}' | jq '.status,.predictions.winner.predictions[0]'
+  -d '{"race_id":"au","session_type":"race","simulation_count":300}' | jq '.status'  # → success
 
-# 5) verify frontend via nginx (same API, proxied):
-curl -s http://localhost:5173/ | head -n 5                    # → <!doctype html> <title>F1 Predictor 2026
-curl -s http://localhost:5173/api/v1/races | jq 'length'      # → 23 (via nginx → backend:5000)
-curl -s -X POST http://localhost:5173/api/v1/predictions \
-  -H 'Content-Type: application/json' \
-  -d '{"race_id":"au","session_type":"race","simulation_count":300}' | jq '.status' # → "success"
+# 5) open in browser (single port only):
+# legacy (right) → http://localhost:5000/ , http://localhost:5000/dashboard/ , http://localhost:5000/standings/ , etc.
+# React (frontend at same port) → http://localhost:5000/app , http://localhost:5000/app/dashboard , http://localhost:5000/app/standings , etc.
+# API → http://localhost:5000/api/v1/races , http://localhost:5000/api/v1/openapi.json
+# 5173 is NOT used — `curl http://localhost:5173` should refuse (expected after single-port consolidation)
 
-# 6) open in browser
-# frontend → http://localhost:5173   (React SPA, nginx)
-# backend  → http://localhost:5000   (also serves legacy Jinja /dashboard/ if you visit it)
-# openapi  → http://localhost:5000/api/v1/openapi.json  (or via nginx http://localhost:5173/api/v1/openapi.json)
-
-# 7) stop (keeps images, removes containers + network; volumes f1_db/redis_data persist)
+# 6) stop (keeps images, removes containers + network; volumes f1_db/redis_data persist)
 docker compose down
 # to also wipe DB/cache: docker compose down -v && rm -f f1_predictions.db && rm -rf cache/fastf1_cache/*
 ```
 
-What `docker-compose.yml:1` does: `backend` `build: Dockerfile:1` (`python:3.11-slim` + `gcc/g++/curl` → `pip -r requirements.txt` → `python main.py`) on `5000:5000`, `frontend` `build: frontend/Dockerfile:1` (`node:20-alpine` `npm install` → `npm run build` → `nginx:alpine` + `frontend/nginx.conf:1`) on `5173:80`, `redis:7-alpine` on `6379:6379`, bridge `f1net`, volumes `./cache:/app/cache` + `f1_db:/app/data` + `redis_data:/data`, healthchecks `curl -f /health` and `redis-cli ping`. `ENV PYTHONUNBUFFERED=1`.
+What `docker-compose.yml:1` does: `backend` `build: Dockerfile:1` (`node:20-alpine` `npm run build` → `frontend/dist` + `python:3.11-slim` `pip -r requirements.txt` → `python main.py`) on `5000:5000`, `redis:7-alpine` on `6379:6379`, bridge `f1net`, volumes `./cache:/app/cache` + `f1_db:/app/data` + `redis_data:/data`, healthcheck `curl -f /health`. `ENV PYTHONUNBUFFERED=1`. No `frontend` service.
 
-Common Docker failure you may have seen: `health: starting` stays `unhealthy` forever → fixed by installing `curl` in `Dockerfile:6`. `nginx: [emerg] unknown "request_id"` → fixed by using `$http_x_request_id`.
-
-### B. Manual — two terminals, fastest for development (HMR)
+### B. Manual: Build Frontend + Run Backend (single port, two steps — one browsable port)
 
 Prereq: Python 3.9+ (3.11 in `Dockerfile:1`, 3.14 tested), Node 20+ / npm 10+ (`node --version` `v20+`, `npm --version` `10+`).
 
-**Terminal 1 — Backend** (Flask API + legacy Jinja on `5000`; `main.py:1` → `initialize_database()` → `start_live_updater()` *in background* → `create_app()` `dashboard/app.py:1` → `app.run`):
+**Step 1 — Build frontend** (`frontend/` is still `npm` + `TSX` + `Vite` — built artifacts are served by Flask on `5000`):
+
+```bash
+# from repo root
+cd frontend
+npm install                  # 205 packages, ~7s; if fails: rm -rf node_modules package-lock.json && npm install
+npm run build                # tsc && vite build → 123 modules, 448kB JS (147kB gzip) → frontend/dist (base '/app/')
+# optional watch during dev: npm run watch   # tsc --watch + vite build --watch → rebuilds on save, still browsed via http://localhost:5000/app after Flask reload
+cd ..
+# verify dist exists: ls -lh frontend/dist/  # should show index.html + assets/
+```
+
+**Step 2 — Run backend** (Flask on `5000` serves legacy + `/app` + `/api/v1`):
 
 ```bash
 # from repo root
 
-# 0) if 5000/5173 were used by docker before: docker compose down  (or fuser -k 5000/tcp)
+# 0) ensure 5000 free: ss -tlnp | grep 5000 (or lsof -i :5000) ; fuser -k 5000/tcp if needed
+#    note: 5173 is no longer used — `ss -tlnp | grep 5173` should be empty
 
 python3 -m venv .venv && source .venv/bin/activate
-# Debian/Ubuntu with PEP 668 “externally-managed-environment”:
+# Debian/Ubuntu PEP 668:
 pip install -r requirements.txt
-# if you get that error outside a venv:
+# if you get externally-managed-environment outside a venv:
 pip install --break-system-packages -r requirements.txt
+# Verify deps: python3 -c "import flask, sqlalchemy, redis, fastf1; print('deps ok')"
 
-cp .env.example .env          # now sqlite:///./f1_predictions.db — matches settings default
-# optional explicit DB migrate (usually auto on first run; otherwise “no such table” warning is caught and prediction still returns):
-python scripts/migrate_db.py
+cp .env.example .env          # sqlite:///./f1_predictions.db — matches settings default
+# optional: CORS_ORIGINS for cross-origin prod without same-origin proxy (not needed for single-port):
+# echo 'CORS_ORIGINS=https://your-frontend.vercel.app' >> .env
+# optional explicit DB migrate (usually auto; otherwise “no such table” warning is caught):
+python3 scripts/migrate_db.py
 
-python main.py
-# you should see within 5s (not 20s):
+# Run honoring $PORT if set (Render/Railway) else FLASK_PORT=5000:
+python3 main.py
+# or: PORT=5001 python3 main.py   # if 5000 busy
+# you should see within 5s:
 #   [OK] Database initialized
 #   Live updater started with 300s interval (initial sync in background)
 #   [OK] Flask application created
 #   * Running on all addresses (0.0.0.0)
 #   * Running on http://127.0.0.1:5000
-#   * Running on http://172.x.x.x:5000
-# logs: "Hugging Face API key not configured" is expected without keys; FastF1 “Loading data for …” then runs in background
 
-# in another shell, verify immediately (health no longer waits for FastF1):
+# in another shell, verify immediately:
 curl -s http://localhost:5000/health | jq
 curl -s http://localhost:5000/api/v1/health | jq
 curl -s http://localhost:5000/api/v1/races | jq 'length'   # → 23
+curl -s http://localhost:5000/ | wc -l                     # → 2090 (legacy homepage — the “right” UI)
+curl -s http://localhost:5000/app | grep -o "F1 Predictor 2026" | head -n1  # → React SPA
 curl -s -X POST http://localhost:5000/api/v1/predictions \
   -H 'Content-Type: application/json' \
   -d '{"race_id":"au","session_type":"race","simulation_count":500}' | jq '.predictions.winner.predictions[0]'
@@ -341,41 +363,24 @@ curl -s -X POST http://localhost:5000/dashboard/api/predict-session \
 # Ctrl+C to stop later: also stops live_updater thread
 ```
 
-If `python main.py` still appears to hang: you are on the old `live_updater.py` — `git pull` and retry; `cat /tmp/backend.log` if you used `nohup`. Port `5000` busy → `ss -tlnp | grep 5000` or `lsof -i :5000` then `fuser -k 5000/tcp` or change `FLASK_PORT=5001` in `.env`.
+If `python3 main.py` still appears to hang: you are on the old `live_updater.py` — `git pull` and retry; `cat /tmp/backend.log` if you used `nohup`. Port `5000` busy → `ss -tlnp | grep 5000` then `fuser -k 5000/tcp` or change `FLASK_PORT=5001` in `.env`. `ModuleNotFoundError: No module named 'flask'` → you forgot `.venv` or `--break-system-packages`; run `python3 -m pip list | grep Flask` to check.
 
-**Terminal 2 — Frontend** (React SPA on `5173` with Vite HMR, proxies to `5000`):
+`frontend/vite.config.ts` `base: '/app/'` + `frontend/src/app/router.tsx` `basename: '/app'` ensure the built SPA's assets/hrefs are `/app/assets/...` and it can be served by Flask at `/app` with SPA fallback — no separate dev server. `VITE_API_BASE` in `frontend/.env.example:1` can override `api/client.ts:1` `BASE` for cross-origin if ever needed.
 
-```bash
-# from repo root, in a new terminal (keep backend running)
-cd frontend
-npm install                  # 205 packages (49 funding), ~7s; if fails: rm -rf node_modules package-lock.json && npm install
-npm run dev                  # → VITE v5.4.21  ready in 146 ms
-# → Local:   http://localhost:5173/
-# verify vite is proxying (backend must be on 5000):
-curl -s http://localhost:5173/ | head -n 5
-curl -s http://localhost:5173/api/v1/races | jq 'length'             # → 23 (via vite → Flask)
-curl -s -X POST http://localhost:5173/api/v1/predictions \
-  -H 'Content-Type: application/json' \
-  -d '{"race_id":"au","session_type":"race","simulation_count":300}' | jq '.status' # → success
+### C. Deploy (optional): still single image — Render/Railway/Fly
 
-# now open http://localhost:5173 in browser — Dashboard, Standings, H2H, Constructors, Analytics all hit /api/v1/* via proxy
-# build for prod check:
-npm run build                # tsc && vite build → frontend/dist/ (438 kB JS gzip 144, 28.5 kB CSS) — 2.8s
-# Ctrl+C to stop vite
-```
-
-`frontend/vite.config.ts:8` proxies `/api`, `/dashboard`, `/standings`, `/h2h`, `/constructors`, `/analytics`, `/reports`, `/health` → `http://localhost:5000` so no CORS in dev. `VITE_API_BASE` in `frontend/.env.example:1` can override `api/client.ts:1` `BASE`.
-
-**Choose ONE mode at a time** — both map host `5000` (backend) and `5173` (frontend). If you `docker compose up -d` then `python main.py` will fail `Address already in use`; `docker compose down` first or run manual frontend against docker backend (it will proxy to `localhost:5000` which is docker’s backend, so it still works if you keep docker backend up and only run `npm run dev`).
+The same `Dockerfile` (multi-stage) now builds the frontend, so a single Render/Railway service on `5000` hosts everything. Set `DATABASE_URL` to Neon/Supabase if you want persistence (free SQLite is ephemeral), optional `REDIS_HOST/PORT/PASSWORD` (Upstash), plus `CORS_ORIGINS` if you later expose the API cross-origin. `frontend/vercel.json` + `render.yaml` remain for a split Vercel+Render topology if you prefer it, but the canonical local/docker path is now single-port via Flask.
 
 Quick smoke after either mode:
 
 ```bash
 # from repo root (either backend)
-python -m pytest -q                               # 27 passed (API v1 + parity + legacy)
-python -m pytest tests/test_api_v1.py tests/test_prediction_parity.py -v
+python3 -m pytest -q                               # 27 passed (API v1 + parity + legacy)
+python3 -m pytest tests/test_api_v1.py tests/test_prediction_parity.py -v
 # golden fixtures (deterministic, AI disabled):
 PYTHONPATH=. python scripts/generate_golden_fixtures.py  # → tests/fixtures/golden/*.json (5 files)
+# frontend build check:
+cd frontend && npm run build && ls -lh dist/       # 123 modules, 448kB
 ```
 
 ---
@@ -595,13 +600,17 @@ All external failures degrade gracefully to local JSON (`data/constructors.json`
 ```
 SECRET_KEY=change-me
 FLASK_HOST=0.0.0.0  FLASK_PORT=5000  FLASK_ENV=development  DEBUG=false
-DATABASE_URL=sqlite:///./f1_predictions.db   # prod: postgresql://user:pass@host/db
-REDIS_HOST=localhost  REDIS_PORT=6379  REDIS_DB=0  REDIS_PASSWORD=
+# Render/Railway/Fly inject $PORT at runtime — main.py honors it over FLASK_PORT (no code change needed)
+PORT=                              # only set by host; leave blank locally
+DATABASE_URL=sqlite:///./f1_predictions.db   # prod: postgresql://user:pass@host/db (Render free has no disk — SQLite resets on deploy)
+REDIS_HOST=localhost  REDIS_PORT=6379  REDIS_DB=0  REDIS_PASSWORD=  # docker-compose sets REDIS_HOST=redis
+CORS_ORIGINS=*                     # comma-separated allowlist for cross-origin prod: https://f1-predictor.vercel.app,https://f1-predictor-2026.vercel.app (vite proxy is same-origin, so * is fine locally)
 SEASON_YEAR=2026  VERSION=1.0.0
 CACHE_TTL_SECONDS=300  LIVE_UPDATE_INTERVAL=300
 JWT_ALGORITHM=HS256  JWT_EXPIRATION_HOURS=24
 RATE_LIMIT_ENABLED=true
 HUGGINGFACE_API_KEY=  OPENAI_API_KEY=
+VITE_API_BASE=                     # frontend: leave blank for vite/nginx proxy (same-origin); set to https://backend.onrender.com for cross-origin Vercel → Render without rewrites
 ```
 
 Feature weights `config/feature_weights.py:1` — `chaos_level` 0–100 step 1 (default 50) etc. (`grid_weight` default 55). Constants `config/constants.py:1` — `TARGETS`, Pirelli compounds, points.
@@ -631,15 +640,23 @@ cd frontend && npm run build    # tsc && vite build → dist/ (438 kB JS)
 
 ## Docker & Production
 
-- `Dockerfile:1` — `python:3.11-slim`, `pip -r requirements.txt`, `python main.py` (env `FLASK_APP=main.py`).
-- `frontend/Dockerfile:1` — multi-stage `node:20-alpine` `npm run build` → `nginx:alpine` serving `dist/` with `nginx.conf:1` (`/api → backend:5000`, SPA fallback `try_files $uri /index.html`).
-- `docker-compose.yml:1` — see [Run — Docker Compose](#a-docker-compose-one-command). Healthchecks, volumes, bridge `f1net`.
+- `Dockerfile:1` — **multi-stage** `node:20-alpine` (`npm run build` → `frontend/dist`, `base: '/app/'`) → `python:3.11-slim` (`pip -r requirements.txt` → `python main.py`) and serves `frontend/dist` at `/app` on the same `5000`. Also installs `libpango/libcairo/fonts-liberation` for WeasyPrint, honors `$PORT`, and `curl` for healthcheck. Single image, single port.
+- `frontend/Dockerfile:1` + `frontend/nginx.conf:1` — legacy split-deploy path (`node` build → `nginx` on `80` proxying `/api` → `backend:5000`). Kept for reference if you prefer a separate `nginx` frontend (e.g., `docker-compose` with nginx), but the canonical `docker-compose.yml` now uses the single-image backend only.
+- `docker-compose.yml:1` — `backend:5000` (multi-stage built frontend at `/app`) + `redis:6379` only — see [Run — Single Port](#a-docker-compose-one-command-single-port). No `frontend:5173`. Healthcheck `curl -f /health`. Requires Docker Desktop WSL integration if `docker: command not found` in WSL.
+- `frontend/vercel.json` + `render.yaml` — optional split free-tier (Vercel `dist` rewrites `/api` → `https://YOUR-BACKEND-HOST.example.com` + Render `PORT`/`healthCheckPath`). Single-port (`Flask on 5000` serving both) works without them; use only if you want Vercel CDN for the SPA.
 
-Production topology ( `docs/ARCHITECTURE.md:1`):
+Production topology — single-port (canonical):
 
 ```
-Internet → Reverse Proxy (Nginx/Caddy) → / (static React)  /api/* → Flask → Redis / PostgreSQL / F1 APIs
-                                         ^ scales independently   ^ Celery/RQ worker later for Monte Carlo
+Browser ──→ Flask on 5000 (Jinja / + /dashboard/…  +  React /app  +  API /api/v1/*) ──→ Redis / PostgreSQL / F1 APIs
+                     ^ single image (Dockerfile multi-stage) with frontend/dist at /app
+                     ^ scales via $PORT / replica; Celery/RQ later for Monte Carlo
+```
+
+Legacy split (optional):
+
+```
+Browser ──→ Vercel (frontend, rewrites /api ──→) Render (Flask, $PORT) ──→ Redis/Postgres/F1 APIs
 ```
 
 ---
@@ -653,12 +670,19 @@ Internet → Reverse Proxy (Nginx/Caddy) → / (static React)  /api/* → Flask 
 
 ## Troubleshooting
 
-- `ModuleNotFoundError: fastf1` → `pip install fastf1 requests-cache`.
-- `no such table: predictions` on first run → `python scripts/migrate_db.py` or ignore — saves are caught, prediction still returns.
-- `Redis host unreachable` → `DictCache` fallback logs `Using in-memory DictCache`; start `redis-server` or `docker compose up redis`.
-- `Hugging Face API key not configured` → expected without `.env` key.
-- Frontend `404 /api/v1/races` → ensure `vite.config.ts` proxy points to `5000` and Flask is running.
-- `X-Request-ID` missing → `dashboard/app.py` `before_request` always sets it; check proxy stripping headers (`nginx.conf` `proxy_set_header X-Request-ID`).
+- `ModuleNotFoundError: fastf1` → `pip install fastf1 requests-cache` (or `pip install --break-system-packages -r requirements.txt` on Debian PEP668). Check `python3 -m pip list | grep fastf1`.
+- `externally-managed-environment` → `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` or `pip install --break-system-packages -r requirements.txt`.
+- `no such table: predictions` on first run → `python3 scripts/migrate_db.py` or ignore — saves are caught, prediction still returns.
+- `Redis host unreachable` → `DictCache` fallback logs `Using in-memory DictCache`; start `redis-server` or `docker compose up redis`. Manual uses `localhost:6379`, compose uses `redis:6379` (via `REDIS_HOST` env).
+- `Hugging Face API key not configured` → expected without `.env` key (AI off).
+- `Port 5000 looks like raw/unstyled HTML` → **fixed 2026-09-13**: `Content-Security-Policy` was `default-src 'self'` and silently blocked Tailwind/Chart.js/Fonts. Now allowlisted. If still raw, verify: `curl -I http://localhost:5000/ | grep -i content-security` should contain `cdn.tailwindcss.com`.
+- `docker: command not found` in WSL → enable WSL Integration in Docker Desktop Settings → Resources → WSL Integration, then `wsl --shutdown` and restart.
+- `Address already in use 5000` → `docker compose down` or `fuser -k 5000/tcp` or `PORT=5001 python3 main.py`. Note: `5173` is no longer used — `curl http://localhost:5173` should refuse; if it still listens, `pkill -f vite` / `fuser -k 5173/tcp` then `npm run build` + reload Flask.
+- `http://localhost:5000/app` 404 → `frontend/dist` not built yet; run `cd frontend && npm run build` then restart Flask (`python3 main.py` picks it up).
+- Frontend `404 /api/v1/races` → ensure Flask is on `5000`; `curl -s http://localhost:5000/api/v1/races | jq length` should be 23. For React at `/app`, `fetch('/api/v1/races')` is same-origin to `5000`, no CORS needed. If you set `VITE_API_BASE` cross-origin, set backend `CORS_ORIGINS`.
+- `X-Request-ID` missing → `dashboard/app.py` `before_request` always sets it; for `/app` it is echoed as well.
+- `npm run build` fails `tsc` → `cd frontend && npx tsc --noEmit` (should be clean) and `npm install` (205 pkgs).
+- Previous `5173` references → removed; the only browsable port is `5000` (`/` legacy, `/app` React, `/api/v1/*` API).
 
 ---
 

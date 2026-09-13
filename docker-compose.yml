@@ -24,17 +24,6 @@ services:
       timeout: 5s
       retries: 3
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "5173:80"
-    depends_on:
-      - backend
-    networks:
-      - f1net
-
   redis:
     image: redis:7-alpine
     ports:
