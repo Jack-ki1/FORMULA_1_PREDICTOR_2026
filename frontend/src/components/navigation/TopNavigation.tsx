@@ -12,11 +12,14 @@ export function TopNavigation(){
           <span className="f1-display text-base font-bold" style={{color:'var(--text)'}}>Predictor <span style={{color:'var(--red)'}}>2026</span></span>
         </Link>
         <nav className="flex flex-wrap items-center gap-4" aria-label="Primary">
-          {link('/dashboard','Dashboard')}
+          {link('/dashboard','Predictions')}
+          {link('/scenario-lab','Scenario Lab')}
+          {link('/live','Live Race')}
           {link('/standings','Standings')}
-          {link('/h2h','H2H Comparison')}
+          {link('/h2h','H2H')}
           {link('/constructors','Constructors')}
-          {link('/analytics','Analytics & Settings')}
+          {link('/analytics','Analytics')}
+          {link('/reports','Reports')}
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />

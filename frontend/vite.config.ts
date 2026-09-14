@@ -35,10 +35,11 @@ export default defineConfig({
       },
     }),
   ],
-  // Decoupled: frontend on 5173, backend on 5000. Vite proxies /api → backend for dev.
+  // Decoupled: frontend on 5178, backend on 5000. Vite proxies /api → backend for dev.
+  // Note: 5178 avoids conflict with parallel workspace's 5173; use --port 5173 if free.
   server: {
-    host: '0.0.0.0',
-    port: 5173,
+    host: '127.0.0.1',
+    port: 5178,
     proxy: {
       '/api': { target: 'http://localhost:5000', changeOrigin: true },
       '/health': { target: 'http://localhost:5000', changeOrigin: true },
