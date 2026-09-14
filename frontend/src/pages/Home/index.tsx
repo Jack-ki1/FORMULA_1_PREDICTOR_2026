@@ -3,6 +3,11 @@ import { useRaces } from '../../hooks/useRaces'
 import { useCountUp } from '../../hooks/useCountUp'
 import { StartLights } from '../../components/home/StartLights'
 import { NextRaceCountdown } from '../../components/home/NextRaceCountdown'
+import { RaceWeekendSection } from '../../components/home/RaceWeekendSection'
+import { GarageSection } from '../../components/home/GarageSection'
+import { MediaLightbox } from '../../components/home/MediaLightbox'
+import { DuelSection } from '../../components/home/DuelSection'
+import { CircuitSection } from '../../components/home/CircuitSection'
 
 function Stat({ value, suffix = '', label }: { value: number; suffix?: string; label: string }) {
   const { display, ref } = useCountUp(value)
@@ -50,23 +55,37 @@ export function HomePage() {
 
   return (
     <div>
-      {/* ---------- HERO ---------- */}
-      <section className="hp-hero">
+      {/* ---------- HERO — video background creatively using public/media ---------- */}
+      <section className="hp-hero relative overflow-hidden">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster="/media/night_race.png"
+          className="absolute inset-0 w-full h-full object-cover"
+          aria-hidden="true"
+        >
+          <source src="/media/F1_monaco.mp4" type="video/mp4" />
+          <source src="/media/Formula_One_race_at_dusk_1.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" aria-hidden="true" />
         <div className="hp-hero-grid-bg" aria-hidden="true" />
         <div className="hp-hero-glow" aria-hidden="true" />
         <div className="px-4 sm:px-8 py-16 sm:py-24 relative">
-          <span className="hp-kicker fs-11">2026 SEASON · AI RACE INTELLIGENCE</span>
-          <h1 className="hp-title f1-display">
+          <span className="hp-kicker fs-11" style={{ color: 'rgba(255,255,255,.9)' }}>2026 SEASON · AI RACE INTELLIGENCE — ACTIVE AERO · 50/50 PU</span>
+          <h1 className="hp-title f1-display" style={{ color: '#fff' }}>
             F1 PREDICTOR <span style={{ color: 'var(--red)' }}>2026</span>
           </h1>
-          <p className="hp-subtitle text-sub">
+          <p className="hp-subtitle" style={{ color: 'rgba(255,255,255,.85)' }}>
             Monte-Carlo race simulation, Elo-based head-to-heads and an optional AI layer —
-            built on a real prediction engine, not a guess.
+            built on a real prediction engine, not a guess. 30% less downforce, 55% less drag.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 mt-6">
             <Link to="/dashboard" className="btn-primary">Open Dashboard</Link>
-            <Link to="/standings" className="btn-ghost">View Standings</Link>
+            <Link to="/standings" className="btn-ghost" style={{ borderColor: 'rgba(255,255,255,.3)', color: '#fff' }}>View Standings</Link>
             <StartLights />
           </div>
 
@@ -133,6 +152,12 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      <RaceWeekendSection />
+      <GarageSection />
+      <MediaLightbox />
+      <DuelSection />
+      <CircuitSection />
     </div>
   )
 }

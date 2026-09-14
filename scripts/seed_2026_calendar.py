@@ -8,10 +8,10 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database.connection import db
-from config.team_driver_lineup_2026 import TEAMS_2026
-from data.calendar_2026 import CALENDAR_2026
-from database.models import Team, Driver, Circuit, Race
+from backend.app.database.connection import db
+from backend.app.config.team_driver_lineup_2026 import TEAMS_2026
+from backend.app.data.calendar_2026 import CALENDAR_2026
+from backend.app.database.models import Team, Driver, Circuit, Race
 
 
 def seed_calendar():
@@ -60,7 +60,7 @@ def seed_calendar():
             
             # Seed circuits
             print("Seeding circuits...")
-            from data.circuit_data import CIRCUITS
+            from backend.app.data.circuit_data import CIRCUITS
             for circuit_id, circuit_data in CIRCUITS.items():
                 circuit = Circuit(
                     id=circuit_id,

@@ -8,7 +8,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from engine.calibration import multi_target_calibrator
+from backend.app.engine.calibration import multi_target_calibrator
 
 
 def calibrate_probabilities():

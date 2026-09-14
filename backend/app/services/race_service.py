@@ -3,8 +3,8 @@ RaceService — calendar/races abstraction with explicit cache keys.
 """
 import logging
 from typing import Dict, List
-from data.calendar_2026 import CALENDAR_2026, get_race_by_id
-from cache.redis import get_cache
+from backend.app.data.calendar_2026 import CALENDAR_2026, get_race_by_id
+from backend.app.cache.redis import get_cache
 logger = logging.getLogger(__name__)
 
 CACHE_KEY_RACES = "races:2026"

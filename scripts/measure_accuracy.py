@@ -8,7 +8,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from engine.benchmark_suite import benchmark_suite
+from backend.app.engine.benchmark_suite import benchmark_suite
 
 
 def measure_accuracy():

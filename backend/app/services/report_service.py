@@ -1,6 +1,6 @@
-from reports.csv_excel_report import CSVExcelReportGenerator
-from reports.pdf_generator import PDFGenerator
-from reports.share_card_generator import ShareCardGenerator
+from backend.app.reports.csv_excel_report import CSVExcelReportGenerator
+from backend.app.reports.pdf_generator import PDFGenerator
+from backend.app.reports.share_card_generator import ShareCardGenerator
 import io
 class ReportService:
     def export(self, data: dict):

@@ -6,7 +6,7 @@ import logging
 import hashlib
 import json
 from typing import Any, Dict, Optional
-from engine.predictor import generate_prediction
+from backend.app.engine.predictor import generate_prediction
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +20,44 @@ class PredictionService:
         s = json.dumps(grid, sort_keys=True)
         return hashlib.md5(s.encode()).hexdigest()[:8]
 
+    def _cache_key(self, payload: Dict[str, Any]) -> str:
+        # Hash stable payload without api_key for cache (identical inputs reuse inference 30-60% cheaper)
+        safe = {k: v for k, v in payload.items() if k not in ("ai_api_key", "api_key")}
+        if "ai_config" in safe and isinstance(safe["ai_config"], dict):
+            safe["ai_config"] = {k: v for k, v in safe["ai_config"].items() if "key" not in k.lower()}
+        raw = json.dumps(safe, sort_keys=True, default=str)
+        return f"pred:{hashlib.md5(raw.encode()).hexdigest()[:12]}"
+
     def generate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         race_id = payload.get("race_id")
         if not race_id or not isinstance(race_id, str):
             raise ValueError("race_id is required and must be a string")
+        # Validate race_id exists in 2026 calendar (prevents nonsense like "invalid")
+        try:
+            from backend.app.data.calendar_2026 import get_race_by_id
+            if not get_race_by_id(race_id):
+                raise ValueError(f"Unknown race_id '{race_id}' — must be one of 2026 calendar ids (e.g., 'au','mc','sg')")
+        except ValueError:
+            raise
+        except Exception:
+            pass
         session_type = payload.get("session_type", "race")
+        if session_type not in ("race", "qualifying", "practice"):
+            raise ValueError("session_type must be one of: race, qualifying, practice")
         sub_session = payload.get("sub_session")
         weather = payload.get("weather", "dry")
+        if weather not in ("dry", "wet", "mixed"):
+            raise ValueError("weather must be one of: dry, wet, mixed")
         grid_positions = payload.get("grid_positions")
+        if grid_positions is not None:
+            if not isinstance(grid_positions, dict):
+                raise ValueError("grid_positions must be a dict of driver_code → position 1-22")
+            # Validate positions 1-22 and uniqueness
+            positions = list(grid_positions.values())
+            if any(not isinstance(p, int) or p < 1 or p > 22 for p in positions):
+                raise ValueError("grid_positions values must be integers 1-22")
+            if len(positions) != len(set(positions)):
+                raise ValueError("grid_positions contains duplicate positions — each driver must have unique position")
         feature_weights = payload.get("feature_weights")
         simulation_count = payload.get("simulation_count", 10000)
         ai_config = payload.get("ai_config") or {
@@ -37,13 +67,27 @@ class PredictionService:
             "ai_weight": payload.get("ai_weight", 0.3),
             "ai_temperature": payload.get("ai_temperature", 0.7),
         }
-        # normalize simulation_count bounds (authoritative source = settings + predictor clamping)
         try:
             simulation_count = int(simulation_count)
         except Exception:
             simulation_count = 10000
         logger.info("PredictionService.generate race=%s session=%s weather=%s sims=%s grid_hash=%s",
                     race_id, session_type, weather, simulation_count, self._grid_hash(grid_positions))
+        # Cache check — hash input features, Redis TTL 3600
+        cache = None
+        cache_key = None
+        try:
+            from backend.app.cache.redis import get_cache
+            cache = get_cache()
+            cache_key = self._cache_key({**payload, "simulation_count": simulation_count})
+            cached = cache.get(cache_key)
+            if cached:
+                logger.info(f"Cache hit {cache_key}")
+                if isinstance(cached, str):
+                    return json.loads(cached)
+                return cached
+        except Exception:
+            pass
         result = generate_prediction(
             race_id=race_id,
             session_type=session_type,
@@ -54,6 +98,11 @@ class PredictionService:
             simulation_count=simulation_count,
             ai_config=ai_config,
         )
+        try:
+            if cache and cache_key:
+                cache.set(cache_key, json.dumps(result), ttl=3600)
+        except Exception:
+            pass
         return result
 
 prediction_service = PredictionService()

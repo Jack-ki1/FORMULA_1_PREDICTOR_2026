@@ -1,0 +1,1 @@
+export function ControlBar({ onRun, loading }: any){ return <div className="flex gap-2"><button onClick={onRun} disabled={loading} className="px-4 py-2 bg-red text-white rounded disabled:opacity-50">{loading?'Running...':'Run Prediction'}</button></div>}

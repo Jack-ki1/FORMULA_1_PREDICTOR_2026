@@ -11,20 +11,20 @@ export default defineConfig({
       manifest: {
         name: 'F1 Predictor 2026',
         short_name: 'F1 Predictor',
-        description: 'AI-powered Formula 1 predictions — Monte Carlo, Elo H2H, tire strategy, now on a single port 5000 at /app.',
+        description: 'AI-powered Formula 1 predictions — Monte Carlo, Elo H2H, tire strategy. Frontend on 5173, API on 5000.',
         theme_color: '#E10600',
         background_color: '#F4F5F7',
         display: 'standalone',
-        start_url: '/app/',
-        scope: '/app/',
+        start_url: '/',
+        scope: '/',
         icons: [
-          { src: '/app/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/app/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {
-        // Keep shell offline, but predictions need network (no offline POST)
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/races') || url.pathname.startsWith('/api/v1/standings'),
@@ -35,10 +35,16 @@ export default defineConfig({
       },
     }),
   ],
-  // Single-port model: Flask (5000) is the only browsable server. Vite is used
-  // only to `npm run build` → frontend/dist, which Flask serves at /app on the
-  // same port (see dashboard/app.py). No Vite dev server on 5173 — legacy
-  // Jinja at / and API at /api/v1/* keep precedence on 5000.
-  base: '/app/',
+  // Decoupled: frontend on 5173, backend on 5000. Vite proxies /api → backend for dev.
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    proxy: {
+      '/api': { target: 'http://localhost:5000', changeOrigin: true },
+      '/health': { target: 'http://localhost:5000', changeOrigin: true },
+      '/metrics': { target: 'http://localhost:5000', changeOrigin: true },
+    },
+  },
+  base: '/',
   build: { outDir: 'dist' },
 })

@@ -8,8 +8,8 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database.connection import db
-from database.models import Base
+from backend.app.database.connection import db
+from backend.app.database.models import Base
 
 
 def migrate_db():

@@ -1,0 +1,1 @@
+export function DriverBanner({ a,b }:any){ return <div className="grid grid-cols-3 gap-2"><div className="card p-3 text-center">{a?.name||'Driver A'}</div><div className="flex items-center justify-center font-bold">VS</div><div className="card p-3 text-center">{b?.name||'Driver B'}</div></div>}

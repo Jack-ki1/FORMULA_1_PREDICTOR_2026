@@ -1,0 +1,1 @@
+export function WinProbabilityBar({ p }: {p:number}){ return <div className="h-3 flex rounded overflow-hidden bg-border"><div style={{width:`${p*100}%`}} className="bg-red"/><div style={{width:`${(1-p)*100}%`}} className="bg-blue-600"/></div>}

@@ -1,7 +1,7 @@
 import logging
-from config.team_driver_lineup_2026 import get_all_drivers, get_driver_by_code
-from engine.elo_calculator import elo_calculator
-from cache.redis import get_cache
+from backend.app.config.team_driver_lineup_2026 import get_all_drivers, get_driver_by_code
+from backend.app.engine.elo_calculator import elo_calculator
+from backend.app.cache.redis import get_cache
 logger = logging.getLogger(__name__)
 
 class H2HService:

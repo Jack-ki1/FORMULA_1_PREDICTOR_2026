@@ -8,9 +8,9 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database.connection import db
-from database.models import UserPick, LeaderboardEntry, RaceResult
-from engine.fantasy_scoring import fantasy_scoring
+from backend.app.database.connection import db
+from backend.app.database.models import UserPick, LeaderboardEntry, RaceResult
+from backend.app.engine.fantasy_scoring import fantasy_scoring
 from datetime import datetime
 
 

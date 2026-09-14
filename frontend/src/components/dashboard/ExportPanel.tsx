@@ -1,0 +1,1 @@
+export function ExportPanel({ result }: any){ return <div className="card p-4"><div className="font-bold mb-2">Export</div><div className="fs-11 text-sub">Download report {result?'ready':'— run prediction first'}</div></div>}

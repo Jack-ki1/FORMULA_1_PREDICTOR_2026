@@ -17,7 +17,7 @@ CASES = [
 ]
 
 def main():
-    from engine.predictor import generate_prediction
+    from backend.app.engine.predictor import generate_prediction
     for case in CASES:
         result = generate_prediction(**{**case, "ai_config":{"ai_mode":"normal"}})
         # minimal deterministic projection for fixture

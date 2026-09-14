@@ -33,7 +33,7 @@ export function ReportsPage() {
       <h2 className="f1-display text-xl font-bold">Reports</h2>
       <p className="text-sub fs-11 mt-2 max-w-2xl">
         Exports are generated from a live prediction, so start on the{' '}
-        <a href="/app/dashboard" className="text-red" style={{ color: 'var(--red)' }}>Dashboard</a>{' '}
+        <a href="/dashboard" className="text-red" style={{ color: 'var(--red)' }}>Dashboard</a>{' '}
         — run a prediction, then use the Export control at the bottom of the results.
         Every format below is served from the same endpoint:{' '}
         <code className="f1-mono fs-11">POST /api/v1/reports/export</code>.

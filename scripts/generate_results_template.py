@@ -8,7 +8,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.team_driver_lineup_2026 import get_all_drivers
+from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 
 
 def generate_results_template(race_id: str):

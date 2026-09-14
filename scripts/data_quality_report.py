@@ -8,9 +8,9 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.api_settings import api_settings
-from data.jolpica_client import JolpicaClient
-from data.openf1_client import OpenF1Client
+from backend.app.config.api_settings import api_settings
+from backend.app.data.jolpica_client import JolpicaClient
+from backend.app.data.openf1_client import OpenF1Client
 
 
 def generate_data_quality_report():
@@ -65,8 +65,8 @@ def generate_data_quality_report():
         # Check data coverage
         print("Checking data coverage...")
         
-        from data.calendar_2026 import get_active_calendar
-        from data.season_2026 import get_completed_rounds
+        from backend.app.data.calendar_2026 import get_active_calendar
+        from backend.app.data.season_2026 import get_completed_rounds
         
         calendar = get_active_calendar()
         completed_rounds = get_completed_rounds()

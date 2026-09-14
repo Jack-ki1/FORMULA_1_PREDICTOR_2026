@@ -3,10 +3,10 @@ StandingsService — live-source + local-fallback pattern preserved.
 """
 import logging
 from typing import Dict
-from data.season_2026 import get_driver_standings, get_constructor_standings
-from data.jolpica_client import JolpicaClient
-from config.settings import settings
-from cache.redis import get_cache
+from backend.app.data.season_2026 import get_driver_standings, get_constructor_standings
+from backend.app.data.jolpica_client import JolpicaClient
+from backend.app.config.settings import settings
+from backend.app.cache.redis import get_cache
 logger = logging.getLogger(__name__)
 
 DRIVER_STANDINGS_KEY = "standings:drivers:2026"

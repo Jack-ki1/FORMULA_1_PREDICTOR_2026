@@ -1,6 +1,6 @@
-from engine.benchmark_suite import BenchmarkSuite
-from config.feature_weights import feature_weights
-from config.constants import TARGETS
+from backend.app.engine.benchmark_suite import BenchmarkSuite
+from backend.app.config.feature_weights import feature_weights
+from backend.app.config.constants import TARGETS
 class AnalyticsService:
     def get_accuracy(self):
         try:
