@@ -46,11 +46,13 @@ class DictCache:
 
 
 class RedisCache:
-    """Redis-based caching implementation."""
+    """Redis-based caching implementation. Exposes .redis_client alias for rate limiting."""
 
     def __init__(self):
         self.client = None
+        self.redis_client = None  # alias used by rate_limit_check_fastapi
         self._connect()
+        self.redis_client = self.client
 
     def _connect(self):
         """Connect to Redis server."""
@@ -155,11 +157,24 @@ _cache_instance = None
 
 
 def get_cache():
-    """Get singleton cache instance. Falls back to in-memory cache if Redis is unavailable."""
+    """Get singleton cache instance. Falls back to in-memory cache if Redis is unavailable.
+    In production with REDIS_REQUIRED=true, raises instead of silent fallback.
+    """
     global _cache_instance
     if _cache_instance is None:
         try:
             _cache_instance = RedisCache()
-        except CacheError:
+        except CacheError as e:
+            if getattr(settings, 'REDIS_REQUIRED', False):
+                logger.error(f"REDIS_REQUIRED=true but Redis unavailable: {e}")
+                raise
+            if not getattr(settings, 'ENABLE_IN_MEMORY_FALLBACK', True):
+                logger.error("In-memory fallback disabled and Redis unavailable")
+                raise CacheError("Cache unavailable and fallback disabled") from e
             _cache_instance = DictCache()
     return _cache_instance
+
+def reset_cache():
+    """Reset singleton — for tests."""
+    global _cache_instance
+    _cache_instance = None

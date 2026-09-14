@@ -1,4 +1,7 @@
 # Stage 1: build React frontend (Vite + TSX) — outputs to frontend/dist
+# NOTE: for decoupled deploys (Vercel frontend + Render API) this stage is skipped;
+# frontend is deployed separately to static host. This stage remains for single-image
+# legacy/bundled mode only. Backend is pure JSON on 5000 (see decoupled docs).
 FROM node:20-alpine AS frontend-build
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
@@ -6,7 +9,7 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Python backend + serving built frontend on same port (5000)
+# Stage 2: Python backend (API only, 5000 pure JSON). Frontend not served from here in decoupled mode.
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -37,7 +40,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code (backend + frontend sources, but dist will be overwritten)
 COPY . .
 
-# Bring in built frontend (served by Flask at /app on same port 5000)
+# Bring in built frontend artifact (only used if serving bundled legacy mode)
 COPY --from=frontend-build /build/frontend/dist ./frontend/dist
 
 # Create cache directories

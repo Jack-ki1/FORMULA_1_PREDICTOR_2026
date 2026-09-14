@@ -1,0 +1,22 @@
+{
+  "name": "f1-predictor-2026-root",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"python backend/main.py\" \"npm run dev --workspace=frontend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "python backend/main.py",
+    "build": "npm run build --workspace=frontend",
+    "test": "python -m pytest -q && npm run test --workspace=frontend --if-present",
+    "test:backend": "python -m pytest -q",
+    "lint": "ruff check backend 2>&1 | head -n 100; echo \"---frontend---\"; npm run lint --workspace=frontend --if-present",
+    "typecheck": "npm run build --workspace=frontend",
+    "e2e": "npx playwright test --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "frontend"
+  ]
+}

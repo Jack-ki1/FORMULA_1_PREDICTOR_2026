@@ -25,13 +25,22 @@ def create_app() -> FastAPI:
         openapi_url="/api/v1/openapi.json",
     )
 
-    # CORS
+    # CORS — production must set FRONTEND_ORIGIN allowlist; wildcard + credentials is rejected
     cors_origins = settings.CORS_ORIGINS
-    allow_origins = ["*"] if cors_origins == "*" else [o.strip() for o in cors_origins.split(",") if o.strip()]
+    # FRONTEND_ORIGIN overrides CORS_ORIGINS if set (explicit allowlist)
+    frontend_origin = getattr(settings, 'FRONTEND_ORIGIN', '') or ''
+    if frontend_origin:
+        allow_origins = [o.strip() for o in frontend_origin.split(",") if o.strip()]
+    elif cors_origins == "*":
+        allow_origins = ["*"]
+    else:
+        allow_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+    # Wildcard with credentials is invalid — disable credentials in that case
+    allow_credentials = False if allow_origins == ["*"] else True
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allow_origins,
-        allow_credentials=True,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -75,6 +84,10 @@ def create_app() -> FastAPI:
         from backend.app.api.routes.reports import router as reports_router
         from backend.app.api.routes.ai import router as ai_router
         from backend.app.api.routes.openapi import router as openapi_router
+        from backend.app.api.routes.system import router as system_router
+        from backend.app.api.routes.scenario import router as scenario_router
+        from backend.app.api.routes.live import router as live_router
+        from backend.app.api.routes.jobs import router as jobs_router
 
         app.include_router(health_router)
         app.include_router(races_router)
@@ -86,7 +99,11 @@ def create_app() -> FastAPI:
         app.include_router(reports_router)
         app.include_router(ai_router)
         app.include_router(openapi_router)
-        logger.info("Registered /api/v1 routers")
+        app.include_router(system_router)
+        app.include_router(scenario_router)
+        app.include_router(live_router)
+        app.include_router(jobs_router)
+        logger.info("Registered /api/v1 routers (including system/scenario/live/jobs)")
     except Exception as e:
         logger.warning(f"Failed to register v1 routers: {e}")
 

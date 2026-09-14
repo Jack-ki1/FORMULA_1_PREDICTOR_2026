@@ -231,12 +231,27 @@ def generate_prediction(
             except Exception as ai_err:
                 logger.warning(f"AI adjustment skipped: {ai_err}")
 
-        # ── 4. Chaos smoothing (linear blend, not power law) ──────────────────
-        shaped_win    = _apply_chaos_smoothing(enforce_probability_sum(raw_win),    chaos_level)
-        shaped_podium = _apply_chaos_smoothing(raw_podium, chaos_level) # Don't enforce sum=1 for podium probabilities
-        shaped_points = _apply_chaos_smoothing(raw_points, chaos_level) # Don't enforce sum=1 for points probabilities
+        # ── 4. ML ensemble blend (if artifacts available) → Chaos smoothing ──────
+        # Try ML zoo — if trained, blend 45% ML / 55% MC; else statistical_fallback
+        ml_blend_source = "statistical_fallback"
+        blended_win = raw_win
+        try:
+            from backend.app.config.settings import settings as _s
+            if getattr(_s, 'ENABLE_ENSEMBLE', True):
+                from backend.app.prediction.orchestrator import _try_ml_predictions, _blend
+                ml_probs, src = _try_ml_predictions(all_drivers, race_id, weather, current_grid, session_type, weights)
+                if ml_probs is not None:
+                    blended_win = _blend(ml_probs, raw_win, weight_ml=0.45)
+                    ml_blend_source = src
+        except Exception:
+            pass
+        shaped_win    = _apply_chaos_smoothing(enforce_probability_sum(blended_win),    chaos_level)
+        # podium/points remain MC-derived (could add DNF model later)
+        shaped_podium = _apply_chaos_smoothing(raw_podium, chaos_level)
+        shaped_points = _apply_chaos_smoothing(raw_points, chaos_level)
 
-        predictions_by_target["winner"] = _build_summary(shaped_win,    "winner", conf, ai_source)
+        eff_source = f"{ai_source}+{ml_blend_source}" if ml_blend_source != "statistical_fallback" else ai_source
+        predictions_by_target["winner"] = _build_summary(shaped_win,    "winner", conf, eff_source)
         predictions_by_target["podium"] = _build_summary(shaped_podium, "podium", conf, ai_source)
         predictions_by_target["points"] = _build_summary(shaped_points, "points", conf, ai_source)
         
@@ -348,8 +363,16 @@ def generate_prediction(
             )
         }
 
-    # ── Calibrate & persist ───────────────────────────────────────────────────
-    calibrated_probabilities = calibrate_probabilities(winner_probabilities)
+    # ── Calibrate via fitted calibrator if available ──────────────────────────
+    try:
+        from backend.app.engine.calibration import probability_calibrator
+        if probability_calibrator.is_fitted:
+            calibrated_probabilities = probability_calibrator.calibrate_dict(winner_probabilities)
+            calibrated_probabilities = enforce_probability_sum(calibrated_probabilities)
+        else:
+            calibrated_probabilities = calibrate_probabilities(winner_probabilities)
+    except Exception:
+        calibrated_probabilities = calibrate_probabilities(winner_probabilities)
     confidence_intervals     = calculate_confidence_intervals(calibrated_probabilities)
     model_drift_score        = detect_model_drift(calibrated_probabilities)
 

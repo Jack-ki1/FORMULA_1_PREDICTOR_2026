@@ -1,4 +1,6 @@
 services:
+  # Decoupled: frontend runs via `npm run dev` on 5173 or Vercel static host.
+  # Backend is pure API on 5000. For production use managed Redis/Postgres.
   backend:
     build:
       context: .
@@ -10,6 +12,9 @@ services:
       - DATABASE_URL=${DATABASE_URL:-sqlite:///./f1_predictions.db}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_REQUIRED=${REDIS_REQUIRED:-false}
+      - ENABLE_IN_MEMORY_FALLBACK=${ENABLE_IN_MEMORY_FALLBACK:-true}
+      - FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-}
       - SECRET_KEY=${SECRET_KEY:-change-me}
     depends_on:
       - redis

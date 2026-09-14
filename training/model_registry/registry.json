@@ -1,0 +1,20 @@
+{
+  "models": {
+    "win-probability-v12": {
+      "model_id": "win-probability",
+      "version": "12",
+      "trained_at": "2026-09-14T12:28:42.196959+00:00",
+      "training_cutoff": "2023-12-31",
+      "feature_version": "feature-v8",
+      "dataset_version": "dataset-v14",
+      "algorithm": "ensemble_gb_rf",
+      "metrics": {
+        "log_loss": 0.3789242315894242,
+        "brier": 0.09919578342232924,
+        "top1": 0.42
+      },
+      "status": "champion"
+    }
+  },
+  "champion": "win-probability-v12"
+}

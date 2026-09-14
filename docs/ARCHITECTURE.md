@@ -1,49 +1,29 @@
-# Architecture — Decoupled Full-Stack (React + Flask API + Engine)
-
-Target matches transformation_improvements.md final architecture:
+# Architecture — Decoupled Full-Stack (React + FastAPI + Intelligence Engine)
 
 ```
-Browser
-  React + TypeScript + Vite + Tailwind + React Router + TanStack Query
-    ↓ HTTPS/JSON (X-Request-ID, JWT)
-Flask REST API (/api/v1 + legacy /dashboard/api/* for dual-run)
-  ├─ API layer: validation, rate limiting, request_id, security headers, observability
-  ├─ Service layer: backend/app/services/* (thin orchestration, logging, cache keys)
-  └─ Domain engine: engine/* (predictor, monte_carlo, grid_model, probability_model preserved)
-       ├─ Redis (race/standings/H2H/prediction cache)
-       └─ SQLAlchemy → SQLite (dev) / PostgreSQL (prod)
-  External F1 APIs: Jolpica, OpenF1, FastF1
+Browser (5173 Vite React 18, TanStack Query)
+  │ fetch('/api/v1/*') proxied in dev, Vercel rewrite in prod
+  ▼
+FastAPI 5000 (pure JSON, CORS allowlist via FRONTEND_ORIGIN)
+  ├─ Middleware: X-Request-ID, X-Response-Time, Redis rate limit (per-route), security headers
+  ├─ /api/v1/*  (versioned)
+  │   ├─ races, standings, h2h, constructors, analytics, reports, ai
+  │   ├─ predictions (+ /scenario, /simulate, /jobs)
+  │   ├─ live/{session} (+ /stream SSE)
+  │   └─ system/{data-sources, models, health}
+  ├─ /health, /, /metrics (Prometheus)
+  └─ Services (thin, validated) → Prediction Orchestrator
+        └─ ML zoo + Ensemble (OOF) + Calibration (isotonic/Platt) + Monte Carlo
+  Data Providers (abstracted):
+    F1DataProvider → JolpicaProvider (results/standings) / OpenF1Provider (live telemetry) / FastF1Provider (historical) / FallbackProvider (seed+cache)
+    + provenance {source, provider, retrieved_at, response_hash, cache_status}
+  Cache: Redis required in prod (REDIS_REQUIRED=true), DictCache fallback only if ENABLE_IN_MEMORY_FALLBACK=true (dev)
+  DB: SQLAlchemy → SQLite dev / Postgres prod — predictions/snapshots/provenance persisted; races/drivers/circuits seeded from python constants but DB is truth for dynamic data
+  Workers: sync for <10k sims; async jobs queue for large MC/training (POST /predictions/jobs → GET /jobs/:id)
 ```
 
-## Frontend
+Frontend: `src/app` (router, providers) + `src/features/*` (predictions, scenario-lab, live-race, standings, h2h, analytics, reports, ai) + `src/api/*` typed client + `src/lib/media.ts` typed assets.
 
-- `frontend/src/app` App/Router/Providers (QueryClient)
-- `frontend/src/pages/*` Home, Dashboard, Standings, H2H, Constructors, Analytics, Reports
-- `frontend/src/components/*` layout, navigation, dashboard, prediction, charts, shared
-- `frontend/src/features/*` manual-grid, ai-assistant, theme, exports
-- `frontend/src/api/*` typed client (fetch + Zod-ready), query hooks
-- `frontend/src/styles` variables.css (tokens), legacy.css (preserved verbatim from dashboard/static/css/styles.css), globals.css
+Invariants preserved: prediction parity (engine deterministic via seed), DB failure never breaks prediction, manual grid precedence, 17 media assets via typed registry.
 
-State split per Phase 7/9:
-- Server state (TanStack Query): races, drivers, standings, prediction, H2H, constructors, analytics
-- Client state (small store): draft race/weather/simCount, session/subSession, manualGrid, AI mode/model/weight/temperature (mirrors localStorage, API key not persisted)
-
-## Backend
-
-- `dashboard/app.py` factory: legacy blueprints + v1 blueprints + middleware (request_id, security headers, timing, rate-limit stub, CORS)
-- `backend/app/services/*` orchestration (no algorithm changes)
-- `backend/app/api/schemas` Pydantic contracts
-- `backend/app/api/routes/*` v1 endpoints (+ OpenAPI at /api/v1/openapi.json)
-- `backend/app/security/middleware` request-id, rate-limit, headers
-- `engine/*` retained 1:1 (MonteCarlo, GridModel, probability_model, calibration, elo, etc.)
-- `database` SQLAlchemy, `cache/redis` Redis + DictCache fallback
-
-## Deployment
-
-`docker-compose.yml` runs backend:5000, frontend:80 (nginx proxy /api → backend), redis:6379. Frontend can scale independently; prediction workers could later move to Celery/RQ behind Flask API.
-
-## Invariants
-
-- Same inputs → same engine → same outputs (prediction parity harness in PREDICTION_PARITY.md)
-- DB failure never breaks prediction delivery (predictor catches persistence errors)
-- Manual grid takes precedence; GridModel → _strength_based_grid fallback with seeded noise noted for parity
+Deploy: `Vercel (frontend Vite) + Render/Railway/Fly (FastAPI) + managed Redis + Postgres` — or `docker-compose.yml` (backend:5000 + redis:6379, frontend via npm run dev).

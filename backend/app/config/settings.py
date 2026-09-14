@@ -86,12 +86,29 @@ class Settings(BaseSettings):
     # front of it). Comma-separated origins, e.g.
     # "https://f1-predictor.vercel.app,https://f1-predictor-2026.vercel.app".
     # Defaults to "*" so local dev / docker-compose keep working unchanged.
+    # In production set FRONTEND_ORIGIN to explicit allowlist; "*" with credentials is rejected.
     CORS_ORIGINS: str = '*'
+    FRONTEND_ORIGIN: str = ''  # e.g. https://your-frontend.vercel.app
 
     # Rate limiting
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_DEFAULT: str = '100/hour'
     RATE_LIMIT_AUTHED: str = '500/hour'
+    # Per-route overrides (requests per hour)
+    RATE_LIMIT_PREDICTIONS: str = '60/hour'
+    RATE_LIMIT_AI: str = '30/hour'
+    RATE_LIMIT_LIVE: str = '120/hour'
+    RATE_LIMIT_EXPORTS: str = '20/hour'
+
+    # Cache / Redis mode
+    REDIS_REQUIRED: bool = False  # set true in production — fail loudly if Redis unavailable
+    ENABLE_IN_MEMORY_FALLBACK: bool = True  # false in production when REDIS_REQUIRED=true
+
+    # Model / prediction versioning
+    MODEL_VERSION: str = '12.4'
+    FEATURE_VERSION: str = '8'
+    DATASET_VERSION: str = '14'
+    CALIBRATION_VERSION: str = '3.1'
 
     # Security headers
     #
