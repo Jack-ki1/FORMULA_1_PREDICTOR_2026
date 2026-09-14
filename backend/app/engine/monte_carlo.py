@@ -31,10 +31,12 @@ class MonteCarloSimulator:
         grid_effect = np.array([grid_prior_multiplier(grid[c]) for c in codes])
         weather_effect = 0.0
         if weather == 'wet':
-            weather_effect = (wet_skill - wet_skill.mean()) * .22
+            weather_effect = (wet_skill - wet_skill.mean()) * .25
         elif weather == 'mixed':
-            weather_effect = (wet_skill - wet_skill.mean()) * .11
-        base = strength * .72 + grid_effect * .28 + weather_effect
+            weather_effect = (wet_skill - wet_skill.mean()) * .12
+        # Rebalanced 2026: grid matters more (active aero makes track position crucial), strength less dominant
+        # Was 0.72/0.28 — now 0.55/0.40 to fix ANT always P1 no matter grid
+        base = strength * .55 + grid_effect * .40 + weather_effect
         score = base + rng.normal(0, .025 + chaos_level / 5000, (n, len(codes))) + rng.normal(0, .045 + chaos_level / 1400, (n, len(codes)))
         dnf_rate = (1 - reliability) * (.09 + chaos_level / 1500)
         if weather == 'wet': dnf_rate *= 1.6
