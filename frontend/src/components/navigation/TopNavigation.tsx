@@ -15,8 +15,8 @@ export function TopNavigation(){
           {link('/dashboard','Predictions')}
           {link('/standings','Standings')}
           {link('/h2h','H2H')}
-          {link('/constructors','Constructors')}
-          {link('/analytics','Analytics')}
+          {link('/teams','Teams')}
+          {link('/analytics','Analytics & News')}
           {link('/settings','Settings')}
         </nav>
         <div className="flex items-center gap-2">
