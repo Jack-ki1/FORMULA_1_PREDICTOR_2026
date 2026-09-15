@@ -56,11 +56,11 @@ class PredictionService:
         grid_positions = payload.get("grid_positions")
         if grid_positions is not None:
             if not isinstance(grid_positions, dict):
-                raise ValueError("grid_positions must be a dict of driver_code → position 1-22")
-            # Validate positions 1-22 and uniqueness
+                raise ValueError("grid_positions must be a dict of driver_code → position 1-23")
+            # Validate positions 1-23 (2026 has 23 drivers) and uniqueness
             positions = list(grid_positions.values())
-            if any(not isinstance(p, int) or p < 1 or p > 22 for p in positions):
-                raise ValueError("grid_positions values must be integers 1-22")
+            if any(not isinstance(p, int) or p < 1 or p > 23 for p in positions):
+                raise ValueError("grid_positions values must be integers 1-23")
             if len(positions) != len(set(positions)):
                 raise ValueError("grid_positions contains duplicate positions — each driver must have unique position")
         feature_weights = payload.get("feature_weights")
@@ -94,6 +94,11 @@ class PredictionService:
         except Exception:
             pass
         # Orchestrator enriches with ML+snapshots where available, but base predictor remains authoritative
+        # Provenance: indicate fallback since 2026 has no real results yet
+        provenance_hint = {
+            "note": "2026 season has no real results yet — prediction uses fallback constants / Monte Carlo heuristic",
+            "expected_source": "fallback",
+        }
         result = generate_prediction(
             race_id=race_id,
             session_type=session_type,
@@ -103,7 +108,19 @@ class PredictionService:
             feature_weights=feature_weights,
             simulation_count=simulation_count,
             ai_config=ai_config,
+            provenance=provenance_hint,
         )
+        # Surface provenance in API response (Tier 2: provenance in response, not just modeled)
+        if "provenance" not in result:
+            result["provenance"] = provenance_hint
+        # Expose prediction_source explicitly for clients
+        if "prediction_source" not in result and "predictions" in result:
+            # derive from first target source
+            try:
+                first = next(iter(result["predictions"].values()))
+                result["prediction_source"] = first.get("source", "model")
+            except Exception:
+                result["prediction_source"] = "model"
         # Augment with snapshot/provenance/model health if not already present
         try:
             from backend.app.prediction.snapshot import build_snapshot

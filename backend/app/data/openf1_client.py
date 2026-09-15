@@ -43,7 +43,7 @@ class OpenF1Client(APIClient):
                     'provenance': {
                         'source': 'fallback',
                         'cache_status': 'fallback',
-                        'timestamp': dt.dt.datetime.now().isoformat(),
+                        'timestamp': dt.datetime.now().isoformat(),
                         'note': 'Using simulated grid positions'
                     }
                 }

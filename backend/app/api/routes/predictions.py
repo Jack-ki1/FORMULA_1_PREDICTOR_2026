@@ -13,17 +13,33 @@ def _error(code, msg, status, request: Request, details=None):
     return JSONResponse({"error": {"code": code, "message": msg, "details": details or {}, "request_id": rid}}, status_code=status)
 
 async def _handle_predict(request: Request):
+    # Body size guard first (Tier 6: resource exhaustion via unbounded JSON)
     try:
-        data = await request.json()
-    except Exception:
+        raw_body = await request.body()
+        if len(raw_body) > 64 * 1024:
+            return _error("PAYLOAD_TOO_LARGE", "Request body too large (max 64KB for predictions)", 413, request)
+        import json as _json
+        data = _json.loads(raw_body) if raw_body else None
+    except _json.JSONDecodeError:
         data = None
+    except Exception:
+        try:
+            data = await request.json()
+        except Exception:
+            data = None
     if not data:
         return _error("INVALID_JSON", "Request body must be JSON", 400, request)
     if not data.get("race_id"):
         return _error("MISSING_RACE_ID", "race_id is required", 400, request)
     start = time.time()
     try:
-        result = prediction_service.generate(data)
+        # Use threadpool for CPU-bound Monte Carlo at high sim counts (Tier 2: async-ify MC)
+        from starlette.concurrency import run_in_threadpool
+        sim_count = int(data.get("simulation_count", 10000) or 10000)
+        if sim_count > 5000:
+            result = await run_in_threadpool(prediction_service.generate, data)
+        else:
+            result = prediction_service.generate(data)
         latency = time.time() - start
         logger.info(f"predict race=%s latency=%.3f rid=%s", data.get("race_id"), latency, request.state.request_id)
         return JSONResponse(content=result, headers={"X-Prediction-Latency": f"{latency:.3f}", "X-Request-ID": request.state.request_id})

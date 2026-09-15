@@ -26,14 +26,14 @@ class DataValidator:
     
     @staticmethod
     def validate_grid_positions(data: Dict[str, Any]) -> bool:
-        """Validate grid positions are integers between 1-20."""
+        """Validate grid positions are integers between 1-23 (2026 has 23 drivers)."""
         if not isinstance(data, dict):
             return False
-        
+
         for position in data.values():
             try:
                 pos_int = int(position)
-                if not (1 <= pos_int <= 20):
+                if not (1 <= pos_int <= 23):
                     return False
             except (ValueError, TypeError):
                 return False
@@ -100,7 +100,7 @@ class DataValidator:
                 errors.append(f"Invalid standings data structure for {data_type}")
         elif data_type == 'grid':
             if not DataValidator.validate_grid_positions(data):
-                errors.append(f"Invalid grid positions: must be integers 1-20")
+                errors.append(f"Invalid grid positions: must be integers 1-23")
         elif data_type == 'weather':
             if not DataValidator.validate_weather_data(data):
                 errors.append(f"Invalid weather data structure")
@@ -170,15 +170,15 @@ def validate_prediction_data(data: Dict[str, Any]) -> List[str]:
     if 'drivers' in data:
         if not isinstance(data['drivers'], list):
             errors.append("drivers must be a list")
-        elif len(data['drivers']) < 1 or len(data['drivers']) > 20:
-            errors.append("drivers list must contain 1-20 drivers")
-    
+        elif len(data['drivers']) < 1 or len(data['drivers']) > 23:
+            errors.append("drivers list must contain 1-23 drivers")
+
     # Validate simulation_count if provided
     if 'simulation_count' in data:
         try:
             sim_count = int(data['simulation_count'])
-            if not (100 <= sim_count <= 10000):
-                errors.append("simulation_count must be between 100 and 10000")
+            if not (100 <= sim_count <= 100000):
+                errors.append("simulation_count must be between 100 and 100000")
         except (ValueError, TypeError):
             errors.append("simulation_count must be an integer")
     

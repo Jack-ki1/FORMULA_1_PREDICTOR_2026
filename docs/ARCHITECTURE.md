@@ -1,7 +1,9 @@
 # Architecture — Decoupled Full-Stack (React + FastAPI + Intelligence Engine)
 
+> Frontend runs on **5178** in this repo (Vite proxies `/api` → 5000). 5173 is the Vite default; either is fine if free.
+
 ```
-Browser (5173 Vite React 18, TanStack Query)
+Browser (5178 Vite React 18, TanStack Query)
   │ fetch('/api/v1/*') proxied in dev, Vercel rewrite in prod
   ▼
 FastAPI 5000 (pure JSON, CORS allowlist via FRONTEND_ORIGIN)
@@ -22,8 +24,8 @@ FastAPI 5000 (pure JSON, CORS allowlist via FRONTEND_ORIGIN)
   Workers: sync for <10k sims; async jobs queue for large MC/training (POST /predictions/jobs → GET /jobs/:id)
 ```
 
-Frontend: `src/app` (router, providers) + `src/features/*` (predictions, scenario-lab, live-race, standings, h2h, analytics, reports, ai) + `src/api/*` typed client + `src/lib/media.ts` typed assets.
+Frontend: `src/app` (router, providers) + `src/features/*` (scenario-lab, live-race, ai-assistant, manual-grid, theme) + `src/pages/*` + `src/api/*` typed client + `src/lib/media.ts` typed assets. Backend: FastAPI pure JSON — no Flask, no `dashboard/app.py`.
 
-Invariants preserved: prediction parity (engine deterministic via seed), DB failure never breaks prediction, manual grid precedence, 17 media assets via typed registry.
+Invariants preserved: prediction parity (engine deterministic via seed when artifacts present), DB failure never breaks prediction, manual grid precedence, 17 media assets via typed registry.
 
-Deploy: `Vercel (frontend Vite) + Render/Railway/Fly (FastAPI) + managed Redis + Postgres` — or `docker-compose.yml` (backend:5000 + redis:6379, frontend via npm run dev).
+Deploy: `Vercel (frontend Vite) + Render/Railway/Fly (FastAPI) + managed Redis + Postgres` — or `docker-compose.yml` (backend:5000 + redis:6379, frontend via npm run dev). Root `Dockerfile` is legacy single-image; prefer `docker-compose.yml` for decoupled.

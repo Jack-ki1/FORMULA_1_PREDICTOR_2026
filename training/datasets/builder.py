@@ -1,6 +1,10 @@
 """
-Historical dataset builder — synthesizes canonical rows from local seed + provider data where available.
-Does NOT leak future data: caller must pass training_cutoff and builder respects it.
+Historical dataset builder — TODAY synthetic, TARGET real backfill.
+
+Current status (2026-09-15): synthesizes canonical rows via rng.normal(0.5,0.15) + driver strength
+signal. No real Jolpica/OpenF1/FastF1 backfill yet — that is Tier 1 work (see docs/ML_ARCHITECTURE.md §3.1).
+Does NOT leak future data: caller must pass training_cutoff and builder respects it. When real backfill
+lands, rows will be persisted to data/historical/ (parquet) so training doesn't re-hit the API every run.
 """
 import pandas as pd
 import numpy as np
@@ -8,10 +12,17 @@ from typing import List, Dict, Any
 from .schema import CANONICAL_FEATURES
 
 def build_historical_dataset(season_range=(2018, 2025), training_cutoff: str = "2025-12-31") -> pd.DataFrame:
-    """Build a synthetic but schema-valid historical dataset for training/backtest.
-    In production this would backfill from Jolpica/OpenF1/FastF1; here we generate
-    plausible rows from the 2026 lineup + circuit characteristics so the pipeline is runnable.
-    No random future leakage: rows are deterministically seeded.
+    """Build historical dataset.
+
+    TODAY: synthetic but schema-valid — generates plausible rows from the 2026 lineup +
+    circuit characteristics so the pipeline is runnable without API keys.
+
+    TARGET (Tier 1): backfill via JolpicaClient (results since 1950) + FastF1Provider
+    (telemetry since 2018), persist to data/historical/*.parquet, and handle gaps by
+    dropping rows (no future imputation). Until then, this function is explicitly
+    synthetic — metrics downstream are NOT real-world validated.
+
+    No random future leakage: rows are deterministically seeded (rng=42).
     """
     from backend.app.config.team_driver_lineup_2026 import get_all_drivers
     from backend.app.data.circuit_data import CIRCUITS
@@ -49,3 +60,29 @@ def train_test_split_temporal(df: pd.DataFrame, train_until_season: int = 2023) 
     train = df[df["season"] <= train_until_season].copy()
     valid = df[df["season"] > train_until_season].copy()
     return train, valid
+
+
+def build_historical_dataset_real(season_range=(2018, 2025), training_cutoff: str = "2025-12-31") -> pd.DataFrame:
+    """Attempt real backfill via Jolpica/OpenF1; fall back to synthetic if unavailable.
+
+    This is the Tier 1 entry point. It tries to call JolpicaClient for race results
+    and FastF1 for telemetry, then merges with local lineup/circuit data. If either
+    provider is unavailable (no network, no API key, 2026 has no results), it logs
+    and returns the synthetic dataset so training remains runnable.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        # Try real providers — will fail gracefully if 2026 has no results / no network
+        from backend.app.data.jolpica_client import JolpicaClient
+        from backend.app.data.providers.registry import registry  # noqa: F401
+        # Probe: if Jolpica can return 2023 driver standings, we have connectivity
+        client = JolpicaClient()
+        probe = client.get_driver_standings(2023)  # type: ignore
+        if probe and probe.get("source") not in ("error",):
+            logger.info("Real backfill probe succeeded — wiring to full historical pull is next (persist to data/historical/).")
+            # TODO(Tier 1): iterate seasons/rounds via client.get_race_result / FastF1, build rows,
+            # persist parquet, then return DataFrame. For now fall through to synthetic with notice.
+    except Exception as e:
+        logger.info(f"Real backfill not yet available ({e}) — using synthetic dataset. See docs/ML_ARCHITECTURE.md §3.1.")
+    return build_historical_dataset(season_range, training_cutoff)

@@ -5,12 +5,16 @@
 
 ```
 5178  Vite React 18 ──proxy /api ──► 5000  FastAPI ──► Orchestrator ──► Providers/DB/Redis
- │  React Router 7 routes              │  22 tests green  (train → ML ensemble + MC)
- │  17 media via typed registry        │  Snapshot + provenance + calibration
+ │  React Router 6 routes              │  22 tests green  (Monte Carlo + fallback)
+ │  17 media via typed registry        │  Snapshot + provenance + calibration (when trained)
  └─ HTML                              └─ JSON  (scenario/lab, live SSE, system health)
 ```
 
-Engine is `backend/app/engine/predictor.generate_prediction` — identical via `POST /api/v1/predictions` or direct import. ML ensemble (GB+RF, OOF weights, isotonic) blends 45% with Monte Carlo 55%; honest `statistical_fallback` when no artifact.
+Engine is `backend/app/engine/predictor.generate_prediction` — identical via `POST /api/v1/predictions` or direct import.
+**Heuristic engine (Monte Carlo + hand-tuned driver ratings) is the production path.** An ML ensemble
+(GB+RF, OOF weights, isotonic) exists in `backend/app/engine/` but is not currently trained on real historical
+results — see `docs/ML_VALIDATION.md` for status. When no ML artifact is present the API returns
+`prediction_source: statistical_fallback` explicitly (2026 has no real results yet, so all live data hits fallback constants — see §10).
 
 ---
 
@@ -104,21 +108,21 @@ Deleted (not contributing): `opencode_did.md`, `docs/MIGRATION.md`, `docs/API_CO
 ```
 Race request
   → Resolve race/session (validated race_id must exist in CALENDAR_2026)
-  → Federated data + provenance
+  → Federated data + provenance (currently always fallback — 2026 has no real results yet)
   → PredictionSnapshot {race_id,session,timestamp,data_cutoff,grid,weather(rich),lineup,model/feature/dataset/calibration versions,seed,config_hash}
   → Feature engineering (30+ features: driver/constructor/circuit/session + interactions)
-  → ML zoo (GB/RF/LR; XGBoost/LightGBM deps) → OOF ensemble (L-BFGS-B) → isotonic calibration
-  → Monte Carlo (vectorised argsort, dnf/weather/SC aware, seed reproducible)
-  → Blend ML 45% + MC 55% (or statistical_fallback if no artifact, marked)
+  → ML zoo (GB/RF/LR; XGBoost/LightGBM deps) → OOF ensemble (L-BFGS-B) → isotonic calibration — NOT YET ON REAL DATA
+  → Monte Carlo (vectorised argsort, dnf/weather/SC aware, seed reproducible) ← production path today
+  → Blend ML 45% + MC 55% (or statistical_fallback if no artifact, marked) — currently always fallback
   → Calibration + enforce sum + confidence intervals + drift (PSI)
   → Explainability (feature-grounded reasons per driver)
   → Cache → API {prediction_id, snapshot, provenance, probabilities, dnf, explanations}
 ```
 
-- **ML not decorative**: `predictor.py` calls `_try_ml_predictions`; `python -m training.pipelines.train` temporal split `2018-2023 train → 2024+ valid` (never random CV). Metrics: Brier `0.099`, ECE `0.062`.
+- **Heuristic engine is production**: Monte Carlo + hand-tuned `team_driver_lineup_2026.py` ratings (see §6). `predictor.py` calls `_try_ml_predictions` but `cache/model_cache/*.pkl` is not shipped — fresh clone returns `statistical_fallback` until `python -m training.pipelines.train` is wired to real history (see `docs/ML_VALIDATION.md`).
 - **Snapshot**: predictions at 10:00 vs 14:00 distinguishable by `data_cutoff`/`config_hash`.
 - **Scenario Lab**: `POST /api/v1/predictions/scenario` baseline vs scenario deltas (grid/weather/SC).
-- **Live Race**: `GET /api/v1/live/:session` + `…/stream` SSE every 3s; mode `live` vs `historical_snapshot` (never pretending).
+- **Live Race**: `GET /api/v1/live/:session` + `…/stream` SSE every 3s; mode `live` vs `historical_snapshot` (never pretending). With no real 2026 results, live endpoints return `fallback` provenance.
 
 ---
 
@@ -155,14 +159,16 @@ Errors always `{"error":{"code","message","details","request_id"}}` + `X-Request
 
 ---
 
-## 6. Data & ML Training
+## 6. Data & ML Training — status: heuristic production, ML not yet validated on real data
 
 ```bash
-python -m training.pipelines.train   # builds historical dataset (2018-2025), OOF ensemble, calibration → cache/model_cache/*.pkl
-cat training/model_registry/registry.json  # champion v12, Brier 0.099
+python -m training.pipelines.train   # builds SYNTHETIC dataset (rng.normal), OOF ensemble, calibration → cache/model_cache/*.pkl
+cat training/model_registry/registry.json  # champion entry — metrics are SYNTHETIC until backfill lands
 ```
 
-Historical dataset (`training/datasets/builder.py`) respects `training_cutoff` — no leakage. Feature schema `feature-v8`, dataset `dataset-v14`. See `docs/ML_VALIDATION.md`.
+- **Today**: `training/datasets/builder.py` generates synthetic rows via `np.random.default_rng(42).normal(0.5, 0.15)` + driver `strength` signal — not real Jolpica/FastF1 backfill. Feature schema `feature-v8`, dataset `dataset-v14` are real, but labels are synthetic. Metrics (Brier/ECE/top1) are **not yet validated on real data** — see `docs/ML_VALIDATION.md` for the target validation protocol (temporal holdout, rolling-origin).
+- **Next**: wire `builder.py` to backfill from `JolpicaClient` + `FastF1Provider` (see `docs/ML_ARCHITECTURE.md` §3.1), replace hand-typed `strength` with Elo/Glicko-2 from real results.
+- `training_cutoff` is respected (no leakage). `python -m training.pipelines.train` temporal split `2018-2023 train → 2024+ valid` (never random CV).
 
 ---
 
@@ -219,7 +225,7 @@ docker-compose up --build  # backend:5000 + redis:6379 (frontend via npm run dev
 # Redis → managed, Postgres → managed
 ```
 
-`Dockerfile` multi-stage builds frontend `dist` but backend remains pure JSON; `docker-compose.yml` is decoupled.
+`Dockerfile` is a legacy single-image build (multi-stage `frontend/dist` → backend) — kept for backward compat, see comment at top. For decoupled deploys use `docker-compose.yml` (backend:5000 + redis:6379) + Vercel frontend; or Render backend + managed Redis/Postgres.
 
 ---
 

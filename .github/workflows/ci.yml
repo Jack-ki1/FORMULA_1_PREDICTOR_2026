@@ -1,0 +1,35 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - name: fail on dead-framework imports
+        run: |
+          if grep -rn "from flask" backend/app/security/ 2>/dev/null; then
+            echo "::error::Flask import found in FastAPI-only backend"; exit 1
+          fi
+          if grep -rn "dt\.dt\." backend/ 2>/dev/null; then
+            echo "::error::dt.dt typo found"; exit 1
+          fi
+      - name: check node_modules not tracked
+        run: |
+          if git ls-files | grep -q "^node_modules/"; then
+            echo "::error::node_modules is tracked — run git rm --cached -r node_modules"; exit 1
+          fi
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend

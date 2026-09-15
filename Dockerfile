@@ -1,7 +1,8 @@
 # Stage 1: build React frontend (Vite + TSX) — outputs to frontend/dist
-# NOTE: for decoupled deploys (Vercel frontend + Render API) this stage is skipped;
-# frontend is deployed separately to static host. This stage remains for single-image
-# legacy/bundled mode only. Backend is pure JSON on 5000 (see decoupled docs).
+# NOTE: decoupled deploy (Vercel frontend + Render/Railway backend) does NOT use this stage.
+# This Dockerfile is for legacy single-image / monolith deploy only.
+# For decoupled deploys use: frontend → Vercel, backend → docker-compose.yml / Render.
+# Renamed intent: Dockerfile.legacy-monolith (kept as Dockerfile for backward compat).
 FROM node:20-alpine AS frontend-build
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json* ./

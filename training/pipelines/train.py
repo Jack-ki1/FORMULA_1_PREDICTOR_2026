@@ -55,15 +55,20 @@ def train():
     model_zoo.save_models("cache/model_cache")
     probability_calibrator.save_calibrators("cache/model_cache/calibrator.pkl")
 
-    # Registry
+    # Registry — compute real metrics, fail loudly on error (no silent fake numbers)
     from training.model_registry.registry import register_model, promote_champion
-    # compute metrics
-    try:
-        ll = log_loss(y_valid, np.clip(win_proba, 0.01, 0.99))
-        brier = brier_score_loss(y_valid, win_proba)
-    except Exception:
-        ll, brier = 0.35, 0.12
-    register_model("win-probability", "12", "ensemble_gb_rf", {"log_loss": float(ll), "brier": float(brier), "top1": 0.42}, training_cutoff="2023-12-31")
+    ll = log_loss(y_valid, np.clip(win_proba, 0.01, 0.99))
+    brier = brier_score_loss(y_valid, win_proba)
+    # top1: ensemble mean prediction vs actual; binary target → threshold 0.5
+    y_pred_bin = (win_proba >= 0.5).astype(int)
+    top1 = float((y_pred_bin == y_valid.values).mean())
+    # naive baseline: predict pole-sitter (grid 1) wins — synthetic baseline ~1/n_drivers
+    # use empirical positive rate as baseline Brier for lift reporting
+    baseline_prob = float(y_valid.mean())
+    baseline_brier = float(((y_valid.values - baseline_prob) ** 2).mean())
+    lift = baseline_brier - brier  # positive = ensemble beats baseline
+    print(f"Metrics — log_loss={ll:.4f} brier={brier:.4f} top1={top1:.4f} baseline_brier={baseline_brier:.4f} lift={lift:+.4f}")
+    register_model("win-probability", "12", "ensemble_gb_rf", {"log_loss": float(ll), "brier": float(brier), "top1": float(top1), "baseline_brier": float(baseline_brier), "brier_lift": float(lift)}, training_cutoff="2023-12-31")
     print("Training complete — artifacts in cache/model_cache")
 
 if __name__ == "__main__":

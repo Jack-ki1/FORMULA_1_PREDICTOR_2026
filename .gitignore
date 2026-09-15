@@ -31,6 +31,7 @@ cache/model_cache/
 build/
 dist/
 frontend/dist/
+node_modules/
 frontend/node_modules/
 frontend/.vite/
 *.egg-info/

@@ -25,6 +25,6 @@ POST /api/v1/reports/export
 GET  /api/v1/health, /health, /metrics, / (API info JSON)
 ```
 
-- Security: `FRONTEND_ORIGIN` allowlist (not `*` with credentials), Redis rate limit per-route (predictions 60/h, ai 30/h, live 120/h, exports 20/h), JWT deps via `security/auth.py` (anonymous reads, auth where needed), request body limits, never log secrets.
+- Security: `FRONTEND_ORIGIN` allowlist (not `*` with credentials), Redis rate limit per-route (predictions 60/h, ai 30/h, live 120/h, exports 20/h), anonymous reads (no JWT — `security/auth.py` Flask stub removed 2026-09-15), request body limits, never log secrets. See §6 for future auth plan (FastAPI `Depends`, not Flask).
 - Resilience: provider fallback chain recorded in provenance; `data-sources` exposes health.
 
