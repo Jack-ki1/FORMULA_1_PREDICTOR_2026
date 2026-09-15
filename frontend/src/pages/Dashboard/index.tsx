@@ -8,8 +8,8 @@ import { GridEditor } from '../../features/manual-grid/GridEditor'
 import { AISidebar } from '../../features/ai-assistant/AISidebar'
 import { F1Chart } from '../../components/charts/F1Chart'
 import { useDashboardStore } from '../../stores/dashboardStore'
-import { exportReport } from '../../api/reports'
 import { useRaces } from '../../hooks/useRaces'
+import { ReportsSection } from '../../components/reports/ReportsSection'
 
 function useRaceInfo(id: string | undefined) {
   const { data: races } = useRaces()
@@ -163,17 +163,12 @@ export function DashboardPage(){
             </div>
           </div>
 
-          <div className="card p-4 flex flex-col sm:flex-row items-center gap-3">
-            <select id="export-format" defaultValue="csv" className="f1-select" style={{maxWidth:'160px'}}><option value="csv">CSV</option><option value="json">JSON</option><option value="pdf">PDF</option><option value="share">Share</option></select>
-            <button onClick={()=>{
-              const fmt=(document.getElementById('export-format') as HTMLSelectElement).value
-              exportReport({race_id:draft.raceId, session, sub_session:subSession, target_id:targetId, format:fmt, predictions: result.predictions})
-            }} className="btn-primary">Export</button>
-            <span className="fs-11 text-sub">`POST /api/v1/reports/export` → download. Also saved to `localStorage f1-last-prediction` for Reports.</span>
-            <span className="ml-auto fs-11 text-sub">Winner: {result.predictions?.winner?.predictions?.[0]?.driver_code} · {((result.predictions?.winner?.confidence ?? 0)*100).toFixed(0)}%</span>
-          </div>
+          {/* Reports directly below results — no separate page needed */}
+          <ReportsSection currentRaceId={result.race_id || draft.raceId} currentPredictions={result.predictions} />
         </>
-      )}
+       )}
+      {/* Also show Reports even before first prediction — so Dashboard is self-contained */}
+      {!result && <ReportsSection />}
     </div>
   )
 }

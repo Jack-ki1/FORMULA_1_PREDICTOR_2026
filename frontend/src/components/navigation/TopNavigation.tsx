@@ -13,13 +13,11 @@ export function TopNavigation(){
         </Link>
         <nav className="flex flex-wrap items-center gap-4" aria-label="Primary">
           {link('/dashboard','Predictions')}
-          {link('/scenario-lab','Scenario Lab')}
-          {link('/live','Live Race')}
           {link('/standings','Standings')}
           {link('/h2h','H2H')}
           {link('/constructors','Constructors')}
           {link('/analytics','Analytics')}
-          {link('/reports','Reports')}
+          {link('/settings','Settings')}
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />
