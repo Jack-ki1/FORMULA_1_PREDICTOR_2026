@@ -289,7 +289,7 @@ export function DashboardPage(){
         <div className="lg:col-span-2 card p-4 space-y-3">
           <div className="f1-display font-bold">3 · Manual Grid — P1-22</div>
           <div className="fs-11 text-sub">Overrides auto Q3 model. Grid is the race.</div>
-          <GridEditor value={manualGrid} onChange={setManual} />
+          <GridEditor value={manualGrid} onChange={setManual} raceId={draft.raceId} />
         </div>
         <div className="card p-4 flex flex-col gap-3">
           <div className="f1-display font-bold">4 · Run</div>

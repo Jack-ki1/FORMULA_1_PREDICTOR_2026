@@ -90,6 +90,7 @@ def create_app() -> FastAPI:
         from backend.app.api.routes.jobs import router as jobs_router
         from backend.app.api.routes.settings import router as settings_router
         from backend.app.api.routes.news import router as news_router
+        from backend.app.api.routes.grid import router as grid_router
 
         app.include_router(health_router)
         app.include_router(races_router)
@@ -107,7 +108,8 @@ def create_app() -> FastAPI:
         app.include_router(jobs_router)
         app.include_router(settings_router)
         app.include_router(news_router)
-        logger.info("Registered /api/v1 routers (including system/scenario/live/jobs+settings+news)")
+        app.include_router(grid_router)
+        logger.info("Registered /api/v1 routers (including system/scenario/live/jobs+settings+news+grid)")
     except Exception as e:
         logger.warning(f"Failed to register v1 routers: {e}")
 

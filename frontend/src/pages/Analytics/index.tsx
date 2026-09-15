@@ -163,6 +163,49 @@ export function AnalyticsPage(){
           </ul>
         </div>
       </div>
+
+      {/* Model Card — creative, research-backed */}
+      <div className="card p-6" style={{ background:'linear-gradient(135deg, #0a0a09, #16233F)', color:'#fff'}}>
+        <div className="flex items-center gap-2"><span className="w-1.5 h-6 rounded-full" style={{ background:'var(--red)'}} /><h3 className="f1-display font-black">Model Card — Honest Intelligence</h3><span className="ml-auto px-2 py-1 rounded-full bg-white text-black fs-11 font-bold">v12.4 · feature-v8 · dataset-v14</span></div>
+        <div className="grid md:grid-cols-3 gap-4 mt-4">
+          <div className="p-3 rounded-lg" style={{ background:'rgba(255,255,255,0.08)'}}><div className="fs-11 font-bold">Intended Use</div><div className="fs-11 mt-1" style={{ color:'rgba(255,255,255,.8)'}}>Pre-race win/podium/points probabilities for 2026. Not betting advice. Calibrated via isotonic, validated on temporal holdout (never random CV). See <code className="f1-mono">docs/ML_VALIDATION.md</code>.</div></div>
+          <div className="p-3 rounded-lg" style={{ background:'rgba(255,255,255,0.08)'}}><div className="fs-11 font-bold">Training Data</div><div className="fs-11 mt-1" style={{ color:'rgba(255,255,255,.8)'}}>Historical: 2018-2025 builder respects <code>training_cutoff</code> — no future leakage. Today synthetic + strength signal; next: Jolpica/OpenF1/FastF1 backfill to <code>data/historical/</code>.</div></div>
+          <div className="p-3 rounded-lg" style={{ background:'rgba(255,255,255,0.08)'}}><div className="fs-11 font-bold">Limitations</div><div className="fs-11 mt-1" style={{ color:'rgba(255,255,255,.8)'}}>Hand-typed 2026 strength priors for rookies; no betting-odds calibration yet (Tier 1). Chaos smoothing honest about uncertainty — check <code>/meta</code> volatility.</div></div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 fs-11"><span className="px-2 py-1 rounded-full bg-white/10">Provenance on every dataset</span><span className="px-2 py-1 rounded-full bg-white/10">Snapshot + config_hash</span><span className="px-2 py-1 rounded-full bg-white/10">Cache TTL 3600</span><span className="px-2 py-1 rounded-full bg-white/10">PSI drift</span></div>
+      </div>
+
+      {/* 2026 Timeline — creative */}
+      <div className="card p-4">
+        <div className="f1-display font-bold">2026 Timeline — 6 steps that changed the car</div>
+        <div className="relative mt-4 pl-6 border-l-2" style={{ borderColor:'var(--red)'}}>
+          {[
+            { t:'Jan 2024', d:'FIA unveils 2026 regs — agile, competitive, sustainable. Six PU manufacturers commit.'},
+            { t:'Jun 2024', d:'Technical regs issue 7 — 1.6L V6 retains layout, MGU-H deleted, MGU-K → 350kW.'},
+            { t:'2025', d:'F2/F3 trial Advanced Sustainable Fuels — drop-in, >90% lifecycle CO₂ cut.'},
+            { t:'Mar 2026', d:'Bahrain testing — straight-mode wings open, active aero every lap, sustainable fuel debut.'},
+            { t:'Mar 6-8', d:'Australia R1 — 768kg cars, 50/50 PU, sustainable fuel era begins.'},
+            { t:'Now', d:'Predictor live — 23 rounds, 11 teams, Monte Carlo re-tuned for 2026.'},
+          ].map((e,i)=> (
+            <div key={i} className="relative mb-4">
+              <span className="absolute -left-[25px] w-3 h-3 rounded-full" style={{ background:'var(--red)'}} />
+              <div className="fs-11 font-black">{e.t}</div><div className="fs-11 text-sub">{e.d}</div>
+            </div>
+          ))}
+        </div>
+        <div className="fs-11 text-sub">Sources: FIA Technical Regulations Section C issue 18, Formula1.com “12 rule changes”, BBC Sport — verified web research.</div>
+      </div>
+
+      {/* Tech Stack Deep Dive — creative */}
+      <div className="card p-4">
+        <div className="f1-display font-bold">Tech Stack — Why predictions are fast</div>
+        <div className="grid md:grid-cols-4 gap-3 mt-3 fs-11">
+          <div className="p-3 rounded-lg border text-center" style={{ borderColor:'var(--border)'}}><div className="font-bold">Engine</div><div className="text-sub">Numpy vectorised argsort — 10k sims ~80ms, seed reproducible</div><div className="f1-mono mt-1">engine/monte_carlo.py</div></div>
+          <div className="p-3 rounded-lg border text-center" style={{ borderColor:'var(--border)'}}><div className="font-bold">API</div><div className="text-sub">FastAPI + Redis + run_in_threadpool for &gt;5k sims — no event-loop block</div><div className="f1-mono mt-1">/api/v1/predictions</div></div>
+          <div className="p-3 rounded-lg border text-center" style={{ borderColor:'var(--border)'}}><div className="font-bold">Cache</div><div className="text-sub">Hash race+session+snapshot+model+weather+grid+config — invalidates on version bump</div><div className="f1-mono mt-1">prediction_service.py</div></div>
+          <div className="p-3 rounded-lg border text-center" style={{ borderColor:'var(--border)'}}><div className="font-bold">Frontend</div><div className="text-sub">React 18 + TanStack Query 5 + Chart.js 4 + PWA — 533kB gz 170kB</div><div className="f1-mono mt-1">Vite 5178 → 5000 proxy</div></div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -77,20 +77,47 @@ function FieldInput({ name, value, onChange }: { name:string; value:any; onChang
 }
 
 export function SettingsPage(){
-  const [settings, setSettings] = useState<Record<string,any> | null>(null)
+  // Fast load: initialize from local cache synchronously so first paint is instant, then merge API
+  const [settings, setSettings] = useState<Record<string,any>>(()=>{
+    try{
+      const local = JSON.parse(localStorage.getItem('f1-settings-colors')||'{}')
+      const ui = JSON.parse(localStorage.getItem('f1-ui-prefs')||'{}')
+      const cached = (()=>{ try{ return JSON.parse(localStorage.getItem('f1-settings-cache')||'{}')}catch{return {}}})()
+      return { ...COLOR_DEFAULTS, CHAOS_LEVEL_DEFAULT:50, MONTE_CARLO_SIMULATIONS:10000, GRID_WEIGHT_DEFAULT:55, CACHE_ENABLED:true, ...cached, ...local, ...ui }
+    }catch{ return { ...COLOR_DEFAULTS, CHAOS_LEVEL_DEFAULT:50, MONTE_CARLO_SIMULATIONS:10000 } }
+  })
   const [schema, setSchema] = useState<{ groups:Group[] } | null>(null)
-  const [draft, setDraft] = useState<Record<string,any>>({})
+  const [draft, setDraft] = useState<Record<string,any>>(()=>{
+    try{
+      const local = JSON.parse(localStorage.getItem('f1-settings-colors')||'{}')
+      const cached = (()=>{ try{ return JSON.parse(localStorage.getItem('f1-settings-cache')||'{}')}catch{return {}}})()
+      return { ...COLOR_DEFAULTS, CHAOS_LEVEL_DEFAULT:50, ...cached, ...local }
+    }catch{ return { ...COLOR_DEFAULTS } }
+  })
   const [active, setActive] = useState<string>('appearance')
   const [filter, setFilter] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string|null>(null)
   const [globalResults, setGlobalResults] = useState<any[]|null>(null)
+  const [apiReady, setApiReady] = useState(false)
 
-  // Load backend + local colors
+  // Apply cached colors immediately for instant paint
   useEffect(()=>{
+    try{
+      const local = JSON.parse(localStorage.getItem('f1-settings-colors')||'{}')
+      if (Object.keys(local).length) applyColors(local)
+      else applyColors(COLOR_DEFAULTS)
+    }catch{ applyColors(COLOR_DEFAULTS) }
+  },[])
+
+  // Load backend + local colors — non-blocking, merges when ready
+  useEffect(()=>{
+    let cancelled=false
     api.get<any>('/api/v1/settings').then(r=>{
+      if (cancelled) return
       setSettings(r.settings)
       setDraft(r.settings)
+      try{ localStorage.setItem('f1-settings-cache', JSON.stringify(r.settings)) }catch{}
       const local = (()=>{ try{ return JSON.parse(localStorage.getItem('f1-settings-colors')||'{}')}catch{return {}}})()
       const colors: Record<string,string> = {}
       Object.keys(COLOR_DEFAULTS).forEach(k=> {
@@ -98,17 +125,15 @@ export function SettingsPage(){
         if (v) colors[k]=String(v)
       })
       applyColors(colors)
-    }).catch(()=> setMsg('Backend settings unavailable — using local only'))
+      setApiReady(true)
+    }).catch(()=> { if(!cancelled) { setMsg('Backend settings unavailable — using local cache'); setApiReady(true)} })
     api.get<any>('/api/v1/settings/schema').then(setSchema).catch(()=>{})
-    try{
-      const local = JSON.parse(localStorage.getItem('f1-settings-colors')||'{}')
-      if (Object.keys(local).length) applyColors(local)
-    }catch{}
     // also load frontend-only prefs
     try{
       const ui = JSON.parse(localStorage.getItem('f1-ui-prefs')||'{}')
       if (ui.fontScale) document.documentElement.style.webKitTextSizeAdjust = ui.fontScale
     }catch{}
+    return ()=> { cancelled=true }
   },[])
 
   const baseGroups: Group[] = schema?.groups || [
@@ -252,7 +277,9 @@ export function SettingsPage(){
     reader.readAsText(file)
   }
 
-  if (!settings) return <div className="px-4 sm:px-8 py-8">Loading settings…</div>
+  // Fast load: show UI immediately with cached defaults, merge API when ready
+  const isInitialLoading = !settings || !Object.keys(settings).length
+  // Keep rendering even while loading — use draft defaults
 
   const sims = Number(draft.MONTE_CARLO_SIMULATIONS||1000)
   const perfImpact = sims>20000? 'High — ~1.2s per prediction, juicy smooth': sims>8000? 'Balanced — ~0.4s' : 'Snappy — ~0.15s'

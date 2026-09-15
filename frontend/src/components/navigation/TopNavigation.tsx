@@ -15,7 +15,7 @@ export function TopNavigation(){
           {link('/dashboard','Predictions')}
           {link('/standings','Standings')}
           {link('/h2h','H2H')}
-          {link('/teams','Teams')}
+          {link('/fantasy','Fantasy')}
           {link('/analytics','Analytics & News')}
           {link('/settings','Settings')}
         </nav>
