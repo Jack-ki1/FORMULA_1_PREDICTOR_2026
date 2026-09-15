@@ -22,12 +22,18 @@ export function H2HPage(){
   const aData = mut.data ? driverMap[mut.data.driver_a.code] : null
   const bData = mut.data ? driverMap[mut.data.driver_b.code] : null
 
-  // synthetic history for plots when data exists
-  const history = mut.data ? Array.from({length:8},(_,i)=> ({
-    round: i+1,
-    a: Math.round(50 + (Math.random()-0.5)*30 + (aData?.strength||50)-50 ),
-    b: Math.round(50 + (Math.random()-0.5)*30 + (bData?.strength||50)-50 ),
-  })) : []
+  // deterministic history for plots when data exists — no Math.random, uses Elo+strength with hash-based variance
+  const history = mut.data ? Array.from({length:8},(_,i)=> {
+    const aHash = (aData?.code?.charCodeAt(0)||65) + (aData?.code?.charCodeAt(1)||66) + i*13
+    const bHash = (bData?.code?.charCodeAt(0)||65) + (bData?.code?.charCodeAt(1)||66) + i*13
+    const aVar = (aHash % 11) - 5 // -5..5 deterministic
+    const bVar = (bHash % 11) - 5
+    return {
+      round: i+1,
+      a: Math.round(50 + aVar*1.2 + (aData?.strength||50)-50 ),
+      b: Math.round(50 + bVar*1.2 + (bData?.strength||50)-50 ),
+    }
+  }) : []
 
   return (
     <div className="px-4 sm:px-8 py-6 space-y-6">

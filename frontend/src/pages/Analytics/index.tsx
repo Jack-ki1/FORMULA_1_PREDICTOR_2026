@@ -20,6 +20,7 @@ export function AnalyticsPage(){
     { label:'Points', expected:0.81, observed:0.80, drift:0.01 },
   ]
   const news: any[] = newsData?.news || []
+  const [tab, setTab] = useState<'analytics'|'news'>('analytics')
   return (
     <div className="px-4 sm:px-8 py-6 space-y-6">
       {/* Hero — How it works */}
@@ -60,7 +61,14 @@ export function AnalyticsPage(){
         </div>
       </div>
 
-      {/* News — fetched via /api/v1/news */}
+      {/* Tabs — split Analytics (power-user) vs News (casual fan) */}
+      <div className="flex gap-2">
+        <button onClick={()=> setTab('analytics')} className={`px-4 py-2 rounded-full fs-11 font-bold ${tab==='analytics'?'bg-black text-white':'bg-white border'}`}>Analytics — Model Tuning</button>
+        <button onClick={()=> setTab('news')} className={`px-4 py-2 rounded-full fs-11 font-bold ${tab==='news'?'bg-black text-white':'bg-white border'}`}>News — Live RSS</button>
+        <span className="ml-auto fs-11 text-sub self-center">{tab==='analytics'?'Power users: weights, accuracy, drift':'Casual fans: headlines'}</span>
+      </div>
+
+      {tab==='news' && (
       <div className="card p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="f1-display font-bold">Latest Formula 1 News — Live via API</div>
@@ -68,20 +76,31 @@ export function AnalyticsPage(){
         </div>
         <p className="fs-11 text-sub">Fetched through <code className="f1-mono">GET /api/v1/news</code> (Formula1.com/BBC RSS, fallback curated). Always via backend, never direct browser fetch — provenance noted.</p>
         <div className="grid md:grid-cols-3 gap-3 mt-4">
-          {news.slice(0,6).map((n:any,i:number)=> (
-            <a key={i} href={n.url} target="_blank" rel="noreferrer" className="card p-0 overflow-hidden group hover:shadow-lg transition-shadow">
-              <img src={n.image || '/media/circuit1.png'} alt={n.title} loading="lazy" className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" onError={(e)=> (e.currentTarget.src='/media/circuit1.png')} />
-              <div className="p-3">
-                <div className="fs-11 font-bold line-clamp-2">{n.title}</div>
-                <div className="fs-11 text-sub mt-1 line-clamp-2">{n.summary}</div>
-                <div className="flex items-center gap-2 mt-2 fs-11 text-sub"><span>{n.source}</span><span>·</span><span>{n.date}</span></div>
-              </div>
-            </a>
-          ))}
+          {news.slice(0,6).map((n:any,i:number)=> {
+            const isFallback = (newsData?.source||'').includes('fallback') || n.source?.includes('fallback') || n.source?.includes('curated')
+            return (
+              <a key={i} href={n.url} target="_blank" rel="noreferrer" className={`card p-0 overflow-hidden group hover:shadow-lg transition-shadow ${isFallback?'border-2 border-dashed' : ''}`} style={{ borderColor: isFallback? '#f59e0b' : undefined}}>
+                {isFallback && <div className="px-2 py-1 text-xs font-bold text-white" style={{ background:'#f59e0b'}}>SIMULATED PREVIEW — not live reporting</div>}
+                <img src={n.image || '/media/circuit1.png'} alt={n.title} loading="lazy" className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" onError={(e)=> (e.currentTarget.src='/media/circuit1.png')} />
+                <div className="p-3">
+                  <div className="fs-11 font-bold line-clamp-2">{n.title}</div>
+                  <div className="fs-11 text-sub mt-1 line-clamp-2">{n.summary}</div>
+                  <div className="flex items-center gap-2 mt-2 fs-11 text-sub"><span>{n.source}</span><span>·</span><span>{n.date}</span></div>
+                </div>
+              </a>
+            )
+          })}
           {!news.length && <div className="fs-11 text-sub col-span-3 p-6 text-center">Loading news…</div>}
         </div>
-        <div className="mt-3 fs-11 text-sub">Tip: add <code className="f1-mono">NewsAPI.org</code> key to <code className="f1-mono">/settings</code> → Data Sources for richer live feed.</div>
+        <div className="mt-3 fs-11 text-sub">Tip: add <code className="f1-mono">NewsAPI.org</code> key to <code className="f1-mono">/settings</code> → Data Sources for richer live feed. Fallback cards are visually quarantined (dashed, amber badge) so you can tell fiction from reporting.</div>
+        <div className="mt-4 p-3 rounded-lg" style={{ background:'rgba(22,163,74,0.08)', border:'1px solid #16a34a'}}>
+          <div className="fs-11 font-bold" style={{ color:'#16a34a'}}>Model's read on the news — where LLM earns its keep</div>
+          <div className="fs-11 text-sub mt-1">Example: “Verstappen practice crash → DNF-risk 8% → 14% pending FP3 data.” This connects the two halves — breaking news shifting the next prediction. (Would call <code className="f1-mono">/api/v1/ai/chat</code> with news context.)</div>
+        </div>
       </div>
+      )}
+      {tab==='analytics' && (
+      <div className="space-y-6">
 
       {/* Accuracy — chart + cards */}
       <div className="grid lg:grid-cols-2 gap-4">
@@ -205,7 +224,9 @@ export function AnalyticsPage(){
           <div className="p-3 rounded-lg border text-center" style={{ borderColor:'var(--border)'}}><div className="font-bold">Cache</div><div className="text-sub">Hash race+session+snapshot+model+weather+grid+config — invalidates on version bump</div><div className="f1-mono mt-1">prediction_service.py</div></div>
           <div className="p-3 rounded-lg border text-center" style={{ borderColor:'var(--border)'}}><div className="font-bold">Frontend</div><div className="text-sub">React 18 + TanStack Query 5 + Chart.js 4 + PWA — 533kB gz 170kB</div><div className="f1-mono mt-1">Vite 5178 → 5000 proxy</div></div>
         </div>
+        </div>
       </div>
+      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { DashboardPage } from '../pages/Dashboard'
 import { StandingsPage } from '../pages/Standings'
 import { H2HPage } from '../pages/H2H'
 import { ConstructorsPage } from '../pages/Constructors'
+import { FantasyPage } from '../pages/Fantasy'
 import { AnalyticsPage } from '../pages/Analytics'
 import { SettingsPage } from '../pages/Settings'
 export const router = createBrowserRouter([
@@ -14,7 +15,7 @@ export const router = createBrowserRouter([
     { path:'predictions', element:<DashboardPage />},
     { path:'standings', element:<StandingsPage />},
     { path:'h2h', element:<H2HPage />},
-    { path:'fantasy', element:<ConstructorsPage />},
+    { path:'fantasy', element:<FantasyPage />},
     { path:'teams', element:<ConstructorsPage />},
     { path:'constructors', element:<ConstructorsPage />},
     { path:'analytics', element:<AnalyticsPage />},

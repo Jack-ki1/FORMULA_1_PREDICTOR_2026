@@ -100,6 +100,13 @@ export function SettingsPage(){
   const [msg, setMsg] = useState<string|null>(null)
   const [globalResults, setGlobalResults] = useState<any[]|null>(null)
   const [apiReady, setApiReady] = useState(false)
+  const [surface, setSurface] = useState<'preferences'|'admin'>('preferences')
+  const [adminToken, setAdminToken] = useState<string>(()=> {
+    try{ return localStorage.getItem('f1-admin-token')||'' }catch{ return '' }
+  })
+  const [favoriteDriver, setFavoriteDriver] = useState<string>(()=>{
+    try{ return localStorage.getItem('f1-favorite-driver')||'' }catch{ return '' }
+  })
 
   // Apply cached colors immediately for instant paint
   useEffect(()=>{
@@ -162,7 +169,15 @@ export function SettingsPage(){
     return Array.from(map.values())
   }, [baseGroups])
 
-  const currentGroup = useMemo(()=> groups.find(g=> g.id===active) || groups[0], [groups, active])
+  const filteredGroups = useMemo(()=>{
+    if (surface==='preferences') return groups.filter(g=> ['appearance','quick','accessibility'].includes(g.id))
+    return groups
+  }, [groups, surface])
+  // Ensure active is valid for current surface
+  useEffect(()=>{
+    if (!filteredGroups.find(g=> g.id===active) && filteredGroups.length) setActive(filteredGroups[0].id)
+  }, [filteredGroups, active])
+  const currentGroup = useMemo(()=> filteredGroups.find(g=> g.id===active) || filteredGroups[0] || groups[0], [filteredGroups, groups, active])
 
   const filteredFields = useMemo(()=>{
     if (!currentGroup) return []
@@ -214,14 +229,24 @@ export function SettingsPage(){
         if (JSON.stringify(base[k]) !== JSON.stringify(v)) diff[k]=v
       })
       if (!Object.keys(diff).length) { setMsg('No changes to save'); setSaving(false); return }
-      const res = await api.post<any>('/api/v1/settings', diff)
+      // Send admin token if in admin surface or if diff contains non-safe fields
+      const headers: Record<string,string> = {}
+      if (adminToken) headers['X-Admin-Token'] = adminToken
+      const res = await fetch('/api/v1/settings', { method:'POST', headers: { 'Content-Type':'application/json', ...headers }, body: JSON.stringify(diff) }).then(async r=>{
+        if (!r.ok) {
+          const j = await r.json().catch(()=> ({}))
+          throw new Error(j?.error?.message || `Save failed ${r.status}`)
+        }
+        return r.json()
+      })
       setSettings(res.settings)
       setDraft(res.settings)
-      setMsg(`Saved ${Object.keys(diff).length} fields — overrides live until restart.`)
+      try{ localStorage.setItem('f1-settings-cache', JSON.stringify(res.settings)) }catch{}
+      setMsg(`Saved ${Object.keys(diff).length} fields — ${surface==='admin'?'admin':'preferences'} — overrides live until restart.`)
       const colors: Record<string,string> = {}
       Object.keys(COLOR_DEFAULTS).forEach(k=> { if (draft[k]) colors[k]=String(draft[k]) })
       if (Object.keys(colors).length) localStorage.setItem('f1-settings-colors', JSON.stringify(colors))
-    }catch(e:any){ setMsg(e.message || 'Save failed')}
+    }catch(e:any){ setMsg(e.message || 'Save failed — admin token required for non-safe fields?')}
     finally{ setSaving(false)}
   }
 
@@ -229,8 +254,17 @@ export function SettingsPage(){
     if (!confirm('Reset all runtime overrides? This clears backend + local colors.')) return
     setSaving(true)
     try{
-      const r = await api.post<any>('/api/v1/settings/reset', {})
+      const headers: Record<string,string> = {}
+      if (adminToken) headers['X-Admin-Token'] = adminToken
+      const r = await fetch('/api/v1/settings/reset', { method:'POST', headers: { 'Content-Type':'application/json', ...headers }, body: JSON.stringify({}) }).then(async r=>{
+        if (!r.ok) {
+          const j = await r.json().catch(()=> ({}))
+          throw new Error(j?.error?.message || `Reset failed ${r.status}`)
+        }
+        return r.json()
+      })
       setSettings(r.settings); setDraft(r.settings)
+      try{ localStorage.removeItem('f1-settings-cache')}catch{}
       localStorage.removeItem('f1-settings-colors')
       localStorage.removeItem('f1-ui-prefs')
       applyColors(COLOR_DEFAULTS)
@@ -307,6 +341,34 @@ export function SettingsPage(){
         {msg && <div className="mt-3 p-2 rounded-lg surface-alt fs-11">{msg}</div>}
       </div>
 
+      {/* Surface split — Preferences (per-user, safe) vs Admin (global, requires token) */}
+      <div className="card p-3 flex flex-wrap items-center gap-3">
+        <div className="flex gap-2">
+          <button onClick={()=> setSurface('preferences')} className={`px-4 py-2 rounded-full fs-11 font-bold ${surface==='preferences'?'bg-black text-white':'bg-white border'}`}>Preferences — Personal</button>
+          <button onClick={()=> setSurface('admin')} className={`px-4 py-2 rounded-full fs-11 font-bold ${surface==='admin'?'bg-black text-white':'bg-white border'}`}>Admin Console — Global</button>
+        </div>
+        <span className="fs-11 text-sub">{surface==='preferences'?'Safe, per-device — theme, favorite driver, no auth needed':'Global, affects every visitor — requires X-Admin-Token'}</span>
+        {surface==='admin' && (
+          <div className="ml-auto flex items-center gap-2">
+            <input value={adminToken} onChange={e=> { setAdminToken(e.target.value); try{ localStorage.setItem('f1-admin-token', e.target.value)}catch{} }} placeholder="X-Admin-Token (SECRET_KEY)" className="f1-input w-48 font-mono text-xs" />
+            <span className="fs-11 px-2 py-1 rounded-full" style={{ background: adminToken?'#dcfce7':'#fee2e2', color: adminToken?'#16a34a':'#ef4444'}}>{adminToken?'Token set':'No token — writes to non-safe fields will 403'}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Favorite driver — cross-cutting preference */}
+      {surface==='preferences' && (
+        <div className="card p-4">
+          <div className="f1-display font-bold">Favorite Driver — personalizes every page</div>
+          <p className="fs-11 text-sub">Settings stores a favorite driver/constructor — every other section (Predictions, Standings, H2H, Fantasy) can highlight/pin that driver. Turns Settings from isolated config into personalization.</p>
+          <div className="flex gap-2 mt-3">
+            <input value={favoriteDriver} onChange={e=> { setFavoriteDriver(e.target.value.toUpperCase()); try{ localStorage.setItem('f1-favorite-driver', e.target.value.toUpperCase())}catch{} }} placeholder="e.g. VER, HAM, LEC" className="f1-input w-32 font-mono" />
+            <button onClick={()=> { try{ localStorage.setItem('f1-favorite-driver', favoriteDriver); setMsg(`Favorite driver set to ${favoriteDriver} — other pages will highlight it`)}catch{} }} className="btn-primary" style={{ background:'#16a34a'}}>Save favorite</button>
+            <span className="fs-11 text-sub self-center">Current: {favoriteDriver||'—'}</span>
+          </div>
+        </div>
+      )}
+
       {/* Quick bar + Live preview */}
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 card p-4">
@@ -359,9 +421,9 @@ export function SettingsPage(){
       </div>
 
       <div className="grid lg:grid-cols-[220px_1fr] gap-4">
-        {/* Left nav */}
+        {/* Left nav — filtered by surface */}
         <div className="card p-2 h-fit">
-          {groups.map(g=> (
+          {filteredGroups.map(g=> (
             <button key={g.id} onClick={()=> setActive(g.id)} className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 ${active===g.id?'bg-black text-white':'hover:bg-black/5'}`}>
               <span>{g.icon}</span><span className="fs-11 font-bold">{g.label}</span><span className="ml-auto fs-11 opacity-60">{g.fields.length}</span>
             </button>

@@ -13,10 +13,14 @@ import time
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
 # In-memory overrides (survives until restart; also mirrored to cache if available)
+# SECURITY FIX 2026-09-15: was global unauthenticated write — now requires admin token and per-field allowlist
 _overrides: Dict[str, Any] = {}
 
-# Fields that must never be exposed raw
-_SENSITIVE = {"SECRET_KEY", "REDIS_PASSWORD", "HUGGINGFACE_API_KEY", "OPENAI_API_KEY", "ALERTING_SLACK_WEBHOOK"}
+# Fields that must never be exposed raw or writable via API
+_SENSITIVE = {"SECRET_KEY", "REDIS_PASSWORD", "HUGGINGFACE_API_KEY", "OPENAI_API_KEY", "ALERTING_SLACK_WEBHOOK", "DATABASE_URL", "DATABASE_POOL_SIZE", "DATABASE_MAX_OVERFLOW", "REDIS_PASSWORD"}
+
+# Only these fields may be patched without admin auth (safe appearance/preferences)
+_SAFE_PREFERENCES = {"THEME", "PRIMARY_COLOR", "BACKGROUND", "SURFACE", "SURFACE_ALT", "BORDER", "TEXT", "SUB", "NAVY", "NAVY_LIGHT", "THEME_MODE", "UI_FONT_SCALE", "UI_REDUCED_MOTION", "UI_HIGH_CONTRAST", "UI_DYSLEXIA_FONT", "CHAOS_LEVEL_DEFAULT", "GRID_WEIGHT_DEFAULT", "MONTE_CARLO_SIMULATIONS"}
 
 def _sanitize(settings_dict: Dict[str, Any]) -> Dict[str, Any]:
     out = {}
@@ -74,32 +78,44 @@ async def patch_settings(request: Request):
         return JSONResponse({"error": {"code": "INVALID", "message": "Expected object"}}, status_code=400)
 
     from backend.app.config.settings import settings
+    import os
+    # SECURITY FIX: require admin token for any non-safe field, and never allow _SENSITIVE
+    admin_token = request.headers.get("X-Admin-Token") or request.headers.get("X-Settings-Token") or ""
+    expected_token = os.getenv("SETTINGS_ADMIN_TOKEN") or settings.SECRET_KEY
+    is_admin = bool(admin_token and admin_token == expected_token)
+    # Also allow safe preferences without auth (per-user appearance)
+    # But any attempt to write _SENSITIVE or non-safe fields without admin is rejected
+
     allowed = set(settings.model_dump().keys()) if hasattr(settings, "model_dump") else set(settings.__dict__.keys())
-    # Also allow appearance keys that are purely frontend (stored as overrides but not in settings)
     allowed.update({"THEME", "PRIMARY_COLOR", "BACKGROUND", "SURFACE", "TEXT", "BORDER", "THEME_MODE"})
-    # Extra frontend-only keys
     extra_allowed = {k for k in body.keys() if k.startswith("FRONTEND_") or k.startswith("UI_")}
     allowed.update(extra_allowed)
 
     applied = {}
     rejected = []
+    requires_admin = []
     for k, v in body.items():
-        if k in _SENSITIVE and (not isinstance(v, str) or v == "***"):
-            # Don't allow blanking sensitive via masked value
+        # Block _SENSITIVE always from being set via API (must be env)
+        if k in _SENSITIVE:
             rejected.append(k)
             continue
-        if k not in allowed:
-            # Still allow it as generic override (massive tunings = anything)
-            # but mark it
-            pass
+        # If field is not in safe preferences and not admin, require admin
+        if k not in _SAFE_PREFERENCES and k not in extra_allowed and not is_admin:
+            requires_admin.append(k)
+            continue
+        if k not in allowed and not is_admin:
+            requires_admin.append(k)
+            continue
         _overrides[k] = v
         applied[k] = v
-        # Also try to set on settings instance for immediate effect where possible
         try:
             if hasattr(settings, k):
                 setattr(settings, k, v)
         except Exception:
             pass
+    if requires_admin:
+        fields_str = ", ".join(requires_admin)
+        return JSONResponse({"error": {"code": "ADMIN_REQUIRED", "message": f"Admin token required for fields: {fields_str}. Send X-Admin-Token header.", "details": {"requires_admin": requires_admin, "hint": "Set SETTINGS_ADMIN_TOKEN env or use SECRET_KEY for dev"}}}, status_code=403)
 
     # Try to persist overrides to cache (Redis/Dict) for visibility via health
     try:
@@ -113,9 +129,15 @@ async def patch_settings(request: Request):
     return {"applied": applied, "rejected_sensitive": rejected, "settings": _current_settings()}
 
 @router.post("/reset")
-async def reset_settings():
+async def reset_settings(request: Request):
+    import os
+    from backend.app.config.settings import settings
+    admin_token = request.headers.get("X-Admin-Token") or request.headers.get("X-Settings-Token") or ""
+    expected_token = os.getenv("SETTINGS_ADMIN_TOKEN") or settings.SECRET_KEY
+    is_admin = bool(admin_token and admin_token == expected_token)
+    if not is_admin:
+        return JSONResponse({"error": {"code": "ADMIN_REQUIRED", "message": "Admin token required to reset. Send X-Admin-Token header."}}, status_code=403)
     _overrides.clear()
-    # Also reload from env would revert settings instance? We just clear overrides
     try:
         from backend.app.cache.redis import get_cache
         cache = get_cache()

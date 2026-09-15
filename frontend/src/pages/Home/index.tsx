@@ -160,13 +160,18 @@ export function HomePage() {
             <div className="card p-4" style={{ background:'#fff', color:'#0a0a09'}}>
               <div className="f1-display font-bold">Mini win-prob — {MINI_PREVIEW_RACES.find(r=> r.id===previewId)?.name}</div>
               <div className="space-y-2 mt-3">
-                {MINI_PREVIEW_RACES.map(r=> (
-                  <div key={r.id} className="flex items-center gap-2">
-                    <span className="fs-11 w-6 font-bold">{r.id.toUpperCase()}</span>
-                    <div className="flex-1 h-2 bg-black/10 rounded-full overflow-hidden"><div className="h-full" style={{ width:`${previewId===r.id? r.bar : Math.max(6, r.bar - 8 + Math.random()*6)}%`, background: r.color}} /></div>
-                    <span className="fs-11 w-10 text-right">{r.bar}%</span>
-                  </div>
-                ))}
+                {MINI_PREVIEW_RACES.map(r=> {
+                  // deterministic variance based on race id hash, not Math.random
+                  const hash = r.id.split('').reduce((a,c)=> a + c.charCodeAt(0),0) % 6
+                  const otherBar = Math.max(6, r.bar - 8 + hash)
+                  return (
+                    <div key={r.id} className="flex items-center gap-2">
+                      <span className="fs-11 w-6 font-bold">{r.id.toUpperCase()}</span>
+                      <div className="flex-1 h-2 bg-black/10 rounded-full overflow-hidden"><div className="h-full" style={{ width:`${previewId===r.id? r.bar : otherBar}%`, background: r.color}} /></div>
+                      <span className="fs-11 w-10 text-right">{r.bar}%</span>
+                    </div>
+                  )
+                })}
               </div>
               <div className="fs-11 text-sub mt-3">This is the same Monte Carlo that powers <Link to="/dashboard" className="underline" style={{ color:'var(--red)'}}>Dashboard</Link> — just smaller. Chaos 50 → 30% uniform blend.</div>
             </div>

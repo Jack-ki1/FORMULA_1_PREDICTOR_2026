@@ -1,9 +1,9 @@
 import time
 import logging
-import requests
 import xml.etree.ElementTree as ET
 from fastapi import APIRouter
 from typing import List, Dict, Any
+import asyncio
 
 router = APIRouter(prefix="/api/v1/news", tags=["news"])
 logger = logging.getLogger(__name__)
@@ -17,50 +17,53 @@ FALLBACK_NEWS: List[Dict[str, Any]] = [
   {"title":"Sustainable fuel era begins — 100% advanced biofuel mandated","source":"F1 Technical","date":"2026-03-03","url":"https://www.racefans.net","image":"/media/pit_stop.jpg","summary":"Non-food biomass fuel, no refuelling — tyre deg re-tuned for 2026."},
 ]
 
-@router.get("", summary="Latest F1 news — live RSS via Formula1.com, fallback curated")
+@router.get("", summary="Latest F1 news — live RSS via Formula1.com, fallback curated (non-blocking)")
 async def get_news():
     live: List[Dict[str, Any]] = []
     source = "fallback"
+    # Use httpx AsyncClient so we don't block the event loop (fixes transformation.md §4)
     try:
-        # Try Formula1 RSS — timeout short, fallback fast
-        resp = requests.get("https://www.formula1.com/en/rss.xml", timeout=4, headers={"User-Agent":"F1-Predictor/2026"})
-        if resp.status_code==200 and resp.text.strip().startswith("<?xml"):
-            root = ET.fromstring(resp.text)
-            # RSS 2.0: channel/item
-            items = root.findall(".//item")[:6]
-            for it in items:
-                title = it.findtext("title","").strip()
-                link = it.findtext("link","").strip()
-                pub = it.findtext("pubDate","").strip()
-                desc = it.findtext("description","").strip()
-                # try media
-                img = ""
-                enc = it.find("enclosure")
-                if enc is not None: img = enc.get("url","")
-                if title:
-                    live.append({"title":title,"source":"Formula1.com (RSS)","date":pub[:16] if pub else "","url":link or "https://www.formula1.com","image":img or "/media/circuit1.png","summary":desc[:180]})
-            if live:
-                source="live-rss"
+        import httpx
+        async with httpx.AsyncClient(timeout=4, headers={"User-Agent":"F1-Predictor/2026"}) as client:
+            try:
+                resp = await client.get("https://www.formula1.com/en/rss.xml")
+                if resp.status_code==200 and resp.text.strip().startswith("<?xml"):
+                    root = ET.fromstring(resp.text)
+                    items = root.findall(".//item")[:6]
+                    for it in items:
+                        title = it.findtext("title","").strip()
+                        link = it.findtext("link","").strip()
+                        pub = it.findtext("pubDate","").strip()
+                        desc = it.findtext("description","").strip()
+                        img = ""
+                        enc = it.find("enclosure")
+                        if enc is not None: img = enc.get("url","")
+                        if title:
+                            live.append({"title":title,"source":"Formula1.com (RSS)","date":pub[:16] if pub else "","url":link or "https://www.formula1.com","image":img or "/media/circuit1.png","summary":desc[:180]})
+                    if live:
+                        source="live-rss"
+            except Exception as e:
+                logger.debug(f"RSS Formula1 failed: {e}")
+            if not live:
+                try:
+                    resp2 = await client.get("https://feeds.bbci.co.uk/sport/formula1/rss.xml")
+                    if resp2.status_code==200:
+                        root = ET.fromstring(resp2.text)
+                        items = root.findall(".//item")[:6]
+                        for it in items:
+                            title = it.findtext("title","").strip()
+                            link = it.findtext("link","").strip()
+                            pub = it.findtext("pubDate","").strip()
+                            desc = it.findtext("description","").strip()
+                            if title:
+                                live.append({"title":title,"source":"BBC Sport F1","date":pub[:16] if pub else "","url":link,"image":"/media/sunset_race.png","summary":desc[:180]})
+                        if live: source="live-bbc"
+                except Exception as e:
+                    logger.debug(f"RSS BBC failed: {e}")
     except Exception as e:
-        logger.debug(f"RSS fetch failed: {e}")
-
-    # If RSS blocked (common due to Cloudflare), try alternative public RSS
-    if not live:
-        try:
-            resp = requests.get("https://feeds.bbci.co.uk/sport/formula1/rss.xml", timeout=4, headers={"User-Agent":"F1-Predictor/2026"})
-            if resp.status_code==200:
-                root = ET.fromstring(resp.text)
-                items = root.findall(".//item")[:6]
-                for it in items:
-                    title = it.findtext("title","").strip()
-                    link = it.findtext("link","").strip()
-                    pub = it.findtext("pubDate","").strip()
-                    desc = it.findtext("description","").strip()
-                    if title:
-                        live.append({"title":title,"source":"BBC Sport F1","date":pub[:16] if pub else "","url":link,"image":"/media/sunset_race.png","summary":desc[:180]})
-                if live: source="live-bbc"
-        except Exception:
-            pass
+        logger.debug(f"httpx not available, fallback: {e}")
+        # Fallback to sync if httpx not available — still return curated
+        pass
 
     news = live if live else FALLBACK_NEWS
-    return {"news": news, "source": source, "count": len(news), "note": "Live RSS when available, otherwise curated fallback — always via /api/v1/news", "fetched_at": time.time()}
+    return {"news": news, "source": source, "count": len(news), "note": "Live RSS when available (async, non-blocking), otherwise curated fallback — always via /api/v1/news", "fetched_at": time.time()}
