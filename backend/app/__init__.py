@@ -120,19 +120,63 @@ def create_app() -> FastAPI:
     except Exception:
         pass
 
-    # API root — explicitly API only, never frontend HTML
+    # API root — distinct from frontend; returns HTML for browsers, JSON for API clients
     @app.get("/", tags=["health"])
-    async def root():
-        return {
+    async def root(request: Request):
+        wants_html = "text/html" in request.headers.get("accept","")
+        data = {
             "service": "F1 Predictor 2026 API",
             "version": "1.0.0",
-            "mode": "pure API — frontend is decoupled on Vite dev server",
-            "frontend": "http://localhost:5173",
+            "mode": "pure API — frontend is decoupled on Vite dev server (5178), this is port 5000",
+            "frontend": "http://localhost:5178",
+            "frontend_alt": "http://localhost:5173",
             "docs": "/docs",
+            "openapi": "/api/v1/openapi.json",
             "health": "/health",
             "api": "/api/v1",
-            "endpoints": ["/api/v1/races", "/api/v1/predictions", "/api/v1/standings/drivers", "/api/v1/h2h/compare"],
+            "endpoints": [
+                "/api/v1/races",
+                "/api/v1/predictions",
+                "/api/v1/predictions/scenario",
+                "/api/v1/grid/{race_id}",
+                "/api/v1/standings/drivers",
+                "/api/v1/standings/constructors",
+                "/api/v1/h2h/compare",
+                "/api/v1/constructors/teams",
+                "/api/v1/analytics/accuracy",
+                "/api/v1/reports/export",
+                "/api/v1/settings",
+                "/api/v1/news",
+                "/health",
+                "/metrics",
+            ],
+            "config": {
+                "season": settings.SEASON_YEAR,
+                "model_version": getattr(settings, 'MODEL_VERSION', '12.4'),
+                "feature_version": getattr(settings, 'FEATURE_VERSION', '8'),
+                "cors_origins": settings.CORS_ORIGINS,
+                "frontend_origin": getattr(settings, 'FRONTEND_ORIGIN',''),
+                "redis_required": getattr(settings, 'REDIS_REQUIRED', False),
+            },
+            "decoupled_note": "This is port 5000 — API only. Frontend is on 5178 (Vite) — never same content.",
         }
+        if wants_html:
+            html = f"""
+            <!doctype html><html><head><meta charset='utf-8'><title>F1 Predictor 2026 API — Port 5000</title>
+            <style>body{{font-family:system-ui, sans-serif; max-width:800px; margin:40px auto; padding:0 20px; background:#0a0a09; color:#f1f2f5}} a{{color:#E10600}} code{{background:#1c2028; padding:2px 6px; border-radius:4px}} .badge{{background:#E10600; color:#fff; padding:3px 8px; border-radius:999px; font-size:11px}} .card{{background:#15181F; border:1px solid #2B3039; border-radius:12px; padding:16px; margin:12px 0}} h1{{color:#fff}} </style></head>
+            <body>
+              <div style='background:#E10600; color:#fff; padding:8px 12px; border-radius:8px; font-weight:700'>PORT 5000 — API ONLY — not the frontend (5178)</div>
+              <h1>F1 Predictor 2026 API <span class='badge'>v{data['version']}</span> <span class='badge' style='background:#16a34a'>5000</span></h1>
+              <p>Frontend is decoupled on <a href='http://localhost:5178'>http://localhost:5178</a> (Vite). This port is pure JSON.</p>
+              <div class='card'><strong>Docs:</strong> <a href='/docs'>/docs</a> (Swagger) · <a href='/api/v1/openapi.json'>OpenAPI JSON</a> · <a href='/health'>/health</a> · <a href='/metrics'>/metrics</a></div>
+              <div class='card'><strong>Config:</strong> Season {data['config']['season']} · Model {data['config']['model_version']} · Feature {data['config']['feature_version']} · CORS {data['config']['cors_origins']} · REDIS {data['config']['redis_required']}</div>
+              <div class='card'><strong>Endpoints:</strong><br><code>{'<br>'.join(data['endpoints'])}</code></div>
+              <div class='card'><strong>Try:</strong> <code>curl -s http://localhost:5000/api/v1/races | jq</code><br><code>curl -s -X POST http://localhost:5000/api/v1/predictions -H 'Content-Type: application/json' -d '{{\"race_id\":\"au\"}}' | jq</code></div>
+              <p style='color:#9BA2AF; font-size:11px'>Decoupled: 5178 HTML vs 5000 JSON — never same content. See <code>docs/ARCHITECTURE.md</code>.</p>
+            </body></html>
+            """
+            return Response(content=html, media_type="text/html")
+        return data
 
     @app.get("/health", tags=["health"])
     async def health():
