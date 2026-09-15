@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'F1 Predictor 2026',
         short_name: 'F1 Predictor',
-        description: 'AI-powered Formula 1 predictions — Monte Carlo, Elo H2H, tire strategy. Frontend on 5173, API on 5000.',
+        description: 'AI-powered Formula 1 predictions — Monte Carlo, Elo H2H, tire strategy. Frontend on 5178, API on 5000.',
         theme_color: '#E10600',
         background_color: '#F4F5F7',
         display: 'standalone',
@@ -44,6 +44,9 @@ export default defineConfig({
       '/api': { target: 'http://localhost:5000', changeOrigin: true },
       '/health': { target: 'http://localhost:5000', changeOrigin: true },
       '/metrics': { target: 'http://localhost:5000', changeOrigin: true },
+      '/docs': { target: 'http://localhost:5000', changeOrigin: true },
+      '/redoc': { target: 'http://localhost:5000', changeOrigin: true },
+      '/openapi.json': { target: 'http://localhost:5000', changeOrigin: true },
     },
   },
   base: '/',
