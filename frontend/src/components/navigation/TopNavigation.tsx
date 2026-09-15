@@ -11,22 +11,15 @@ export function TopNavigation(){
           <span className="f1-nav-logo">F1</span>
           <span className="f1-display text-base font-bold" style={{color:'var(--text)'}}>Predictor <span style={{color:'var(--red)'}}>2026</span></span>
         </Link>
-        <nav className="flex flex-wrap items-center gap-2" aria-label="Primary">
+        <nav className="flex flex-wrap items-center gap-4" aria-label="Primary">
           {link('/dashboard','Predictions')}
-          {link('/live-win-prob','Live Prob')}
-          {link('/timeline','Timeline')}
-          {link('/replay','Replay')}
-          {link('/championship','Champ')}
-          {link('/transfer','Transfer')}
-          {link('/personas','AI Teams')}
-          {link('/preview','Preview')}
-          {link('/fingerprint','Styles')}
-          {link('/meta-crowd','Meta/Crowd')}
-          {link('/community','Community')}
-          {link('/sensory','Sensory')}
-          {link('/scenario-lab','Lab')}
-          {link('/live','Live')}
+          {link('/scenario-lab','Scenario Lab')}
+          {link('/live','Live Race')}
+          {link('/standings','Standings')}
+          {link('/h2h','H2H')}
+          {link('/constructors','Constructors')}
           {link('/analytics','Analytics')}
+          {link('/reports','Reports')}
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />

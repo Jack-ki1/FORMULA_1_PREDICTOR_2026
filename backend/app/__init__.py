@@ -103,21 +103,7 @@ def create_app() -> FastAPI:
         app.include_router(scenario_router)
         app.include_router(live_router)
         app.include_router(jobs_router)
-        # Extended feature routers
-        try:
-            from backend.app.api.routes.live_extended import router as live_ext
-            from backend.app.api.routes.alternate import router as alt_router
-            from backend.app.api.routes.intelligence import router as intel_router
-            from backend.app.api.routes.community import router as community_router
-            from backend.app.api.routes.sensory import router as sensory_router
-            app.include_router(live_ext)
-            app.include_router(alt_router)
-            app.include_router(intel_router)
-            app.include_router(community_router)
-            app.include_router(sensory_router)
-        except Exception as e:
-            logger.warning(f"Extended routers not loaded: {e}")
-        logger.info("Registered /api/v1 routers (including system/scenario/live/jobs+extended)")
+        logger.info("Registered /api/v1 routers (including system/scenario/live/jobs)")
     except Exception as e:
         logger.warning(f"Failed to register v1 routers: {e}")
 
