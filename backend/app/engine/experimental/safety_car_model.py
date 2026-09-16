@@ -3,7 +3,7 @@ Safety car model - SC probability by lap-window.
 Models the likelihood of safety car deployments during a race.
 """
 import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from backend.app.data.circuit_data import get_circuit_characteristics
 
 

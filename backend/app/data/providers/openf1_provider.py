@@ -2,7 +2,6 @@
 OpenF1 Provider — live telemetry, sessions, pit, race control, weather.
 """
 import time
-from typing import Any, Dict, List
 from .base import F1DataProvider, DataProvenance, hash_response
 
 class OpenF1Provider(F1DataProvider):
@@ -26,7 +25,7 @@ class OpenF1Provider(F1DataProvider):
             data = self.client.get_sessions(year=season)  # type: ignore
             prov = DataProvenance(source="openf1", provider=self.provider_name, endpoint="get_sessions", response_hash=hash_response(data), latency_ms=(time.time()-t0)*1000)
             return data if isinstance(data, list) else [], prov
-        except Exception as e:
+        except Exception:
             return [], DataProvenance(source="openf1_error", provider=self.provider_name, endpoint="get_sessions", cache_status="fallback")
 
     async def get_results(self, race_id: str, session: str):
@@ -87,9 +86,15 @@ class OpenF1Provider(F1DataProvider):
 
     async def health(self):
         if not self.client:
-            return {"provider": self.provider_name, "status": "unavailable"}
+            return {"provider": self.provider_name, "status": "unavailable",
+                    "reason": "OpenF1 client not configured (subscription-gated)"}
+        # Judged on provenance, not on whether the call threw — see modify.md s2.
         try:
-            await self.get_sessions("au", 2026)
-            return {"provider": self.provider_name, "status": "healthy"}
+            _data, prov = await self.get_sessions("au", 2026)
+            return self.health_from_provenance(prov)
         except Exception as e:
-            return {"provider": self.provider_name, "status": "degraded", "error": str(e)}
+            return self.health_from_provenance(
+                DataProvenance(source="unavailable", provider=self.provider_name,
+                               endpoint="health", cache_status="fallback"),
+                error=str(e),
+            )

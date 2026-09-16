@@ -3,7 +3,7 @@ Async jobs — POST /api/v1/predictions/jobs
 Jobs run via in-memory queue (Redis-backed where available). For demo, runs synchronously but returns job envelope.
 """
 from fastapi import APIRouter
-import uuid, json, time
+import uuid, time
 from typing import Any, Dict
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])

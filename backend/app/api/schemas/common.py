@@ -1,13 +1,13 @@
 """Common schemas: error contract, health, races."""
 try:
-    from pydantic import BaseModel, Field
+    from pydantic import BaseModel
     HAS_PYDANTIC=True
 except ImportError:
     HAS_PYDANTIC=False
     BaseModel=object
 
 if HAS_PYDANTIC:
-    from typing import Any, Optional, List, Dict
+    from typing import Any, Optional, Dict
     class ErrorDetail(BaseModel):
         code: str
         message: str

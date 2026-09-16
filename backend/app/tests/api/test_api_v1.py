@@ -64,6 +64,21 @@ def test_v1_reports_export(client):
     pred = client.post("/api/v1/predictions", json={"race_id":"au","session_type":"race","simulation_count":200}).json()
     r = client.post("/api/v1/reports/export", json={"race_id":"au","session":"race","format":"json","predictions": pred["predictions"]})
     assert r.status_code == 200
+@pytest.mark.parametrize("fmt", ["csv", "json", "pdf", "share"])
+def test_v1_reports_export_minimal_payload(client, fmt):
+    # Regression for modify.md section 1.4.
+    # The original test always sent target_id (via predictions), so it never
+    # exercised the path a real button click takes when that field is omitted.
+    # report_service built the target_id key from a bare .get(), which leaves
+    # the key present with value None -> dict.get's default never fires ->
+    # None.upper() -> HTTP 500. Every format must survive a 1-field body.
+    r = client.post("/api/v1/reports/export", json={"race_id": "au", "format": fmt})
+    assert r.status_code == 200, r.text
+
+def test_v1_reports_export_empty_body(client):
+    # Even a completely empty body must not 500.
+    r = client.post("/api/v1/reports/export", json={})
+    assert r.status_code in (200, 400), r.text
 
 def test_error_contract(client):
     r = client.post("/api/v1/predictions", json={})

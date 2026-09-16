@@ -5,7 +5,7 @@ This is a new integration for real-time live timing data.
 import datetime as dt
 import time
 import requests
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 
 from backend.app.data.api_client import APIClient
 from backend.app.config.api_settings import api_settings
@@ -28,7 +28,7 @@ class OpenF1Client(APIClient):
         """
         try:
             response = self.get(
-                f'/v1/sessions',
+                '/v1/sessions',
                 timeout=30,
                 cache_ttl=60
             )
@@ -49,7 +49,7 @@ class OpenF1Client(APIClient):
                 }
             
             return response
-        except Exception as e:
+        except Exception:
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_grid_fallback()
             return {
@@ -116,7 +116,7 @@ class OpenF1Client(APIClient):
                 }
             
             return response
-        except Exception as e:
+        except Exception:
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_standings_fallback()
             return {

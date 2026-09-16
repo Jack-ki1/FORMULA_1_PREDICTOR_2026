@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 function createStore<T>(initializer:(set:(p:Partial<T>|((s:T)=>Partial<T>))=>void, get:()=>T)=>T){
   let state: T
   const listeners = new Set<()=>void>()

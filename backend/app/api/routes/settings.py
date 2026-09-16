@@ -81,8 +81,20 @@ async def patch_settings(request: Request):
     import os
     # SECURITY FIX: require admin token for any non-safe field, and never allow _SENSITIVE
     admin_token = request.headers.get("X-Admin-Token") or request.headers.get("X-Settings-Token") or ""
-    expected_token = os.getenv("SETTINGS_ADMIN_TOKEN") or settings.SECRET_KEY
-    is_admin = bool(admin_token and admin_token == expected_token)
+    # SECURITY: NO SECRET_KEY FALLBACK.
+    #
+    # This used to read `os.getenv("SETTINGS_ADMIN_TOKEN") or settings.SECRET_KEY`.
+    # Because SECRET_KEY defaults to the literal string
+    # 'dev-secret-key-change-in-production' (committed in settings.py), anyone
+    # could send that well-known value as X-Admin-Token and flip admin-only
+    # settings — including RATE_LIMIT_ENABLED — on a public deployment.
+    # Reproduced live: POST {"RATE_LIMIT_ENABLED": false} with that header
+    # returned 200. (modify.md section 1.2)
+    #
+    # If no admin token is configured, admin-only fields are UNWRITABLE rather
+    # than writable-with-a-known-value.
+    expected_token = os.getenv("SETTINGS_ADMIN_TOKEN") or ""
+    is_admin = bool(expected_token and admin_token and admin_token == expected_token)
     # Also allow safe preferences without auth (per-user appearance)
     # But any attempt to write _SENSITIVE or non-safe fields without admin is rejected
 
@@ -115,7 +127,9 @@ async def patch_settings(request: Request):
             pass
     if requires_admin:
         fields_str = ", ".join(requires_admin)
-        return JSONResponse({"error": {"code": "ADMIN_REQUIRED", "message": f"Admin token required for fields: {fields_str}. Send X-Admin-Token header.", "details": {"requires_admin": requires_admin, "hint": "Set SETTINGS_ADMIN_TOKEN env or use SECRET_KEY for dev"}}}, status_code=403)
+        if not expected_token:
+            return JSONResponse({"error": {"code": "ADMIN_DISABLED", "message": f"Admin writes disabled — SETTINGS_ADMIN_TOKEN not configured. Cannot modify: {fields_str}.", "details": {"requires_admin": requires_admin, "hint": "Set the SETTINGS_ADMIN_TOKEN env var to enable admin writes."}}}, status_code=403)
+        return JSONResponse({"error": {"code": "ADMIN_REQUIRED", "message": f"Admin token required for fields: {fields_str}. Send X-Admin-Token header.", "details": {"requires_admin": requires_admin}}}, status_code=403)
 
     # Try to persist overrides to cache (Redis/Dict) for visibility via health
     try:
@@ -131,11 +145,15 @@ async def patch_settings(request: Request):
 @router.post("/reset")
 async def reset_settings(request: Request):
     import os
-    from backend.app.config.settings import settings
     admin_token = request.headers.get("X-Admin-Token") or request.headers.get("X-Settings-Token") or ""
-    expected_token = os.getenv("SETTINGS_ADMIN_TOKEN") or settings.SECRET_KEY
-    is_admin = bool(admin_token and admin_token == expected_token)
+    # Same no-fallback rule as patch_settings above — this endpoint carried an
+    # identical SECRET_KEY fallback, so the "fix" would have been bypassable by
+    # simply POSTing /reset instead. (modify.md section 1.2)
+    expected_token = os.getenv("SETTINGS_ADMIN_TOKEN") or ""
+    is_admin = bool(expected_token and admin_token and admin_token == expected_token)
     if not is_admin:
+        if not expected_token:
+            return JSONResponse({"error": {"code": "ADMIN_DISABLED", "message": "Admin reset disabled — SETTINGS_ADMIN_TOKEN not configured."}}, status_code=403)
         return JSONResponse({"error": {"code": "ADMIN_REQUIRED", "message": "Admin token required to reset. Send X-Admin-Token header."}}, status_code=403)
     _overrides.clear()
     try:

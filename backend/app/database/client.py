@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 import logging
 import json
@@ -188,7 +188,7 @@ class DatabaseClient:
         try:
             with self.get_session() as db:
                 # Delete old predictions
-                cutoff_date = datetime.utcnow() - timedelta(days=settings.PREDICTION_RETENTION_DAYS)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=settings.PREDICTION_RETENTION_DAYS)
                 deleted_count = db.execute(
                     text("DELETE FROM predictions WHERE created_at < :cutoff_date"),
                     {"cutoff_date": cutoff_date}

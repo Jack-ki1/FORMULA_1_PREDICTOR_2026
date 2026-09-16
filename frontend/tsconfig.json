@@ -16,8 +16,16 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    // `baseUrl` was removed rather than silenced: it is deprecated (stops
+    // functioning in TS 7.0) and this project never needed it — `paths` resolves
+    // relative to this tsconfig's own directory.
+    "paths": { "@/*": ["./src/*"] },
+    // Node types are needed by the vitest guardrail tests (node:fs, node:path,
+    // import.meta.url). They must be listed explicitly: once `paths` is set,
+    // TypeScript stops auto-including every @types package, which is why the
+    // language server reports "Cannot find name 'node:fs'" even though
+    // @types/node is installed.
+    "types": ["node", "vite/client"]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

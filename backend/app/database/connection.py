@@ -158,8 +158,8 @@ class DatabaseConnection:
     
     def _init_calendar(self, session):
         """Initialize race calendar from data module."""
-        from backend.app.data.calendar_2026 import CALENDAR_2026
         from datetime import datetime
+        from backend.app.data.calendar_2026 import CALENDAR_2026
         from backend.app.database.models import Race as RaceModel
         
         for race_data in CALENDAR_2026:
@@ -186,12 +186,12 @@ class DatabaseConnection:
     
     def clear_cache(self):
         """Clear expired cache entries."""
-        from datetime import datetime
+        from datetime import datetime, timezone
         from backend.app.database.models import CacheEntry as CacheEntryModel
-        
+
         with self.session_scope() as session:
             expired_entries = session.query(CacheEntryModel).filter(
-                CacheEntryModel.expires_at < datetime.utcnow()
+                CacheEntryModel.expires_at < datetime.now(timezone.utc)
             ).all()
             
             for entry in expired_entries:

@@ -3,33 +3,48 @@ Application settings and configuration.
 Central point for all environment-based configuration.
 """
 import os
-import logging
 from typing import Dict, List, Optional
+from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file
-load_dotenv()
+# Resolve .env to the REPOSITORY ROOT regardless of the current working
+# directory. Bare `load_dotenv()` / `env_file='.env'` are CWD-relative, so
+# running `python backend/main.py` picked up the config but running anything from
+# inside backend/ silently fell back to defaults — a footgun that produced
+# "why is my SECRET_KEY ignored?" confusion.
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+load_dotenv(_REPO_ROOT / '.env')
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
-    
+
     # Season Configuration
     SEASON_YEAR: int = 2026
     DEBUG: bool = False
-    
+
     # Application Configuration
     VERSION: str = '1.0.0'
     ENVIRONMENT: str = 'development'
     HOST: str = '0.0.0.0'
     PORT: int = 5000
-    
-    # Flask Configuration
+
+    # App secret — used for JWT signing and legacy session cookies.
+    # MUST be overridden in production; a startup guard below refuses to boot
+    # with this default while ENVIRONMENT=production.
     SECRET_KEY: str = 'dev-secret-key-change-in-production'
-    FLASK_ENV: str = 'development'
-    FLASK_HOST: str = '0.0.0.0'
-    FLASK_PORT: int = 5000
-    
+
+    # Admin token for the settings write API (X-Admin-Token header).
+    # Deliberately NOT defaulted to SECRET_KEY: if unset, admin-only fields are
+    # unwritable rather than writable-with-a-publicly-known-value (modify.md 1.2).
+    SETTINGS_ADMIN_TOKEN: str = ''
+
+    # NOTE: the historical FLASK_ENV/FLASK_HOST/FLASK_PORT trio was removed
+    # (modify.md s2/s3 — Flask was fully replaced by FastAPI long ago, but the
+    # runtime still read the vestigial FLASK_* pair while .env.example documented
+    # it as authoritative). HOST/PORT above are the single naming convention;
+
     # Cache Configuration
     API_CACHE_TTL: int = 300  # 5 minutes default
     CACHE_TTL_SHORT: int = 60  # 1 minute
@@ -38,7 +53,7 @@ class Settings(BaseSettings):
     FASTF1_CACHE_ENABLED: bool = True
     FASTF1_CACHE_PATH: str = 'cache/fastf1_cache'
     MODEL_CACHE_PATH: str = 'cache/model_cache'
-    
+
     # Database configuration
     DATABASE_URL: str = 'sqlite:///./f1_predictions.db'
     DATABASE_POOL_SIZE: int = 20
@@ -57,7 +72,7 @@ class Settings(BaseSettings):
     # Background Scheduler
     LIVE_UPDATE_INTERVAL: int = 300  # 5 minutes
     POST_RACE_EVALUATION_ENABLED: bool = True
-    
+
     # Model Configuration
     DEFAULT_MODEL_VERSION: str = 'v1.0'
     ENABLE_ENSEMBLE: bool = True
@@ -165,7 +180,7 @@ class Settings(BaseSettings):
     CACHE_ENABLED: bool = True
     CACHE_TTL_SECONDS: int = 300
     CACHE_MAX_SIZE: int = 1000
-    
+
     # Redis configuration
     REDIS_HOST: str = 'localhost'
     REDIS_PORT: int = 6379
@@ -185,10 +200,21 @@ class Settings(BaseSettings):
     API_RESPONSE_CACHE_HEADERS: str = 'public, max-age=300'
 
     model_config = SettingsConfigDict(
-        env_file='.env',
+        env_file=str(_REPO_ROOT / '.env'),
         env_file_encoding='utf-8',
         extra='allow'
     )
+
+    # Backwards-compat shims. Anything still reading settings.FLASK_PORT /
+    # FLASK_HOST gets the HOST/PORT values instead of blowing up — but the
+    # canonical names are HOST/PORT and .env.example documents only those.
+    @property
+    def FLASK_PORT(self) -> int:
+        return int(os.environ.get("FLASK_PORT", self.PORT))
+
+    @property
+    def FLASK_HOST(self) -> str:
+        return os.environ.get("FLASK_HOST", self.HOST)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

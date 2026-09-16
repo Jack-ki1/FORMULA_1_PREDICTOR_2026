@@ -60,7 +60,7 @@ export function GridEditor({value,onChange, raceId}:{value:Record<string,number>
       <div className="flex flex-wrap gap-2 mb-3">
         <button onClick={useOfficial} disabled={!official} className="btn-ghost text-xs disabled:opacity-40">Use official grid</button>
         <button onClick={clear} className="btn-ghost text-xs">Clear (auto)</button>
-        <span className="fs-11 text-sub self-center">P1–P22 — duplicates highlighted</span>
+        <span className="fs-11 text-sub self-center">P1–P{codes.length} — duplicates highlighted</span>
       </div>
       {/* Duplicate detection */}
       {(()=>{
@@ -70,7 +70,7 @@ export function GridEditor({value,onChange, raceId}:{value:Record<string,number>
         return dupes.length? <div className="fs-11 text-amber-600 mb-2">Duplicate P{dupes.join(', P')} — fix to run</div> : null
       })()}
       <div className="grid-editor-list space-y-1 max-h-[420px] overflow-auto pr-1">
-        {codes.slice(0,23).map((code:string)=>{
+        {codes.map((code:string)=>{
           const val = grid[code] || ''
           const isDupe = val && Object.values(grid).filter(v=> v===val).length>1
           return (
@@ -79,7 +79,7 @@ export function GridEditor({value,onChange, raceId}:{value:Record<string,number>
               <span className="fs-11 font-semibold flex-1">{code}</span>
               <select value={val} onChange={e=> setPos(code, e.target.value)} className="f1-select" style={{maxWidth:'120px', borderColor: isDupe? 'var(--amber)': undefined}}>
                 <option value="">—</option>
-                {Array.from({length:23},(_,i)=> i+1).map(n=><option key={n} value={n}>P{n}</option>)}
+                {Array.from({length:codes.length},(_,i)=> i+1).map(n=><option key={n} value={n}>P{n}</option>)}
               </select>
             </div>
           )

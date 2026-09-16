@@ -1,14 +1,13 @@
 """Translate external F1 sources into small, safe model inputs."""
 from __future__ import annotations
 import datetime as dt
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict
 
 from backend.app.config.settings import settings
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 from backend.app.data.calendar_2026 import get_race_by_id
 from backend.app.data.pipeline import DataPipeline, DataProvenance
 from backend.app.data.pipeline_config import PipelineConfig
-from backend.app.data.pipeline_utils import get_data_source_info, is_cached_data
 
 
 # Initialize the data pipeline with configuration
@@ -44,14 +43,16 @@ def build_session_context(race_id: str, session_type: str) -> Dict[str, Any]:
     sources: list[str] = []
     strength_adjustments: Dict[str, float] = {}
     grid_positions: Dict[str, int] = {}
-    roster_by_number = {str(d['number']): d['code'] for d in get_all_drivers()}
+    # Built for a Jolpica->code mapping this function does not yet use. Kept and
+    # marked rather than deleted so the wiring gap is explicit.
+    _roster_by_number = {str(d['number']): d['code'] for d in get_all_drivers()}
     try:
         from backend.app.data.jolpica_client import JolpicaClient
         client = JolpicaClient()
         
         # Get and process driver standings
         standings = client.get_driver_standings(settings.SEASON_YEAR)
-        standings_payload = _payload(standings)
+        _standings_payload = _payload(standings)  # built for a mapping this fn does not yet use
         
         # Create provenance for standings data
         standings_provenance = DataProvenance(
@@ -81,7 +82,7 @@ def build_session_context(race_id: str, session_type: str) -> Dict[str, Any]:
         # Only get qualifying data for races
         if session_type == 'race':
             qualifying = client.get_qualifying_result(settings.SEASON_YEAR, race['round'])
-            qualifying_payload = _payload(qualifying)
+            _qualifying_payload = _payload(qualifying)  # see note above
             
             # Create provenance for qualifying data
             qualifying_provenance = DataProvenance(

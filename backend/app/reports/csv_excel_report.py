@@ -5,8 +5,7 @@ Exports predictions in CSV and Excel formats.
 import csv
 import io
 from typing import Dict, List, Any
-import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def extract_predictions_list(data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -124,7 +123,7 @@ class CSVExcelReportGenerator:
         """Generate JSON report from prediction data."""
         return {
             'report_type': 'predictions',
-            'generated_at': datetime.utcnow().isoformat(),
+            'generated_at': datetime.now(timezone.utc).isoformat(),
             'data': data,
         }
     
@@ -134,7 +133,7 @@ class CSVExcelReportGenerator:
         if not predictions:
             return "No predictions available"
         
-        summary = f"F1 Predictor 2026 - Race Predictions\n"
+        summary = "F1 Predictor 2026 - Race Predictions\n"
         summary += f"Race: {data.get('race_id', 'Unknown')}\n"
         summary += f"Session: {data.get('session', data.get('session_type', 'Unknown'))}\n"
         summary += f"Target: {data.get('target_id', 'Unknown')}\n\n"

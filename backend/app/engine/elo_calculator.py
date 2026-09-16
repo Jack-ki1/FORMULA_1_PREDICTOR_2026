@@ -2,8 +2,7 @@
 Elo rating system for driver skill tracking.
 Updates driver ratings race-by-race, independent of car performance.
 """
-import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers, get_driver_by_code
 
 

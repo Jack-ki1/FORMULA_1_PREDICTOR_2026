@@ -207,9 +207,9 @@ export function FantasyPage(){
             <div className="f1-display font-bold">Builder — 5 drivers</div>
             <span className="fs-11 px-2 py-1 rounded-full" style={{ background: remaining>=0?'#dcfce7':'#fee2e2', color: remaining>=0?'#16a34a':'#ef4444'}}>{selectedDrivers.length}/5</span>
           </div>
-          {drivers.length===0? <div className="p-8 text-center text-sub fs-11">Loading 23 drivers… <a href="http://localhost:5000/api/v1/h2h/drivers" target="_blank" className="underline">API 5000</a></div> :
+          {drivers.length===0? <div className="p-8 text-center text-sub fs-11">Loading 22 drivers… <a href="http://localhost:5000/api/v1/h2h/drivers" target="_blank" className="underline">API 5000</a></div> :
           <div className="grid sm:grid-cols-2 gap-2 mt-3">
-            {drivers.slice(0,23).map((d:any)=>{
+            {drivers.map((d:any)=>{
               const sel = selectedDrivers.includes(d.code)
               const price = driverPrices[d.code]
               const pred = predicted?.[d.code]

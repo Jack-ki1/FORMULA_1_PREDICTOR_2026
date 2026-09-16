@@ -1,10 +1,9 @@
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from backend.app.ai.rag.telemetry_rag import TelemetryRAG
 from backend.app.engine.tire_model import TireModel
 from backend.app.engine.weather_model import WeatherModel
 from backend.app.engine.pit_strategy import PitStrategyModel
-from backend.app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 

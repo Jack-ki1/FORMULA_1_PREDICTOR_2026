@@ -4,17 +4,14 @@ Prediction Orchestrator — layered architecture per spec §3:
  DriverPerformance(ML) + TeamPace + RaceDynamics(Simulation) → Ensemble → Calibration → MonteCarlo → Explanation
 """
 import logging
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 import numpy as np
-import pandas as pd
-from datetime import datetime, timezone
 
-from backend.app.config.settings import settings
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 from backend.app.engine.feature_engineering import feature_engineer
 from backend.app.engine.monte_carlo import MonteCarloSimulator
 from backend.app.engine.probability_model import enforce_probability_sum, calibrate_probabilities, calculate_confidence_intervals
-from backend.app.prediction.snapshot import PredictionSnapshot, build_snapshot
+from backend.app.prediction.snapshot import build_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +140,15 @@ def orchestrate(race_id: str, session_type: str, sub_session: str, weather: str,
 
     # DNF probabilities (simple from reliability + mc)
     dnf_probs = {c: float(mc_out["results"]["probabilities"][c].get("dnf_prob", 0.04)) for c in all_codes}
-    expected_finish = {c: float(sum((i+1)*0.02 for i in range(22))) for c in all_codes}  # placeholder; mc could compute
+    # Expected finishing position — taken from the Monte Carlo average, which is
+    # already computed. This was a constant placeholder
+    # (sum((i+1)*0.02 for i in range(22)) == ~5.06 for EVERY driver), so any
+    # consumer received an identical, meaningless number — and it was never even
+    # returned. Now real and surfaced.
+    expected_finish = {
+        c: float(mc_out["results"]["probabilities"][c].get("avg_position", 0.0))
+        for c in all_codes
+    }
 
     # explanations
     explanations = {code: _explain(code, calibrated.get(code,0), grid_positions.get(code,11), driver_map[code], {"weather":weather, "overtaking_difficulty":0.5}) for code in all_codes}
@@ -161,6 +166,7 @@ def orchestrate(race_id: str, session_type: str, sub_session: str, weather: str,
         "snapshot": snap.to_dict(),
         "probabilities": calibrated,
         "dnf_probabilities": dnf_probs,
+        "expected_finish": expected_finish,
         "intervals": intervals,
         "drift": drift,
         "explanations": explanations,

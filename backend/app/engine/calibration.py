@@ -3,9 +3,8 @@ Probability calibration using isotonic/Platt calibration.
 Calibrates raw model outputs to better reflect true probabilities.
 """
 import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from sklearn.isotonic import IsotonicRegression
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import LogisticRegression
 
 

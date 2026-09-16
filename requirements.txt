@@ -36,7 +36,7 @@ prometheus_client>=0.19.0
 
 # --- Reports (reports/pdf_generator.py, reports/csv_excel_report.py —
 # without these, PDF/XLSX export silently falls back to mislabeled
-# HTML/CSV; see AUDIT.md B-5) ---
+# HTML/CSV; see docs/DEEP_AUDIT.md, item B-5) ---
 weasyprint>=60.0
 openpyxl>=3.1.0
 
@@ -45,7 +45,7 @@ openpyxl>=3.1.0
 # re-added here.
 #
 # NOTE: the following packages were removed from this file during the
-# repo audit (see AUDIT.md, B-1/M-4) because they either don't exist on
+# repo audit (see docs/DEEP_AUDIT.md, items B-1/M-4) because they either don't exist on
 # PyPI as declared, or nothing in the codebase imports them:
 #   sqlite3            -- stdlib module, not a pip package, broke every install
 #   Flask-SQLAlchemy, Flask-Migrate, Flask-Login, Flask-WTF, alembic,

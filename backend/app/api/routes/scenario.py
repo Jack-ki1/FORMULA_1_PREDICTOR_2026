@@ -20,7 +20,6 @@ class ScenarioRequest(BaseModel):
 
 @router.post("/scenario")
 async def scenario_lab(req: ScenarioRequest):
-    from backend.app.services.prediction_service import prediction_service
     from backend.app.engine.predictor import generate_prediction
     # baseline
     baseline_payload = {"race_id": req.race_id, "session_type": req.session_type, "weather": req.weather, "grid_positions": req.grid_positions, "simulation_count": req.simulation_count, "random_seed": req.random_seed}

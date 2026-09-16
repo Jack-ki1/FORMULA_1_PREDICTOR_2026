@@ -2,7 +2,6 @@
 2026 FIA Formula One World Championship calendar.
 23-round calendar (excluding Bahrain and Saudi Arabia as cancelled rounds).
 """
-from datetime import datetime
 
 # 2026 F1 Calendar
 # Status: "completed" | "upcoming" | "cancelled" (relative to current date)

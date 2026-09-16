@@ -1,7 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, JSON, Text
-from sqlalchemy.orm import relationship
 from datetime import datetime
-from typing import Optional, Dict, Any
 
 # Use the shared Base from database/models.py to avoid duplicate registries
 from backend.app.database.models import Base

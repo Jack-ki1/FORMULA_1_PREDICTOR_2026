@@ -1,7 +1,6 @@
 """
 Fallback Provider — always returns local seed/cache. Never fails.
 """
-from typing import Any, Dict, List
 from .base import F1DataProvider, DataProvenance, hash_response
 
 class FallbackProvider(F1DataProvider):
@@ -42,4 +41,8 @@ class FallbackProvider(F1DataProvider):
         return [], DataProvenance(source="local_seed", provider=self.provider_name, endpoint="get_race_control", cache_status="fallback")
 
     async def health(self):
-        return {"provider": self.provider_name, "status": "healthy", "note": "always available"}
+        # This provider IS the fallback — it must never claim to be live, or the
+        # whole /system/data-sources panel reads green while serving seed data.
+        return {"provider": self.provider_name, "status": "degraded",
+                "cache_status": "fallback", "source": "local_seed",
+                "note": "always available, but never live — indicates a fallback path"}

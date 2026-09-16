@@ -7,9 +7,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 import numpy as np
 
-from backend.app.config.settings import settings
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
-from backend.app.data.calendar_2026 import get_race_by_id, CALENDAR_2026
+from backend.app.data.calendar_2026 import get_race_by_id
 from backend.app.models.prediction import Prediction
 from backend.app.database.client import DatabaseClient
 from backend.app.engine.grid_model import GridModel
@@ -23,7 +22,6 @@ from backend.app.engine.probability_model import (
     detect_model_drift,
     save_prediction_metadata,
 )
-from backend.app.cache.redis import get_cache
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +291,8 @@ def generate_prediction(
             weather_boost = (wet_skill - 0.5) * 0.2 if weather != "dry" else 0.0
             consistency_boost = (consistency - 0.5) * 0.1
             
-            base_score = ((23 - pos) / 22.0 * 0.6 + d_strength * 0.4 + weather_boost + consistency_boost) * session_pressure
+            grid_max = len(all_codes)
+            base_score = ((grid_max + 1 - pos) / float(grid_max) * 0.6 + d_strength * 0.4 + weather_boost + consistency_boost) * session_pressure
             q3_raw[code] = max(0.01, base_score)
 
         shaped_q3 = _apply_chaos_smoothing(enforce_probability_sum(q3_raw), chaos_level)

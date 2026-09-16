@@ -2,13 +2,16 @@ services:
   - type: web
     name: f1-predictor-backend
     runtime: docker
-    dockerfilePath: ./Dockerfile
+    # Explicit path — no longer relies on the bare "Dockerfile" default.
+    dockerfilePath: ./Dockerfile.legacy-monolith
     dockerContext: .
     plan: free
     healthCheckPath: /health
     envVars:
-      - key: FLASK_ENV
+      - key: ENVIRONMENT
         value: production
+      - key: PORT
+        value: "5000"
       - key: DEBUG
         value: "false"
       - key: SECRET_KEY

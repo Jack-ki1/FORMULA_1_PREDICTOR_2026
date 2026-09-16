@@ -1,18 +1,27 @@
 import logging
 
 from sqlalchemy import create_engine, text
-from backend.app.config.settings import settings
-from backend.app.database.migrations._001_initial_schema import upgrade, downgrade
+from backend.app.database.migrations._001_initial_schema import upgrade
 
 logger = logging.getLogger(__name__)
 
-def initialize_database():
-    """Initialize the database with migrations."""
+_initialized = False
+
+
+def initialize_database(force: bool = False):
+    """Initialize the database with migrations.
+
+    Idempotent AND memoised: `create_app()` calls this, and create_app() is
+    called once per test and once per worker — running the full migration each
+    time was pure startup cost. Migrations are only re-run with force=True.
+    """
+    global _initialized
+    if _initialized and not force:
+        return
     try:
-        # Run database migrations
         upgrade()
+        _initialized = True
         logger.info("Database initialized successfully")
-        
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
         raise

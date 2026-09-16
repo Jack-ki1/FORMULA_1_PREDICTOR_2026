@@ -7,9 +7,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      # Install what the tests actually import. pytest/pytest-cov live in
+      # pyproject.toml's [dev] extra, so install them explicitly — CI used to
+      # run `python -m pytest` without ever installing pytest, so the suite
+      # could not run at all on a clean runner.
       - run: pip install -r backend/requirements.txt
       - run: pip install -r requirements.txt
+      - run: pip install "pytest>=7.4.0" "pytest-cov>=4.1.0" ruff
       - run: python -m pytest -q
+      - run: python -m ruff check backend
       - name: fail on dead-framework imports
         run: |
           if grep -rn "from flask" backend/app/security/ 2>/dev/null; then
@@ -32,4 +38,8 @@ jobs:
       - run: npm ci
         working-directory: frontend
       - run: npm run build
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run test --if-present
         working-directory: frontend

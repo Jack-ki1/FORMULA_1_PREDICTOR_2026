@@ -18,7 +18,7 @@ async def list_races(request: Request, response: Response):
     try:
         data = race_service.list_races()
         response.headers["Cache-Control"] = "public, max-age=300"
-        logger.info(f"list_races latency=%.3f rid=%s", time.time() - start, request.state.request_id)
+        logger.info("list_races latency=%.3f rid=%s", time.time() - start, request.state.request_id)
         return JSONResponse(content=data, headers=dict(response.headers))
     except Exception as e:
         logger.exception("list_races failed")

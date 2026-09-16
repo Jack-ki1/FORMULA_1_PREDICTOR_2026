@@ -2,7 +2,7 @@
 Drift detection — prediction drift, feature drift, performance drift.
 """
 import numpy as np
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 def psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:
     """Population Stability Index."""

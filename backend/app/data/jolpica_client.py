@@ -5,7 +5,7 @@ Provides standings, race results, and qualifying data.
 import datetime as dt
 import time
 import requests
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 
 from backend.app.data.api_client import APIClient
 from backend.app.config.api_settings import api_settings
@@ -20,6 +20,54 @@ class JolpicaClient(APIClient):
             raise ValueError("Jolpica API is not enabled in settings")
         super().__init__(api_settings.JOLPICA_BASE_URL)
     
+    @staticmethod
+    def _extract_standings_rows(payload, kind):
+        # Flatten an Ergast StandingsTable envelope into plain rows.
+        #
+        # The upstream response nests everything under
+        # MRData.StandingsTable.StandingsLists[-1].DriverStandings (or
+        # ConstructorStandings). Nothing previously extracted that, so the raw
+        # envelope was returned and consumers saw `standings` as missing - which
+        # is why the championship table rendered empty even though the API was
+        # serving 23 drivers at round 14.
+        rows = []
+        if not isinstance(payload, dict):
+            return rows
+        lists = (payload.get('MRData', {})
+                        .get('StandingsTable', {})
+                        .get('StandingsLists', []))
+        if not lists:
+            return rows
+        latest = lists[-1]
+        if kind == 'driver':
+            for r in (latest.get('DriverStandings') or []):
+                d = r.get('Driver', {}) or {}
+                cons = (r.get('Constructors') or [{}])[0]
+                rows.append({
+                    'position': int(r.get('position', 0) or 0),
+                    'driver_code': d.get('code') or (d.get('familyName') or '')[:3].upper(),
+                    'driver_name': f"{d.get('givenName','')} {d.get('familyName','')}".strip(),
+                    'driver_id': d.get('driverId'),
+                    'nationality': d.get('nationality'),
+                    'team': (cons.get('constructorId') or '').lower(),
+                    'team_name': cons.get('name'),
+                    'points': float(r.get('points', 0) or 0),
+                    'wins': int(r.get('wins', 0) or 0),
+                })
+        else:
+            for r in (latest.get('ConstructorStandings') or []):
+                c = r.get('Constructor', {}) or {}
+                rows.append({
+                    'position': int(r.get('position', 0) or 0),
+                    'team_id': (c.get('constructorId') or '').lower(),
+                    'team_name': c.get('name'),
+                    'nationality': c.get('nationality'),
+                    'points': float(r.get('points', 0) or 0),
+                    'wins': int(r.get('wins', 0) or 0),
+                })
+        rows.sort(key=lambda x: x['position'])
+        return rows
+
     def get_driver_standings(self, season_year: int) -> Dict[str, Any]:
         """
         Get driver championship standings for a season.
@@ -49,12 +97,34 @@ class JolpicaClient(APIClient):
                     }
                 }
             
-            return response
-        except Exception as e:
+            # Flatten the Ergast envelope into plain rows so consumers get a
+            # usable `standings` list instead of the raw MRData wrapper.
+            rows = self._extract_standings_rows(response.get('data'), 'driver')
+            if rows:
+                response['standings'] = rows
+                response['data'] = rows
+                return response
+            # Envelope arrived but carried no rows — treat as a failed fetch so
+            # the caller falls back rather than caching an empty table.
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_standings_fallback()
             return {
                 'data': fallback_data,
+                'standings': fallback_data,
+                'source': 'fallback',
+                'provenance': {
+                    'source': 'fallback',
+                    'cache_status': 'fallback',
+                    'timestamp': dt.datetime.now().isoformat(),
+                    'note': 'Live standings contained no rows; using local seed'
+                }
+            }
+        except Exception:
+            from backend.app.data.fallback import FallbackStrategy
+            fallback_data = FallbackStrategy.get_standings_fallback()
+            return {
+                'data': fallback_data,
+                'standings': fallback_data,
                 'source': 'fallback',
                 'provenance': {
                     'source': 'fallback',
@@ -85,7 +155,13 @@ class JolpicaClient(APIClient):
         if response['source'] == 'error':
             return self._fallback_constructor_standings(season)
         
-        return response
+        # Flatten the Ergast envelope so consumers get a usable `standings` list.
+        rows = self._extract_standings_rows(response.get('data'), 'constructor')
+        if rows:
+            response['standings'] = rows
+            response['data'] = rows
+            return response
+        return self._fallback_constructor_standings(season)
     
     def get_race_result(self, season: int, round_number: int) -> Dict[str, Any]:
         """
@@ -140,7 +216,7 @@ class JolpicaClient(APIClient):
                 }
             
             return response
-        except Exception as e:
+        except Exception:
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_grid_fallback()
             return {

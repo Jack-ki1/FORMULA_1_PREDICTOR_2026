@@ -3,7 +3,7 @@ Weather model - wet-skill blending and weather prediction.
 Models how weather conditions affect driver performance.
 """
 import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 from backend.app.config.constants import WEATHER_CONDITIONS
 

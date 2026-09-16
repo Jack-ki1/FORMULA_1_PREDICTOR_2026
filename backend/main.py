@@ -45,15 +45,19 @@ def main():
     app = create_app()
     print("[OK] FastAPI application created — docs at /docs")
 
-    run_port = int(os.environ.get("PORT", settings.FLASK_PORT))
-    print(f"\nStarting FastAPI server on {settings.FLASK_HOST}:{run_port}...")
+    # HOST/PORT are the canonical settings. The FLASK_HOST/FLASK_PORT env vars
+    # are still honoured via the settings shims for older deployments, but the
+    # documented names are HOST/PORT.
+    run_host = os.environ.get("HOST", settings.HOST)
+    run_port = int(os.environ.get("PORT", settings.PORT))
+    print(f"\nStarting FastAPI server on {run_host}:{run_port}...")
     print(f"Debug mode: {settings.DEBUG}")
     print(f"Season: {settings.SEASON_YEAR}")
     print("=" * 60)
 
     try:
         import uvicorn
-        uvicorn.run(app, host=settings.FLASK_HOST, port=run_port, log_level="info")
+        uvicorn.run(app, host=run_host, port=run_port, log_level="info")
     except KeyboardInterrupt:
         print("\nShutting down...")
         print("Stopping live updater...")

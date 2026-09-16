@@ -28,3 +28,15 @@ async def constructor_standings(request: Request, response: Response):
     except Exception as e:
         logger.exception("constructor_standings failed")
         return _error("STANDINGS_FAILED", str(e), 500, request)
+
+@router.get("/api/v1/standings/championship-projection", tags=["standings"])
+async def championship_projection(request: Request, simulations: int = 2000):
+    # P(driver wins the title) from simulating every remaining round.
+    # Reuses the production Monte Carlo engine across the rest of the calendar
+    # rather than one race (modify.md section 5).
+    try:
+        from backend.app.services.projection_service import project_championship
+        return project_championship(simulations=simulations)
+    except Exception as e:
+        logger.exception("championship projection failed")
+        return _error("PROJECTION_FAILED", str(e), 500, request)

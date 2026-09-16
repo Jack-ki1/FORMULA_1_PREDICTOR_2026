@@ -62,7 +62,7 @@ export function StandingsPage(){
             <span className="px-2.5 py-1 rounded-full bg-white/10 fs-11">Round {round}/23 — dynamic</span>
             <span className="px-2.5 py-1 rounded-full bg-red text-white fs-11">Live Jolpica → local fallback</span>
           </div>
-          <p className="fs-11 mt-2 max-w-2xl" style={{ color: 'rgba(255,255,255,.75)' }}>23 drivers · 11 teams · 23 rounds (6 sprint) · Points progression updates as races happen. Constructors fixed — now showing {constructorList.length} teams.</p>
+          <p className="fs-11 mt-2 max-w-2xl" style={{ color: 'rgba(255,255,255,.75)' }}>22 drivers · 11 teams · 23 rounds (6 sprint) · Points progression updates as races happen. Constructors fixed — now showing {constructorList.length} teams.</p>
           <div className="flex gap-2 mt-4">
             <button onClick={()=> setTab('drivers')} className={`px-4 py-2 rounded-full fs-11 font-bold ${tab==='drivers'?'bg-white text-black':'bg-white/10 text-white'}`}>Drivers</button>
             <button onClick={()=> setTab('constructors')} className={`px-4 py-2 rounded-full fs-11 font-bold ${tab==='constructors'?'bg-white text-black':'bg-white/10 text-white'}`}>Constructors</button>
@@ -175,7 +175,7 @@ export function StandingsPage(){
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-4">
           <div className="f1-display font-bold mb-2">Driver Table — 23 · dynamic</div>
-          {ld? 'Loading…': <div className="overflow-x-auto"><table className="f1-table w-full"><thead><tr><th>#</th><th>Driver</th><th>Pts</th><th>W</th><th>P</th><th>Gap</th></tr></thead><tbody>{driverList.slice(0,23).map((d:any,i:number)=> {
+          {ld? 'Loading…': <div className="overflow-x-auto"><table className="f1-table w-full"><thead><tr><th>#</th><th>Driver</th><th>Pts</th><th>W</th><th>P</th><th>Gap</th></tr></thead><tbody>{driverList.map((d:any,i:number)=> {
             const code = d.driver_code||d.code
             const gap = i===0? '—' : `-${(driverList[0].points||0)-(d.points||0)}`
             return <tr key={code||i} className={i===0?'bg-yellow-50/80 font-bold': i<3?'bg-yellow-50/50':''}><td>{d.position||i+1}</td><td className="flex items-center gap-2"><TeamStripe color={colorByCode[code]} />{d.driver_name||d.name||code} <span className="fs-11 text-sub">{d.team}</span></td><td className="f1-mono font-black">{d.points??'-'}</td><td className="f1-mono">{d.wins??0}</td><td className="f1-mono">{d.podiums??0}</td><td className="fs-11 text-sub">{gap}</td></tr>

@@ -234,6 +234,15 @@ DNF_RISK_LEVELS = {
 }
 
 # Grid Position Multiplier (based on ~43% historical pole-to-win rate)
+# Grid size — single source of truth. 11 teams x 2 drivers = 22.
+# Derived from the lineup so it can never drift out of sync again: the old
+# hardcoded 23 was a stale value from when Racing Bulls wrongly had 3 drivers
+# (modify.md section 1.5) and it silently widened every Monte Carlo grid.
+def grid_size() -> int:
+    from backend.app.config.team_driver_lineup_2026 import get_all_drivers
+    return len(get_all_drivers())
+
+
 def grid_prior_multiplier(position):
     """
     Calculate grid position multiplier based on historical pole-to-win rate.

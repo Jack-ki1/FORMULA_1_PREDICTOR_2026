@@ -21,7 +21,7 @@ Engine is `backend/app/engine/predictor.generate_prediction` — identical via `
 # Backend API only (5000) — pure JSON, never HTML
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements.txt  # or -r requirements.txt
-cp backend/.env.example .env  # DATABASE_URL, REDIS_HOST, SECRET_KEY
+cp .env.example .env          # DATABASE_URL, REDIS_HOST, SECRET_KEY, SETTINGS_ADMIN_TOKEN
 python3 scripts/migrate_db.py
 python3 backend/main.py        # → http://localhost:5000/ (HTML landing for browsers, JSON for curl) and /health /docs
 
@@ -62,7 +62,7 @@ FORMULA_1_PREDICTOR_2026/
 │   │   ├── services/{prediction_service (snapshot+hash cache TTL3600), race_service, standings_service, h2h_service, ...}
 │   │   ├── prediction/{orchestrator.py (ML+MC blend), snapshot.py, explainability.py}
 │   │   ├── engine/{predictor, monte_carlo (vectorised argsort, seedable), grid_model (Q1→Q3 22→16→10 + official Jolpica), probability_model, elo, feature_engineering, ml_models, ensemble_predictor, calibration, ...}
-│   │   ├── data/{calendar_2026 (23 rnds, 6 sprint), circuit_data, team_driver_lineup_2026 (23 drivers), providers/{base,jolpica,openf1,fastf1,fallback,registry}, season_2026 (14 completed), ...}
+│   │   ├── data/{calendar_2026 (23 rnds, 6 sprint), circuit_data, team_driver_lineup_2026 (22 drivers), providers/{base,jolpica,openf1,fastf1,fallback,registry}, season_2026 (14 completed), ...}
 │   │   ├── cache/redis.py (RedisCache + DictCache fallback, REDIS_REQUIRED flag)
 │   │   ├── security/middleware.py (Redis INCR per-route limits), config/settings.py, database/{models, client}
 │   │   └── tests/{api,engine,integration}
@@ -95,10 +95,10 @@ Removed not routed (but files remain on disk if you need): `frontend/src/pages/{
 
 ## 3. Architecture (decoupled, research-backed 2026 regs)
 
-- **Frontend** `5178`: React 18, Router 6, TanStack Query 5, Chart.js 4, Tailwind 3, PWA. `BASE=''` proxies to 5000; typed `F1_MEDIA` registry. Routes code-split; videos poster `night_race.png`, PWA precache 581 KiB. Single hero image per page, `Titillium Web` + `IBM Plex Mono` kept.
+- **Frontend** `5178`: React 18, Router 7, TanStack Query 5, Chart.js 4, Tailwind 3, PWA. `BASE=''` proxies to 5000; typed `F1_MEDIA` registry. Routes code-split (main 282 kB / 90 kB gzip). Single hero image per page, `Titillium Web` + `IBM Plex Mono` kept.
 - **Backend** `5000`: FastAPI `create_app()` — CORS `FRONTEND_ORIGIN` allowlist (not `*`+credentials), `X-Request-ID/X-Response-Time`, per-route Redis rate limit (`predictions 60/h, ai 30/h, live 120/h`), security headers, `/metrics`, content-negotiated `/` (HTML for browsers, JSON for curl). Pure JSON otherwise.
 - **Providers**: `F1DataProvider` → `JolpicaProvider` (official results) / `OpenF1Provider` (live telemetry, subscription-gated) / `FastF1Provider` (historical) / `FallbackProvider` (seed+cache). Federated via `Registry`; every dataset has `DataProvenance{source,provider,endpoint,retrieved_at,hash,cache_status}`.
-- **Grid**: `GridModel` — real Jolpica qualifying first, else simulated Q1-Q3 (22→16→10), else manual P1-23 fallback. Exposed at `GET /api/v1/grid/{race_id}` for manual editor.
+- **Grid**: `GridModel` — real Jolpica qualifying first, else simulated Q1-Q3 (22→16→10), else manual P1-22 fallback. Exposed at `GET /api/v1/grid/{race_id}` for manual editor.
 - **Cache**: Redis required in prod (`REDIS_REQUIRED=true`), in-memory `DictCache` only if `ENABLE_IN_MEMORY_FALLBACK=true` (dev). Prediction key hashes `race+session+snapshot+model+feature+weather+grid+config`.
 - **DB**: SQLAlchemy → SQLite dev / Postgres prod. Tables: `predictions, session_data, prediction_metadata, races, drivers…`; seed from python constants, DB is truth for dynamic data.
 
@@ -123,7 +123,7 @@ Race request
 ```
 
 - **Heuristic engine is production**: Monte Carlo + hand-tuned `team_driver_lineup_2026.py` ratings (see §6). `predictor.py` calls `_try_ml_predictions` but `cache/model_cache/*.pkl` not shipped — fresh clone returns `statistical_fallback` until `python -m training.pipelines.train` is wired to real history (see `docs/ML_VALIDATION.md`).
-- **Grid official first:** `GridEditor` tries `GET /api/v1/grid/{raceId}` (Jolpica live → simulated Q1-Q3 → manual fallback); manual P1-23 editor is fallback, duplicate P highlight, P1-23 for 23 drivers.
+- **Grid official first:** `GridEditor` tries `GET /api/v1/grid/{raceId}` (Jolpica live → simulated Q1-Q3 → manual fallback); manual editor is the fallback, duplicate-P highlighted. **22 drivers** — grid size is derived via `constants.grid_size()`, never hardcoded.
 - **Reports simple:** `POST /api/v1/reports/export` with `csv|json|pdf|share` — one click, no how-it-works, embedded at Dashboard bottom, two tables per row.
 
 ---
@@ -181,7 +181,7 @@ cat training/model_registry/registry.json  # champion entry — metrics are SYNT
 ## 7. Frontend Pages (current)
 
 - **Home `/`** — hero `F1_monaco.mp4` poster `night_race.png`, `NextRaceCountdown`, `StartLights`, stat ticker, then **recreated below 10k sims**: Cinematic Dusk Break (second video `Formula_One_race_at_dusk_1.mp4` with Mode Override card, research-backed), Regulation Atlas (4 cards: Active Aero, PU 50/50, Sustainable Fuel, Smaller & Lighter), Prediction Playground (mini 4-race win-prob), Team Voyage (horizontal 7 liveries to `/fantasy`), Intelligence in Motion (6 numbers + live news teaser), CTA. No old RaceWeekend/Garage etc — thought outside, font kept (`f1-display` + `IBM Plex Mono`).
-- **Predictions `/dashboard`** — single top image only (`circuit2.png`), row1: Race & Session (Grand Prix → day Friday/Saturday/Sunday → session dropdown FP1-3 / Q1-3 + Sprint if sprint weekend / Race) + Modify 16 tunings + sims 100-50k custom, row2: Manual Grid P1-23 (official `GET /grid/{race}` → simulated Q1-Q3 → manual fallback, duplicate highlight, 23 drivers) + green Run `Run Prediction — Green` (no API key), results: `PodiumReveal` + `TireStrategy` + **16 plots** (Win Top8, Podium, Points, Doughnut, Gauge, Win vs Grid, Radar, Scatter, Polar, Horizontal, Area, Grid vs Win, CI, DNF, Chaos, SC) tuned to predictions, tables two per row (`grid md:grid-cols-2`), Reports simple at bottom (CSV/JSON/PDF/Share → Create & Download, no how-it-works).
+- **Predictions `/dashboard`** — single top image only (`circuit2.png`), row1: Race & Session (Grand Prix → day Friday/Saturday/Sunday → session dropdown FP1-3 / Q1-3 + Sprint if sprint weekend / Race) + Modify 16 tunings + sims 100-50k custom, row2: Manual Grid P1-22 (22 drivers) (official `GET /grid/{race}` → simulated Q1-Q3 → manual fallback, duplicate highlight, 22 drivers) + green Run `Run Prediction — Green` (no API key), results: `PodiumReveal` + `TireStrategy` + **16 plots** (Win Top8, Podium, Points, Doughnut, Gauge, Win vs Grid, Radar, Scatter, Polar, Horizontal, Area, Grid vs Win, CI, DNF, Chaos, SC) tuned to predictions, tables two per row (`grid md:grid-cols-2`), Reports simple at bottom (CSV/JSON/PDF/Share → Create & Download, no how-it-works).
 - **Standings `/standings`** — driver + constructor (11 teams) championship, 12 plots (progression dynamic by round slider 1-14, constructor doughnut, driver horizontal bar, constructor vertical, wins pie, podiums polar, gap line, wins, per-round area, stacked, radar, momentum), tables with P/W/P/Gap, constructors fixed (was grey, now `team_id` → `team` mapping).
 
 - **H2H `/h2h`** — 16 plots (attributes, radar 5-axis, win bar, doughnut, form 8R, polar, trend area, scatter, grouped wet vs dry, pie, horizontal consistency, Elo 8R, bubble, stacked, insights table + gauge), green Compare button, accuracy via Elo 400, ideas in insights.
@@ -214,9 +214,12 @@ API keys never persisted; `ai_service` falls back to `200 offline-fallback` if n
 ## 9. Testing & Golden Fixtures
 
 ```bash
-python -m pytest -q                          # 22 passed (api 12 + parity 3 + predictor 4 + ai 2 + docs)
-PYTHONPATH=. python scripts/generate_golden_fixtures.py  # → backend/app/tests/fixtures/golden/*.json (5)
-cd frontend && npm run build                 # 564kB (177kB gzip) — chunk warning expected, PWA 581 KiB
+python -m pytest -q                          # 32 passed (api + engine + grid invariants + intelligence endpoints)
+python -m ruff check backend                 # clean — F/E9 ruleset, config in pyproject.toml
+cd frontend && npm run lint                  # eslint 9 flat config — 0 errors
+cd frontend && npm run test                  # vitest — 8 guardrail tests
+cd frontend && npm audit                     # 0 vulnerabilities
+cd frontend && npm run build                 # 282kB main (90kB gzip) + lazy route chunks
 curl -s http://localhost:5000/api/v1/system/data-sources | jq
 curl -s http://localhost:5000/api/v1/news | jq .source  # → live-bbc or live-rss or fallback
 curl -s -X POST http://localhost:5000/api/v1/predictions -H 'Content-Type: application/json' -d '{"race_id":"au","simulation_count":500}' | jq .winner_probabilities
@@ -232,12 +235,12 @@ Parity harness: `same input + same seed + same model → same result` within tol
 ```bash
 docker-compose up --build  # backend:5000 + redis:6379 (frontend via npm run dev or Vercel)
 # or split:
-# Frontend → Vercel (framework: vite, output dist 581 KiB)
+# Frontend → Vercel (framework: vite, output dist)
 # Backend → Render/Railway/Fly (uvicorn 0.0.0.0:5000)
 # Redis → managed, Postgres → managed
 ```
 
-`Dockerfile` legacy single-image (still builds frontend dist but backend remains pure JSON); prefer `docker-compose.yml` for decoupled. `render.yaml` for Render.
+`Dockerfile.legacy-monolith` is the explicitly-named legacy single-image build; prefer `docker-compose.yml` for the decoupled topology. `render.yaml` for Render.
 
 ---
 
@@ -259,7 +262,7 @@ docker-compose up --build  # backend:5000 + redis:6379 (frontend via npm run dev
 
 - `Port 5178 in use` → `ss -tlnp | grep 5178` or `npm run dev -- --port 5173` (vite.config 127.0.0.1:5178, package.json also 127.0.0.1:5178)
 - `Port 5000 HTML shows API landing` vs `curl http://localhost:5000/ | jq` shows JSON — decoupled by `Accept` header, distinct from 5178
-- `Fantasy blank` → hard refresh `Ctrl+Shift+R` to clear PWA cache (581 KiB), check `http://localhost:5000/api/v1/h2h/drivers` 200
+- `Fantasy blank` → hard refresh `Ctrl+Shift+R` to clear PWA cache, check `http://localhost:5000/api/v1/h2h/drivers` 200
 - `Settings slow` → now instant via local cache (<50ms), then merges API; check `localStorage f1-settings-cache`
 - `no such table` → `python3 scripts/migrate_db.py`
 - `AI 500` → now `200 offline-fallback`; add key to `.env` or `/settings` → AI Provider

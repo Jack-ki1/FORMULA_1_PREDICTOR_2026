@@ -1,12 +1,55 @@
+import asyncio
 import time
 import logging
 import xml.etree.ElementTree as ET
 from fastapi import APIRouter
-from typing import List, Dict, Any
-import asyncio
-
+from typing import List, Dict, Any, Tuple
 router = APIRouter(prefix="/api/v1/news", tags=["news"])
 logger = logging.getLogger(__name__)
+
+# --- TTL cache ---------------------------------------------------------------
+# The two upstream feeds were fetched sequentially with a 4s timeout each on
+# EVERY request, so /api/v1/news took ~5-8s cold and repeated that cost for every
+# visitor and every page load. Now the result is memoised for NEWS_TTL seconds,
+# so only the first request pays network latency.
+NEWS_TTL = 300.0
+_FEED_TIMEOUT = 3.0
+_news_cache: Dict[str, Any] = {"payload": None, "fetched_at": 0.0}
+_news_lock = asyncio.Lock()
+
+
+def _parse_rss(xml_text: str, source_label: str, default_image: str, limit: int = 6) -> List[Dict[str, Any]]:
+    """Parse an RSS document into the news shape. Never raises."""
+    out: List[Dict[str, Any]] = []
+    try:
+        root = ET.fromstring(xml_text)
+        for it in root.findall(".//item")[:limit]:
+            title = (it.findtext("title", "") or "").strip()
+            if not title:
+                continue
+            enc = it.find("enclosure")
+            img = enc.get("url", "") if enc is not None else ""
+            out.append({
+                "title": title,
+                "source": source_label,
+                "date": (it.findtext("pubDate", "") or "")[:16],
+                "url": (it.findtext("link", "") or "").strip() or "https://www.formula1.com",
+                "image": img or default_image,
+                "summary": (it.findtext("description", "") or "")[:180],
+            })
+    except Exception as e:
+        logger.debug("RSS parse failed for %s: %s", source_label, e)
+    return out
+async def _fetch_feed(client, url: str, source_label: str, default_image: str) -> Tuple[str, List[Dict[str, Any]]]:
+    try:
+        resp = await client.get(url)
+        if resp.status_code == 200:
+            items = _parse_rss(resp.text, source_label, default_image)
+            if items:
+                return source_label, items
+    except Exception as e:
+        logger.debug("feed %s failed: %s", url, e)
+    return source_label, []
 
 # Fallback curated news (used when live RSS blocked or no key)
 FALLBACK_NEWS: List[Dict[str, Any]] = [
@@ -17,53 +60,59 @@ FALLBACK_NEWS: List[Dict[str, Any]] = [
   {"title":"Sustainable fuel era begins — 100% advanced biofuel mandated","source":"F1 Technical","date":"2026-03-03","url":"https://www.racefans.net","image":"/media/pit_stop.jpg","summary":"Non-food biomass fuel, no refuelling — tyre deg re-tuned for 2026."},
 ]
 
-@router.get("", summary="Latest F1 news — live RSS via Formula1.com, fallback curated (non-blocking)")
-async def get_news():
-    live: List[Dict[str, Any]] = []
-    source = "fallback"
-    # Use httpx AsyncClient so we don't block the event loop (fixes transformation.md §4)
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=4, headers={"User-Agent":"F1-Predictor/2026"}) as client:
-            try:
-                resp = await client.get("https://www.formula1.com/en/rss.xml")
-                if resp.status_code==200 and resp.text.strip().startswith("<?xml"):
-                    root = ET.fromstring(resp.text)
-                    items = root.findall(".//item")[:6]
-                    for it in items:
-                        title = it.findtext("title","").strip()
-                        link = it.findtext("link","").strip()
-                        pub = it.findtext("pubDate","").strip()
-                        desc = it.findtext("description","").strip()
-                        img = ""
-                        enc = it.find("enclosure")
-                        if enc is not None: img = enc.get("url","")
-                        if title:
-                            live.append({"title":title,"source":"Formula1.com (RSS)","date":pub[:16] if pub else "","url":link or "https://www.formula1.com","image":img or "/media/circuit1.png","summary":desc[:180]})
-                    if live:
-                        source="live-rss"
-            except Exception as e:
-                logger.debug(f"RSS Formula1 failed: {e}")
-            if not live:
-                try:
-                    resp2 = await client.get("https://feeds.bbci.co.uk/sport/formula1/rss.xml")
-                    if resp2.status_code==200:
-                        root = ET.fromstring(resp2.text)
-                        items = root.findall(".//item")[:6]
-                        for it in items:
-                            title = it.findtext("title","").strip()
-                            link = it.findtext("link","").strip()
-                            pub = it.findtext("pubDate","").strip()
-                            desc = it.findtext("description","").strip()
-                            if title:
-                                live.append({"title":title,"source":"BBC Sport F1","date":pub[:16] if pub else "","url":link,"image":"/media/sunset_race.png","summary":desc[:180]})
-                        if live: source="live-bbc"
-                except Exception as e:
-                    logger.debug(f"RSS BBC failed: {e}")
-    except Exception as e:
-        logger.debug(f"httpx not available, fallback: {e}")
-        # Fallback to sync if httpx not available — still return curated
-        pass
+@router.get("", summary="Latest F1 news — live RSS via Formula1.com, fallback curated (TTL-cached)")
+async def get_news(force: bool = False):
+    """Latest F1 news — live RSS else curated fallback. Cached for NEWS_TTL."""
+    now = time.time()
+    cached = _news_cache.get("payload")
+    if cached and not force and (now - _news_cache.get("fetched_at", 0.0)) < NEWS_TTL:
+        return {**cached, "cached": True, "age_seconds": round(now - _news_cache["fetched_at"], 1)}
 
-    news = live if live else FALLBACK_NEWS
-    return {"news": news, "source": source, "count": len(news), "note": "Live RSS when available (async, non-blocking), otherwise curated fallback — always via /api/v1/news", "fetched_at": time.time()}
+    # Serialise concurrent refreshes: without this, N simultaneous first-hits
+    # would each fire their own upstream requests.
+    async with _news_lock:
+        cached = _news_cache.get("payload")
+        if cached and not force and (time.time() - _news_cache.get("fetched_at", 0.0)) < NEWS_TTL:
+            return {**cached, "cached": True, "age_seconds": round(time.time() - _news_cache["fetched_at"], 1)}
+
+        live: List[Dict[str, Any]] = []
+        source = "fallback"
+        try:
+            import httpx
+            # Fetched CONCURRENTLY with a short timeout. Previously these two
+            # feeds were awaited one after the other at 4s each, so a slow or
+            # blocked upstream cost up to 8s on the request path.
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(_FEED_TIMEOUT, connect=2.0),
+                headers={"User-Agent": "F1-Predictor/2026"},
+            ) as client:
+                results = await asyncio.gather(
+                    _fetch_feed(client, "https://www.formula1.com/en/rss.xml",
+                                "Formula1.com (RSS)", "/media/circuit1.png"),
+                    _fetch_feed(client, "https://feeds.bbci.co.uk/sport/formula1/rss.xml",
+                                "BBC Sport F1", "/media/sunset_race.png"),
+                    return_exceptions=True,
+                )
+            for res in results:
+                if isinstance(res, Exception):
+                    continue
+                label, items = res
+                if items:
+                    live = items
+                    source = "live-rss" if "Formula1" in label else "live-bbc"
+                    break
+        except Exception as e:
+            logger.debug("news fetch unavailable, fallback: %s", e)
+
+        news = live if live else FALLBACK_NEWS
+        payload = {
+            "news": news,
+            "source": source,
+            "count": len(news),
+            "note": ("Live RSS when reachable, otherwise curated fallback — "
+                     f"cached for {int(NEWS_TTL)}s. Pass ?force=true to refresh."),
+            "fetched_at": time.time(),
+        }
+        _news_cache["payload"] = payload
+        _news_cache["fetched_at"] = time.time()
+        return {**payload, "cached": False, "age_seconds": 0.0}

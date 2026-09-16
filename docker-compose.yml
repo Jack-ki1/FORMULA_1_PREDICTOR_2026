@@ -4,18 +4,24 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      # Explicit, unambiguous path. The root Dockerfile used to be the default
+      # build target while simultaneously documented as "legacy", so whoever
+      # deployed next could not tell which topology they were shipping.
+      dockerfile: Dockerfile.legacy-monolith
     ports:
       - "5000:5000"
     environment:
-      - FLASK_ENV=production
+      - ENVIRONMENT=production
+      - HOST=0.0.0.0
+      - PORT=5000
       - DATABASE_URL=${DATABASE_URL:-sqlite:///./f1_predictions.db}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_REQUIRED=${REDIS_REQUIRED:-false}
       - ENABLE_IN_MEMORY_FALLBACK=${ENABLE_IN_MEMORY_FALLBACK:-true}
       - FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-}
-      - SECRET_KEY=${SECRET_KEY:-change-me}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
+      - SETTINGS_ADMIN_TOKEN=${SETTINGS_ADMIN_TOKEN:-}
     depends_on:
       - redis
     volumes:

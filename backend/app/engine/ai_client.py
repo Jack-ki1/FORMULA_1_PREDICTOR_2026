@@ -5,7 +5,7 @@ Supports Gemini, OpenAI, Anthropic, Groq, Mistral, Cohere, and OpenAI-compatible
 import logging
 import requests
 import json
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 from backend.app.ai.provider import AIProviderManager
 
 logger = logging.getLogger(__name__)

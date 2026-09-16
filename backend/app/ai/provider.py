@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import requests
 from backend.app.config.settings import settings
 from backend.app.ai.local.ollama_provider import OllamaClient

@@ -45,10 +45,9 @@ DRIVER_STANDINGS_2026 = [
     {'position': 17, 'driver_code': 'ALB', 'driver_name': 'Alexander Albon', 'team': 'williams', 'nationality': 'Thailand', 'points': 5, 'wins': 0, 'podiums': 0},
     {'position': 18, 'driver_code': 'ALO', 'driver_name': 'Fernando Alonso', 'team': 'astonmartin', 'nationality': 'Spain', 'points': 3, 'wins': 0, 'podiums': 0},
     {'position': 19, 'driver_code': 'OCO', 'driver_name': 'Esteban Ocon', 'team': 'haas', 'nationality': 'France', 'points': 3, 'wins': 0, 'podiums': 0},
-    {'position': 20, 'driver_code': 'TSU', 'driver_name': 'Yuki Tsunoda', 'team': 'racingbulls', 'nationality': 'Japan', 'points': 1, 'wins': 0, 'podiums': 0},
-    {'position': 21, 'driver_code': 'STR', 'driver_name': 'Lance Stroll', 'team': 'astonmartin', 'nationality': 'Canada', 'points': 0, 'wins': 0, 'podiums': 0},
-    {'position': 22, 'driver_code': 'BOT', 'driver_name': 'Valtteri Bottas', 'team': 'cadillac', 'nationality': 'Finland', 'points': 0, 'wins': 0, 'podiums': 0},
-    {'position': 23, 'driver_code': 'PER', 'driver_name': 'Sergio Pérez', 'team': 'cadillac', 'nationality': 'Mexico', 'points': 0, 'wins': 0, 'podiums': 0},
+    {'position': 20, 'driver_code': 'STR', 'driver_name': 'Lance Stroll', 'team': 'astonmartin', 'nationality': 'Canada', 'points': 0, 'wins': 0, 'podiums': 0},
+    {'position': 21, 'driver_code': 'BOT', 'driver_name': 'Valtteri Bottas', 'team': 'cadillac', 'nationality': 'Finland', 'points': 0, 'wins': 0, 'podiums': 0},
+    {'position': 22, 'driver_code': 'PER', 'driver_name': 'Sergio Pérez', 'team': 'cadillac', 'nationality': 'Mexico', 'points': 0, 'wins': 0, 'podiums': 0},
 ]
 
 # Constructor standings derived from driver sums (accurate to user-provided totals)

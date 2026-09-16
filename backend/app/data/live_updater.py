@@ -10,7 +10,7 @@ try:
 except ImportError:
     SCHEDULE_AVAILABLE = False
     schedule = None
-from typing import Callable, Optional
+from typing import Callable
 from backend.app.config.settings import settings
 from backend.app.config.api_settings import api_settings
 

@@ -14,11 +14,22 @@ export function AnalyticsPage(){
   const [local,setLocal]=useState<any>({})
   useEffect(()=>{ if(weights) setLocal(weights)},[weights])
   const accEntries:any[] = Object.entries((acc as any)?.target_accuracies || (acc as any) || {})
-  const driftMock = [
-    { label:'Winner', expected:0.58, observed:0.55, drift:0.03 },
-    { label:'Podium', expected:0.89, observed:0.87, drift:0.02 },
-    { label:'Points', expected:0.81, observed:0.80, drift:0.01 },
-  ]
+  // Calibration view, derived from the REAL accuracy payload.
+  //
+  // This used to be a hardcoded `driftMock` array of three invented numbers
+  // (expected 0.58 / observed 0.55 ...) that never changed regardless of backend
+  // state — a chart that looked like measurement but measured nothing, and a
+  // second copy of the fabricated accuracy numbers. It now reads
+  // model_accuracy vs baseline_accuracy per target from /analytics/accuracy.
+  const drift = (Object.entries((acc as any)?.target_accuracies || {}) as any[])
+    .filter(([, v]: any[]) => v && typeof v.model_accuracy === 'number')
+    .map(([key, v]: any[]) => ({
+      key,
+      label: v.target_label || key,
+      model: v.model_accuracy,
+      baseline: v.baseline_accuracy ?? 0,
+    }))
+  const hasDrift = drift.length > 0
   const news: any[] = newsData?.news || []
   const [tab, setTab] = useState<'analytics'|'news'>('analytics')
   return (
@@ -45,7 +56,7 @@ export function AnalyticsPage(){
           <div className="surface-alt p-3 rounded-lg"><div className="fs-11 font-bold">Providers</div><div className="fs-11 text-sub">Jolpica (results), OpenF1 (live), FastF1 (telemetry), Fallback (seed) — federated via Registry + provenance</div></div>
           <div className="surface-alt p-3 rounded-lg"><div className="fs-11 font-bold">Frontend</div><div className="fs-11 text-sub">React 18 + Router 7, TanStack Query, Chart.js 4, Tailwind 3, PWA — 6 routes, single hero image per page, Reports embedded in Dashboard</div></div>
           <div className="surface-alt p-3 rounded-lg"><div className="fs-11 font-bold">API</div><div className="fs-11 text-sub">FastAPI pure JSON — <code className="f1-mono">/api/v1/races, predictions, standings, h2h, constructors, analytics, reports, settings, news</code> — CORS allowlist, rate-limit Redis</div></div>
-          <div className="surface-alt p-3 rounded-lg"><div className="fs-11 font-bold">Data</div><div className="fs-11 text-sub">calendar_2026 (23 rnds), circuit_data (25), team_driver_lineup_2026 (23 drivers), season_2026 standings — DB SQLite dev / Postgres prod</div></div>
+          <div className="surface-alt p-3 rounded-lg"><div className="fs-11 font-bold">Data</div><div className="fs-11 text-sub">calendar_2026 (23 rnds), circuit_data (25), team_driver_lineup_2026 (22 drivers), season_2026 standings — DB SQLite dev / Postgres prod</div></div>
           <div className="surface-alt p-3 rounded-lg"><div className="fs-11 font-bold">Settings</div><div className="fs-11 text-sub">Control Center — colors, models, Monte Carlo, cache, data sources, security, monitoring, AI — massive tunings at <code>/settings</code></div></div>
         </div>
       </div>
@@ -160,15 +171,19 @@ export function AnalyticsPage(){
       {/* Drift + creative 2026 changes */}
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-4">
-          <div className="f1-display font-bold">Drift Detection — Model</div>
-          <p className="fs-11 text-sub">Drift score from <code className="f1-mono">probability_model.detect_model_drift</code> — 0.01 healthy, &gt;0.05 drift.</p>
-          <F1Chart type="bar" height={180} data={{
-            labels: driftMock.map(d=>d.label),
-            datasets:[
-              { label:'Expected', data: driftMock.map(d=>d.expected*100), backgroundColor:'#E3E5EA' },
-              { label:'Observed', data: driftMock.map(d=>d.observed*100), backgroundColor:'#229971' },
-            ]
-          }} />
+          <div className="f1-display font-bold">Model vs Baseline — per target</div>
+          <p className="fs-11 text-sub">Measured by running the production predictor against every recorded race, from <code className="f1-mono">GET /api/v1/analytics/accuracy</code>.</p>
+          {hasDrift ? (
+            <F1Chart type="bar" height={180} data={{
+              labels: drift.map(d=> d.label),
+              datasets:[
+                { label:'Baseline', data: drift.map(d=> d.baseline*100), backgroundColor:'#E3E5EA' },
+                { label:'Model', data: drift.map(d=> (d.model ?? 0)*100), backgroundColor:'#229971' },
+              ]
+            }} />
+          ) : (
+            <div className="fs-11 text-sub mt-3">No measured accuracy yet — the model has not been scored against recorded results.</div>
+          )}
         </div>
         <div className="card p-4">
           <div className="f1-display font-bold">2026 — What Changed</div>

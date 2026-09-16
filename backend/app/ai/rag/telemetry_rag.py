@@ -3,7 +3,7 @@ from scipy.spatial.distance import cosine
 import json
 import os
 import logging
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 

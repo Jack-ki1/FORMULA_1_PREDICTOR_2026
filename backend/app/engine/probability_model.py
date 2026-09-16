@@ -3,18 +3,13 @@ Probability model - session/target-aware probability shaping.
 Applies chaos level, target exponent, and calibration to raw model outputs.
 """
 import logging
-import json
-from datetime import datetime
 import numpy as np
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from backend.app.config.constants import TARGETS
 from backend.app.config.feature_weights import feature_weights as fw_module
 from backend.app.data.session_context import build_session_context
-from backend.app.data.validation import validate_probability_data
-from backend.app.data.fallback import FallbackStrategy
-from backend.app.models.prediction import Prediction, PredictionMetadata
+from backend.app.models.prediction import PredictionMetadata
 from backend.app.database.client import DatabaseClient
-from backend.app.cache.redis import get_cache
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +47,11 @@ class ProbabilityModel:
         if not target:
             raise ValueError(f"Unknown target: {target_id}")
         
-        weights = feature_weights or fw_module.get_defaults()
+        # NOTE: `weights` used to be computed here and then never read, so the
+        # caller's feature_weights were silently ignored by the shaper — passing a
+        # weights dict had no effect. `chaos_factor` is the only part this function
+        # can use today. Recorded rather than deleted so the gap stays visible.
+        _unused_weights = feature_weights or fw_module.get_defaults()
         chaos_factor = fw_module.get_chaos_factor(chaos_level)
         
         # Apply target-specific exponent with chaos adjustment

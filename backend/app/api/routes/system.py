@@ -19,16 +19,65 @@ async def data_sources():
     try:
         from backend.app.cache.redis import get_cache
         cache = get_cache()
-        cache_status = {"status": "healthy", "backend": type(cache).__name__}
+        # A DictCache means we silently lost cross-worker coherence.
+        backend = type(cache).__name__
+        cache_status = {
+            "status": "healthy" if backend == "RedisCache" else "degraded",
+            "backend": backend,
+            **({"reason": "in-memory fallback — not shared across workers"} if backend != "RedisCache" else {}),
+        }
     except Exception as e:
         cache_status = {"status": "unavailable", "error": str(e)}
     try:
         from backend.app.database.client import DatabaseClient
-        db = DatabaseClient()
+        DatabaseClient()  # constructor validates the engine can be built
         db_status = {"status": "healthy"}
     except Exception as e:
         db_status = {"status": "unavailable", "error": str(e)}
-    return {"data_sources": health, "cache": cache_status, "database": db_status}
+    # Top-level, so a client doesn't have to know to dig into providers["overall"].
+    overall = health.get("overall", {}) if isinstance(health, dict) else {}
+    return {
+        "status": overall.get("status", "unknown"),
+        "live_providers": overall.get("live_providers", []),
+        "note": overall.get("note"),
+        "data_sources": health,
+        "cache": cache_status,
+        "database": db_status,
+    }
+
+@router.get("/provenance/{race_id}")
+async def provenance(race_id: str, session: str = "race"):
+    # Expose the DataProvenance for a race so a client can distinguish a
+    # prediction backed by live Jolpica data from one served out of the 2026
+    # seed fallback (modify.md section 5, closing the gap named in section 2).
+    from fastapi.responses import JSONResponse
+    try:
+        from backend.app.data.calendar_2026 import get_race_by_id
+        race = get_race_by_id(race_id)
+        if not race:
+            return JSONResponse(
+                {"error": {"code": "UNKNOWN_RACE", "message": f"Unknown race_id '{race_id}'"}},
+                status_code=404,
+            )
+        from backend.app.data.providers.registry import registry
+        _results, prov = await registry.jolpica.get_results(race_id, session)
+        _standings, standings_prov = await registry.get_driver_standings(2026)
+        return {
+            "race_id": race_id,
+            "session": session,
+            "results": prov.to_dict(),
+            "standings": standings_prov.to_dict(),
+            "live": prov.cache_status != "fallback",
+            "note": (
+                "live upstream data" if prov.cache_status != "fallback"
+                else "served from fallback/seed — 2026 races that have not happened "
+                     "cannot have live results"
+            ),
+        }
+    except Exception as e:
+        return JSONResponse(
+            {"error": {"code": "PROVENANCE_FAILED", "message": str(e)}}, status_code=500
+        )
 
 @router.get("/models")
 async def models_health():

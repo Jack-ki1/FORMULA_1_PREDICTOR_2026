@@ -41,7 +41,7 @@ async def _handle_predict(request: Request):
         else:
             result = prediction_service.generate(data)
         latency = time.time() - start
-        logger.info(f"predict race=%s latency=%.3f rid=%s", data.get("race_id"), latency, request.state.request_id)
+        logger.info("predict race=%s latency=%.3f rid=%s", data.get("race_id"), latency, request.state.request_id)
         return JSONResponse(content=result, headers={"X-Prediction-Latency": f"{latency:.3f}", "X-Request-ID": request.state.request_id})
     except ValueError as e:
         return _error("VALIDATION_ERROR", str(e), 400, request)
@@ -54,3 +54,32 @@ async def _handle_predict(request: Request):
 @router.post("/api/v1/predict-session", tags=["predictions"])
 async def predict(request: Request):
     return await _handle_predict(request)
+
+# NOTE: /history/last must be registered BEFORE /history/{race_id}, otherwise
+# the path parameter swallows "last" and the literal route is unreachable.
+@router.get("/api/v1/predictions/history/last", tags=["predictions"])
+async def prediction_history_last(request: Request, simulation_count: int = 2000):
+    # Most recent completed race: what actually happened vs what the model said.
+    # Powers the Dashboard 'Model vs Last Race' strip. Returns actual: null when
+    # there is no recorded result — the UI renders the absence, not a verdict.
+    try:
+        from backend.app.services.history_service import history_service
+        sim = max(200, min(int(simulation_count or 2000), 5000))
+        return history_service.last_race(simulation_count=sim)
+    except Exception as e:
+        logger.exception("prediction history (last) failed")
+        return _error("HISTORY_FAILED", str(e), 500, request)
+
+@router.get("/api/v1/predictions/history/{race_id}", tags=["predictions"])
+async def prediction_history(race_id: str, request: Request, simulation_count: int = 2000):
+    # Actual vs predicted for one race (modify.md section 5).
+    try:
+        from backend.app.data.calendar_2026 import get_race_by_id
+        if not get_race_by_id(race_id):
+            return _error("UNKNOWN_RACE", f"Unknown race_id '{race_id}'", 404, request)
+        from backend.app.services.history_service import history_service
+        sim = max(200, min(int(simulation_count or 2000), 5000))
+        return history_service.race_history(race_id, simulation_count=sim)
+    except Exception as e:
+        logger.exception("prediction history failed")
+        return _error("HISTORY_FAILED", str(e), 500, request)

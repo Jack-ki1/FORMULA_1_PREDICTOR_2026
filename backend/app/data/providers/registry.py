@@ -10,8 +10,7 @@ Priority (per spec §26):
 
 Application layer calls registry, not concrete clients.
 """
-from typing import Any, Dict, List, Optional
-from .base import DataProvenance
+from typing import Any, Dict, Optional
 from .jolpica_provider import JolpicaProvider
 from .openf1_provider import OpenF1Provider
 from .fastf1_provider import FastF1Provider
@@ -64,11 +63,30 @@ class ProviderRegistry:
         return await self.fallback.get_race_control(session_key)
 
     async def health_all(self) -> Dict[str, Any]:
-        return {
+        providers = {
             "jolpica": await self.jolpica.health(),
             "openf1": await self.openf1.health(),
             "fastf1": await self.fastf1.health(),
             "fallback": await self.fallback.health(),
         }
+        # Aggregate honestly: if NO provider is serving live data the whole
+        # federation is `degraded`, not `healthy`. This is what stops a fully
+        # fallback-backed install from showing green (modify.md s2).
+        live_sources = {
+            name: p for name, p in providers.items()
+            if p.get("status") == "healthy" and p.get("cache_status") != "fallback"
+            and name != "fallback"
+        }
+        providers["overall"] = {
+            "status": "healthy" if live_sources else "degraded",
+            "live_providers": sorted(live_sources.keys()),
+            "note": (
+                "at least one provider is serving live upstream data"
+                if live_sources else
+                "no provider is serving live data — every dataset is coming from "
+                "fallback/seed constants. Predictions are heuristic, not data-backed."
+            ),
+        }
+        return providers
 
 registry = ProviderRegistry()

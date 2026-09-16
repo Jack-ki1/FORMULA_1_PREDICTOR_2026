@@ -138,7 +138,9 @@ export function SettingsPage(){
     // also load frontend-only prefs
     try{
       const ui = JSON.parse(localStorage.getItem('f1-ui-prefs')||'{}')
-      if (ui.fontScale) document.documentElement.style.webKitTextSizeAdjust = ui.fontScale
+      // Lowercase 'k' — the DOM property is `webkitTextSizeAdjust`. The capital-K
+      // spelling is not on CSSStyleDeclaration and failed typecheck (modify.md 1.1).
+      if (ui.fontScale) document.documentElement.style.webkitTextSizeAdjust = ui.fontScale
     }catch{}
     return ()=> { cancelled=true }
   },[])
@@ -350,7 +352,8 @@ export function SettingsPage(){
         <span className="fs-11 text-sub">{surface==='preferences'?'Safe, per-device — theme, favorite driver, no auth needed':'Global, affects every visitor — requires X-Admin-Token'}</span>
         {surface==='admin' && (
           <div className="ml-auto flex items-center gap-2">
-            <input value={adminToken} onChange={e=> { setAdminToken(e.target.value); try{ localStorage.setItem('f1-admin-token', e.target.value)}catch{} }} placeholder="X-Admin-Token (SECRET_KEY)" className="f1-input w-48 font-mono text-xs" />
+            <input value={adminToken} onChange={e=> { setAdminToken(e.target.value); try{ localStorage.setItem('f1-admin-token', e.target.value)}catch{} }} placeholder="SETTINGS_ADMIN_TOKEN" className="f1-input w-48 font-mono text-xs" />
+            <span className="fs-11 text-sub">Must match the server's <code className="f1-mono">SETTINGS_ADMIN_TOKEN</code> env var. If the server has none set, admin writes are disabled — there is no SECRET_KEY fallback.</span>
             <span className="fs-11 px-2 py-1 rounded-full" style={{ background: adminToken?'#dcfce7':'#fee2e2', color: adminToken?'#16a34a':'#ef4444'}}>{adminToken?'Token set':'No token — writes to non-safe fields will 403'}</span>
           </div>
         )}

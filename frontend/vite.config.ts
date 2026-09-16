@@ -37,6 +37,13 @@ export default defineConfig({
   ],
   // Decoupled: frontend on 5178, backend on 5000. Vite proxies /api → backend for dev.
   // Note: 5178 avoids conflict with parallel workspace's 5173; use --port 5173 if free.
+  // Vitest: without this, `vitest run` exits 1 with "No test files found",
+  // which fails the CI frontend job even though nothing is wrong.
+  test: {
+    environment: 'node',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    passWithNoTests: true,
+  },
   server: {
     host: '127.0.0.1',
     port: 5178,

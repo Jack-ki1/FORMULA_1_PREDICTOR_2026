@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import datetime as dt
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 

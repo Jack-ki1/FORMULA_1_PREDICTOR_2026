@@ -38,11 +38,11 @@ export function ConstructorsPage(){
         <div className="grid md:grid-cols-2 gap-0">
           <div className="p-6">
             <h2 className="f1-display text-2xl font-black">TEAMS — 2026 Grid Breakdown</h2>
-            <p className="fs-11 text-sub mt-1">11 teams, 23 drivers. Every team deconstructed: heritage, power unit, base, chassis, titles, and its two drivers — accurate to <code className="f1-mono">team_driver_lineup_2026.py</code> & <code>team_data.py</code>. Tap a team to expand.</p>
+            <p className="fs-11 text-sub mt-1">11 teams, 22 drivers. Every team deconstructed: heritage, power unit, base, chassis, titles, and its two drivers — accurate to <code className="f1-mono">team_driver_lineup_2026.py</code> & <code>team_data.py</code>. Tap a team to expand.</p>
             <div className="flex flex-wrap gap-2 mt-3">
               <span className="badge" style={{ background:'#BB0A30', color:'#fff'}}>AUDI DEBUT</span>
               <span className="badge" style={{ background:'#9C7A19', color:'#fff'}}>CADILLAC DEBUT</span>
-              <span className="badge">11 Teams · 23 Drivers</span>
+              <span className="badge">11 Teams · 22 Drivers</span>
               <span className="badge">2026 Regs</span>
             </div>
           </div>
@@ -69,7 +69,7 @@ export function ConstructorsPage(){
                   <div className="fs-11 text-sub mt-0.5">{drivers.map((d:any)=> `${d.code} — ${d.name}`).join(' · ') || '2 drivers'}</div>
                 </div>
                 <div className="hidden sm:flex flex-col items-end">
-                  <span className="f1-mono font-black">{t.points ?? det.wins*3 ?? '—'} pts</span>
+                  <span className="f1-mono font-black">{t.points ?? det.wins*3} pts</span>
                   <span className="fs-11 text-sub">{t.form}</span>
                 </div>
                 <span className="w-8 h-8 rounded-full border flex items-center justify-center" style={{ borderColor:'var(--border)'}}>{isOpen?'−':'+'}</span>

@@ -4,7 +4,11 @@ Strengths now linear-balanced (ANT 92 not 97) so Monte Carlo respects grid/manua
 """
 from backend.app.config.constants import TEAM_COLORS
 
-# 23 drivers (user-provided correct standings) — includes TSU at RB
+# 22 drivers — 11 teams x 2. Racing Bulls 2026 is Lawson + Lindblad; Tsunoda
+# lost his seat. Previously this list held 23 drivers with TSU as a *third*
+# Racing Bulls entry, which silently ran every Monte Carlo over a 23-entrant
+# grid and diluted every probability (modify.md section 1.5).
+# Rule: exactly 2 drivers per team, always.
 TEAMS_2026 = [
     {
         'id': 'mclaren',
@@ -94,7 +98,6 @@ TEAMS_2026 = [
         'drivers': [
             {'code': 'LAW', 'name': 'Liam Lawson', 'number': 30, 'strength': 70, 'reliability': 75, 'wet_skill': 68},
             {'code': 'LIN', 'name': 'Arvid Lindblad', 'number': 41, 'strength': 62, 'reliability': 68, 'wet_skill': 55},
-            {'code': 'TSU', 'name': 'Yuki Tsunoda', 'number': 22, 'strength': 48, 'reliability': 72, 'wet_skill': 66},
         ],
     },
     {

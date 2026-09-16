@@ -2,9 +2,8 @@
 PDF generator using WeasyPrint or fallback HTML renderer.
 Generates professional PDF reports from prediction data.
 """
-from typing import Dict, Any, List
-import io
-from datetime import datetime
+from typing import Dict, Any
+from datetime import datetime, timezone
 from backend.app.reports.csv_excel_report import extract_predictions_list
 
 
@@ -33,6 +32,14 @@ class PDFGenerator:
         """Generate HTML template for PDF conversion."""
         predictions = extract_predictions_list(data)
         
+        # Defensive: never let a None-valued key reach a str method. `dict.get`
+        # does not apply its default when the key exists with value None, so any
+        # upstream layer building `{"key": other.get("key")}` can hand us None.
+        # See modify.md section 1.4.
+        race_id = data.get('race_id') or 'Race'
+        session = data.get('session') or data.get('session_type') or 'race'
+        target_id = data.get('target_id') or 'winner'
+
         rows = ""
         for i, pred in enumerate(predictions, 1):
             code = pred.get('driver_code', 'Unknown')
@@ -46,7 +53,7 @@ class PDFGenerator:
                 <td><div class="pct-bar"><div class="pct-fill" style="width:{min(100, pct)}%"></div></div> {pct:.1f}%</td>
             </tr>
             """
-        
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -68,11 +75,11 @@ class PDFGenerator:
         <body>
             <div class="header">
                 <div class="logo">FORMULA 1 PREDICTOR 2026</div>
-                <h2>Session Prediction Report — {data.get('race_id', 'Race').title()}</h2>
+                <h2>Session Prediction Report — {str(race_id).title()}</h2>
             </div>
             <div class="meta">
-                <div><strong>Race ID:</strong> {data.get('race_id', 'Unknown')} &nbsp;|&nbsp; <strong>Session:</strong> {data.get('session', data.get('session_type', 'race'))} &nbsp;|&nbsp; <strong>Target:</strong> {data.get('target_id', 'winner').upper()}</div>
-                <div><strong>Generated:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
+                <div><strong>Race ID:</strong> {race_id} &nbsp;|&nbsp; <strong>Session:</strong> {session} &nbsp;|&nbsp; <strong>Target:</strong> {str(target_id).upper()}</div>
+                <div><strong>Generated:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
             </div>
             <table>
                 <thead>

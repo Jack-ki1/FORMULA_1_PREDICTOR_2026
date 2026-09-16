@@ -9,9 +9,7 @@ from backend.app.config.constants import grid_prior_multiplier
 from backend.app.config.settings import settings
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 from backend.app.data.session_context import build_session_context
-from backend.app.data.validation import DataValidator
-from backend.app.data.fallback import FallbackStrategy
-from backend.app.models.prediction import Prediction, SessionData
+from backend.app.models.prediction import SessionData
 from backend.app.database.client import DatabaseClient
 
 logger = logging.getLogger(__name__)
@@ -177,7 +175,6 @@ class GridModel:
             # Prefer provider interface; fall back to direct JolpicaClient only if registry unavailable
             try:
                 import asyncio
-                from backend.app.data.providers.registry import registry
                 # registry is async — try to run synchronously; if no loop, call direct client
                 loop = None
                 try:
@@ -297,16 +294,15 @@ class GridModel:
         
         # Apply penalties
         updated_positions = {}
-        position_queue = list(range(1, 23))
-        
+        from backend.app.config.constants import grid_size
         for driver_code, current_pos in sorted_positions:
             penalty = penalties.get(driver_code, 0)
             
             if penalty > 0:
                 # Apply penalty (move back)
                 new_pos = current_pos + penalty
-                # Ensure position doesn't exceed 22
-                new_pos = min(22, new_pos)
+                # Ensure position doesn't exceed the real grid size
+                new_pos = min(grid_size(), new_pos)
                 updated_positions[driver_code] = new_pos
             else:
                 # Keep original position

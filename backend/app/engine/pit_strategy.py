@@ -4,9 +4,8 @@ Predicts optimal pit strategies (1-stop vs 2-stop) based on circuit and conditio
 """
 import numpy as np
 import logging
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Tuple
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
-from backend.app.config.constants import PIRELLI_COMPOUNDS
 from backend.app.data.circuit_data import get_circuit_characteristics
 
 logger = logging.getLogger(__name__)
@@ -294,7 +293,7 @@ class PitStrategyModel:
             }
         
         # Get current weather
-        current = weather_forecast[0]
+        _current = weather_forecast[0]
         
         # Calculate rain probability
         rain_prob = sum(w['rain_probability'] for w in weather_forecast[:5]) / min(5, len(weather_forecast))

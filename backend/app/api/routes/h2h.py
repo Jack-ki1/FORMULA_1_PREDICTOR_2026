@@ -19,6 +19,22 @@ async def drivers(request: Request):
     except Exception as e:
         return _error("H2H_FAILED", str(e), 500, request)
 
+@router.get("/api/v1/h2h/history/{driver_a}/{driver_b}", tags=["h2h"])
+async def history(driver_a: str, driver_b: str, request: Request):
+    # Real qualifying/race head-to-head counts from recorded results.
+    # Distinct from /compare, which is a ratings-derived probability. This is
+    # the actual record of who finished ahead (modify.md section 5).
+    try:
+        from backend.app.services.h2h_service import h2h_history
+        return h2h_history(driver_a, driver_b)
+    except ValueError as e:
+        return _error("VALIDATION_ERROR", str(e), 400, request)
+    except LookupError as e:
+        return _error("DRIVER_NOT_FOUND", str(e), 404, request)
+    except Exception as e:
+        logger.exception("h2h history failed")
+        return _error("H2H_FAILED", str(e), 500, request)
+
 @router.post("/api/v1/h2h/compare", tags=["h2h"])
 async def compare(request: Request):
     try:

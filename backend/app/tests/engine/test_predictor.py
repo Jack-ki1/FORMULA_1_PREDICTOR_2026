@@ -12,8 +12,9 @@ def test_generate_prediction_race():
     assert result["race_id"] == "bahrain"
     assert result["session_type"] == "race"
     assert "grid_positions" in result
-    # 23 drivers in 2026 lineup (Racing Bulls has 3 incl. TSU)
-    assert len(result["grid_positions"]) == 23
+    # 22 drivers in the 2026 lineup (11 teams x 2) — derived, never hardcoded
+    from backend.app.config.constants import grid_size
+    assert len(result["grid_positions"]) == grid_size() == 22
     assert "predictions" in result
 
     preds = result["predictions"]
@@ -22,7 +23,7 @@ def test_generate_prediction_race():
     assert "points" in preds
 
     winner_preds = preds["winner"]["predictions"]
-    assert len(winner_preds) == 23
+    assert len(winner_preds) == grid_size()
     # Winner probabilities should sum to approximately 1.0
     total_win_prob = sum(p["probability"] for p in winner_preds)
     assert abs(total_win_prob - 1.0) < 0.05
@@ -35,7 +36,8 @@ def test_generate_prediction_qualifying():
     assert result["session_type"] == "qualifying"
     assert "predictions" in result
     assert "q3" in result["predictions"]
-    assert len(result["predictions"]["q3"]["predictions"]) == 23
+    from backend.app.config.constants import grid_size
+    assert len(result["predictions"]["q3"]["predictions"]) == grid_size()
     assert "grid_positions" in result
 
 

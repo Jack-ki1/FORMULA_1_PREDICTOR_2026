@@ -2,7 +2,7 @@
 Hugging Face dataset loader for historical race data.
 Provides access to the tracinginsights/RaceData dataset for backtesting.
 """
-from typing import Optional, Dict, List, Any
+from typing import Dict, Any
 from backend.app.config.api_settings import api_settings
 
 

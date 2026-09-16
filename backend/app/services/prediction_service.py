@@ -56,11 +56,13 @@ class PredictionService:
         grid_positions = payload.get("grid_positions")
         if grid_positions is not None:
             if not isinstance(grid_positions, dict):
-                raise ValueError("grid_positions must be a dict of driver_code → position 1-23")
-            # Validate positions 1-23 (2026 has 23 drivers) and uniqueness
+                raise ValueError("grid_positions must be a dict of driver_code -> position")
+            # Validate positions against the real grid size (derived, never hardcoded)
+            from backend.app.config.constants import grid_size
+            max_pos = grid_size()
             positions = list(grid_positions.values())
-            if any(not isinstance(p, int) or p < 1 or p > 23 for p in positions):
-                raise ValueError("grid_positions values must be integers 1-23")
+            if any(not isinstance(p, int) or p < 1 or p > max_pos for p in positions):
+                raise ValueError(f"grid_positions values must be integers 1-{max_pos}")
             if len(positions) != len(set(positions)):
                 raise ValueError("grid_positions contains duplicate positions — each driver must have unique position")
         feature_weights = payload.get("feature_weights")

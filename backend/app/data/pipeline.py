@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 
 from backend.app.data.validation import DataValidator
 from backend.app.data.provenance import DataProvenanceTracker

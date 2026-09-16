@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Any, Optional
-import requests
 from openai import OpenAI
 from backend.app.config.settings import settings
 

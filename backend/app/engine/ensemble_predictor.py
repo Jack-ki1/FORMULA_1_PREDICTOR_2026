@@ -3,7 +3,7 @@ Ensemble predictor - blends model zoo outputs.
 Combines predictions from multiple models into a single calibrated output.
 """
 import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict
 from backend.app.engine.ml_models import model_zoo
 
 

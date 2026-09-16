@@ -3,7 +3,6 @@ Jolpica Provider — official-style results/standings, qualifying.
 Wraps backend.app.data.jolpica_client.JolpicaClient.
 """
 import time
-from typing import Any, Dict, List
 from .base import F1DataProvider, DataProvenance, hash_response
 
 class JolpicaProvider(F1DataProvider):
@@ -40,7 +39,7 @@ class JolpicaProvider(F1DataProvider):
             data = self.client.get_driver_standings(season)
             prov = DataProvenance(source="jolpica", provider=self.provider_name, endpoint="get_driver_standings", response_hash=hash_response(data), latency_ms=(time.time()-t0)*1000)
             return data if isinstance(data, list) else data.get("data", []), prov
-        except Exception as e:
+        except Exception:
             from backend.app.data.season_2026 import DRIVER_STANDINGS_2026
             prov = DataProvenance(source="local_seed", provider=self.provider_name, endpoint="get_driver_standings", response_hash=hash_response(DRIVER_STANDINGS_2026), cache_status="fallback")
             return DRIVER_STANDINGS_2026, prov
@@ -83,9 +82,15 @@ class JolpicaProvider(F1DataProvider):
         return [], prov
 
     async def health(self):
+        # Report from provenance, not from "did it throw". `get_driver_standings`
+        # swallows upstream failures and returns local_seed data, so the old
+        # try/except made this always say healthy even with zero connectivity.
         try:
-            # cheap check: driver standings fetch with timeout already handled by client retries
-            await self.get_driver_standings(2026)
-            return {"provider": self.provider_name, "status": "healthy"}
+            _data, prov = await self.get_driver_standings(2026)
+            return self.health_from_provenance(prov)
         except Exception as e:
-            return {"provider": self.provider_name, "status": "degraded", "error": str(e)}
+            return self.health_from_provenance(
+                DataProvenance(source="unavailable", provider=self.provider_name,
+                               endpoint="health", cache_status="fallback"),
+                error=str(e),
+            )

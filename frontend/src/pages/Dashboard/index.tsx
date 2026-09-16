@@ -31,35 +31,42 @@ function EntropyBadge({ confidence, chaos }: { confidence?: number; chaos: numbe
 
 function ModelVsLastRace(){
   const [data, setData] = useState<any>(null)
+  const [error, setError] = useState<string|null>(null)
   useEffect(()=>{
-    const lastRaceId = 'au'
-    const actualWinner = 'ANT'
-    const actualPodium = ['ANT','RUS','HAM']
-    api.post<any>('/api/v1/predictions', { race_id: lastRaceId, session_type:'race', simulation_count: 1200 }).then(res=>{
-      const predWinner = res.predictions?.winner?.predictions?.[0]?.driver_code || 'ANT'
-      const predPodium = res.predictions?.podium?.predictions?.slice(0,3).map((p:any)=> p.driver_code) || []
-      const winnerMatch = predWinner === actualWinner
-      const podiumMatch = JSON.stringify(predPodium) === JSON.stringify(actualPodium)
-      setData({ lastRaceId, actualWinner, actualPodium, predWinner, predPodium, winnerMatch, podiumMatch, confidence: res.predictions?.winner?.confidence })
-    }).catch(()=> setData({ lastRaceId, actualWinner, actualPodium, predWinner: '—', predPodium: [], winnerMatch: false, podiumMatch: false }))
+    // Reads the REAL backtest. Previously this hardcoded `actualWinner = 'ANT'`
+    // and `actualPodium = ['ANT','RUS','HAM']` against a fixed race id, so the
+    // strip displayed a fabricated check/cross that had nothing to do with the
+    // model. It now renders "no record yet" when there is nothing to score.
+    api.get<any>('/api/v1/predictions/history/last')
+      .then(res => setData(res))
+      .catch((e:any)=> setError(e?.message || 'History unavailable'))
   },[])
+  if (error) return <div className="card p-3 fs-11 text-sub">Model vs last race unavailable: {error}</div>
   if (!data) return <div className="card p-3 fs-11 text-sub">Loading model vs last race…</div>
+  if (!data.actual) return (
+    <div className="card p-3">
+      <div className="f1-display font-bold">Model vs Last Race</div>
+      <div className="fs-11 text-sub mt-1">
+        No completed-race record available yet — {data.note || 'nothing to score against.'}
+      </div>
+    </div>
+  )
   return (
     <div className="card p-3">
       <div className="f1-display font-bold">Model vs Last Race — putting accuracy on the record</div>
       <div className="grid md:grid-cols-3 gap-3 mt-2">
         <div className="surface-alt p-3 rounded-lg text-center">
-          <div className="fs-11 font-bold">Last Race ({data.lastRaceId.toUpperCase()}) Actual</div>
-          <div className="f1-mono font-black">Winner {data.actualWinner}</div>
-          <div className="fs-11 text-sub">Podium {data.actualPodium.join(' · ')}</div>
+          <div className="fs-11 font-bold">Last Race ({String(data.race_id||'').toUpperCase()}) Actual</div>
+          <div className="f1-mono font-black">Winner {data.actual?.winner}</div>
+          <div className="fs-11 text-sub">Podium {(data.actual?.podium||[]).join(' · ')}</div>
         </div>
         <div className="surface-alt p-3 rounded-lg text-center">
           <div className="fs-11 font-bold">Model Predicted</div>
-          <div className="f1-mono font-black" style={{ color: data.winnerMatch? '#16a34a':'#ef4444'}}>{data.predWinner} {data.winnerMatch?'✓':'✗'}</div>
-          <div className="fs-11 text-sub">Podium {data.predPodium.join(' · ') || '—'} {data.podiumMatch? '✓':'✗'}</div>
+          <div className="f1-mono font-black" style={{ color: data.winner_match? '#16a34a':'#ef4444'}}>{data.predicted?.winner} {data.winner_match?'✓':'✗'}</div>
+          <div className="fs-11 text-sub">Podium {(data.predicted?.podium||[]).join(' · ') || '—'} {data.podium_match? '✓':'✗'}</div>
         </div>
         <div className={`p-3 rounded-lg text-center ${data.winnerMatch?'bg-green-50 border border-green-200':'bg-red-50 border border-red-200'}`}>
-          <div className="fs-11 font-bold" style={{ color: data.winnerMatch? '#16a34a':'#ef4444'}}>{data.winnerMatch? 'Winner ✓' : 'Winner ✗'} · {data.podiumMatch? 'Podium ✓' : 'Podium ✗'}</div>
+          <div className="fs-11 font-bold" style={{ color: data.winner_match? '#16a34a':'#ef4444'}}>{data.winner_match? 'Winner ✓' : 'Winner ✗'} · {data.podium_match? 'Podium ✓' : 'Podium ✗'}</div>
           <div className="fs-11 text-sub">Confidence {(data.confidence*100||0).toFixed(0)}% · This strip updates every race via <code>PredictionSnapshot</code></div>
         </div>
       </div>
@@ -342,7 +349,7 @@ export function DashboardPage(){
       {/* Row 2: Manual grid + Run */}
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 card p-4 space-y-3">
-          <div className="f1-display font-bold">3 · Manual Grid — P1-22</div>
+          <div className="f1-display font-bold">3 · Manual Grid — P1-22 (22 drivers)</div>
           <div className="fs-11 text-sub">Overrides auto Q3 model. Grid is the race.</div>
           <GridEditor value={manualGrid} onChange={setManual} raceId={draft.raceId} />
         </div>

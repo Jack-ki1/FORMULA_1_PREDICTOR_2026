@@ -3,8 +3,7 @@ Benchmark suite - backtesting harness for model accuracy.
 Source of all "accuracy vs baseline" numbers.
 """
 import numpy as np
-import pandas as pd
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from backend.app.engine.predictor import generate_prediction
 from backend.app.config.constants import TARGETS, RANDOM_BASELINES
 
@@ -166,49 +165,72 @@ class BenchmarkSuite:
         return correct / total if total > 0 else 0.0
     
     def generate_accuracy_report(self) -> Dict[str, Any]:
-        """Generate comprehensive accuracy report."""
-        report = {
-            'target_accuracies': {},
-            'overall_performance': {},
-            'recommendations': [],
-        }
-        
+        """Measure the model against recorded results.
+
+        REPLACES A FABRICATION. This method used to read `target_info['accuracy']`
+        — a hardcoded constant in `constants.TARGETS` labelled "backtested" that
+        no backtest produced — and served it as measured accuracy, complete with
+        an `improvement_percentage` computed from those same constants (e.g.
+        "58% winner accuracy, +1188% over baseline"). For a prediction platform,
+        advertising accuracy you have not measured is the worst possible failure
+        mode (see README/CHANGELOG honesty notes).
+
+        This now runs the real predictor against every race that has a recorded
+        result and reports genuine hit-rates. When there is not enough history to
+        measure anything, `model_accuracy` is **None** and `status` says so,
+        rather than inventing a number.
+        """
+        from backend.app.services.accuracy_service import measure_accuracy
+        measured = measure_accuracy()
+
+        target_accuracies: Dict[str, Any] = {}
         for target_id, target_info in self.targets.items():
-            model_accuracy = target_info['accuracy']
-            baseline = self.baselines.get(target_id, 0.1)
-            improvement = model_accuracy - baseline
-            
-            report['target_accuracies'][target_id] = {
-                'target_label': target_info['label'],
-                'model_accuracy': model_accuracy,
-                'baseline_accuracy': baseline,
-                'improvement': improvement,
-                'improvement_percentage': (improvement / baseline) * 100 if baseline > 0 else 0,
+            bucket = measured["targets"].get(target_id, {})
+            target_accuracies[target_id] = {
+                "target_label": target_info["label"],
+                "model_accuracy": bucket.get("accuracy"),          # None when unmeasured
+                "baseline_accuracy": self.baselines.get(target_id, 0.1),
+                "correct": bucket.get("correct"),
+                "evaluated_races": bucket.get("evaluated_races"),
+                "improvement": (
+                    (bucket["accuracy"] - self.baselines.get(target_id, 0.1))
+                    if bucket.get("accuracy") is not None else None
+                ),
             }
-        
-        # Calculate overall performance
-        all_accuracies = [info['accuracy'] for info in self.targets.values()]
-        all_baselines = [self.baselines.get(tid, 0.1) for tid in self.targets.keys()]
-        
-        report['overall_performance'] = {
-            'average_model_accuracy': np.mean(all_accuracies),
-            'average_baseline_accuracy': np.mean(all_baselines),
-            'average_improvement': np.mean(all_accuracies) - np.mean(all_baselines),
+
+        scored = [v["model_accuracy"] for v in target_accuracies.values()
+                  if v["model_accuracy"] is not None]
+        report = {
+            "status": measured["status"],
+            "measured_on": measured.get("measured_on"),
+            "races_evaluated": measured.get("races_evaluated", 0),
+            "samples": measured.get("samples"),
+            "target_accuracies": target_accuracies,
+            "overall_performance": {
+                "average_model_accuracy": (sum(scored) / len(scored)) if scored else None,
+                "average_baseline_accuracy": (
+                    sum(self.baselines.get(t, 0.1) for t in self.targets) / len(self.targets)
+                ),
+            },
+            "recommendations": [],
+            "note": measured.get("note"),
         }
-        
-        # Generate recommendations
-        for target_id, metrics in report['target_accuracies'].items():
-            if metrics['improvement'] < 0.1:
-                report['recommendations'].append(
-                    f"{target_id}: Model performance close to baseline, consider feature engineering"
-                )
-            elif metrics['improvement'] > 0.3:
-                report['recommendations'].append(
-                    f"{target_id}: Excellent performance, model well-calibrated"
-                )
-        
+
+        if measured["status"] == "insufficient_data":
+            report["recommendations"].append(
+                "Not enough recorded results to measure accuracy yet — "
+                "numbers will appear once races complete."
+            )
+        else:
+            for target_id, metrics in target_accuracies.items():
+                if metrics["model_accuracy"] is None:
+                    continue
+                if metrics["model_accuracy"] > 0.5:
+                    report["recommendations"].append(f"{target_id}: above 50% hit-rate on recorded races")
+                else:
+                    report["recommendations"].append(f"{target_id}: below 50% — model is not beating chance materially")
         return report
-    
+
     def cross_validate(
         self,
         seasons: List[int],

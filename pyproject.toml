@@ -36,8 +36,11 @@ dev = [
     "pytest-cov>=4.1.0",
     "black>=23.0.0",
     "flake8>=6.0.0",
+    # root package.json `lint` shells out to `ruff check backend`, but ruff was
+    # never installed or configured, so that half of lint could never run.
+    "ruff>=0.6.0",
 ]
-# NOTE (repo audit, see AUDIT.md M-4): the previous "advanced-ml" extra
+# NOTE (repo audit, see docs/DEEP_AUDIT.md, item M-4): the previous "advanced-ml" extra
 # (pymc, lifelines, gpy) and "reports" extra (weasyprint, openpyxl,
 # reportlab) have been removed/folded in. weasyprint and openpyxl moved
 # into main dependencies above since PDF/Excel export is an advertised
@@ -53,6 +56,26 @@ build-backend = "setuptools.build_meta"
 [tool.black]
 line-length = 100
 target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+# Deliberately a *correctness* ruleset, not a style opinion piece. Without this,
+# `ruff check backend` used its broad default and reported 1000+ findings on
+# this codebase (mostly blanket-except and import-order style), which made
+# `npm run lint` useless noise rather than a signal. These catch real defects:
+#   F   pyflakes — undefined names, unused imports, f-strings w/o placeholders
+#   E9  syntax/runtime errors
+# NOTE: import sorting ("I") is deliberately NOT enabled — the codebase has
+# never followed an import order, so it would drown the real signal in ~220
+# cosmetic findings.
+select = ["F", "E9"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests legitimately use bare asserts, fixtures, and star-imports.
+"backend/app/tests/**" = ["F401", "F403", "F405"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/app/tests"]

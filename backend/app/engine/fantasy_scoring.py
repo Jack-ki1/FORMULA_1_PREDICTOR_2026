@@ -3,8 +3,7 @@ Fantasy scoring module - real F1 Fantasy ruleset.
 Implements the actual F1 Fantasy scoring replacing the JSX's approximation.
 """
 import numpy as np
-from typing import Dict, List, Any, Optional
-from backend.app.config.constants import POINTS_SYSTEM, SPRINT_POINTS_SYSTEM
+from typing import Dict, List, Any
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 
 

@@ -2,8 +2,7 @@
 Tire model - degradation curves per compound/circuit.
 Models tire wear and performance degradation across stints.
 """
-import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from backend.app.config.constants import PIRELLI_COMPOUNDS
 
 

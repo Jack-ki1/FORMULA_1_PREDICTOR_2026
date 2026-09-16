@@ -3,7 +3,7 @@ FastF1 integration for lap-by-lap telemetry and practice/qualifying data.
 This provides detailed telemetry data for advanced analysis.
 """
 import fastf1
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 import datetime as dt
 from backend.app.config.api_settings import api_settings
 from backend.app.config.settings import settings
@@ -109,7 +109,7 @@ class FastF1Integration:
                 }
             }
             
-        except Exception as e:
+        except Exception:
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_lap_times_fallback()
             return {
@@ -188,7 +188,7 @@ class FastF1Integration:
                 }
             }
             
-        except Exception as e:
+        except Exception:
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_weather_fallback()
             return {
@@ -251,7 +251,7 @@ class FastF1Integration:
                 }
             }
             
-        except Exception as e:
+        except Exception:
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_weather_fallback()
             return {
@@ -314,7 +314,7 @@ class FastF1Integration:
                 }
             }
             
-        except Exception as e:
+        except Exception:
             from backend.app.data.fallback import FallbackStrategy
             fallback_data = FallbackStrategy.get_standings_fallback()
             return {

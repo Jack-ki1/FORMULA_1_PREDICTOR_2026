@@ -4,7 +4,7 @@ Includes gradient boosting, random forest, logistic regression, and ensemble met
 """
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
@@ -251,7 +251,7 @@ class ModelZoo:
             if model.is_trained:
                 try:
                     predictions[model_name] = model.predict_proba(X)
-                except Exception as e:
+                except Exception:
                     predictions[model_name] = None
         return predictions
     

@@ -16,6 +16,20 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     """Create FastAPI application — minimal Python, auto-docs at /docs."""
+    # Ensure the DB schema exists at app-construction time.
+    #
+    # This used to live only in backend/main.py, so any ASGI deployment (Render,
+    # Docker, `uvicorn backend.app:app`) booted with an EMPTY database — every
+    # prediction then failed to persist with `no such table: prediction_metadata`
+    # and the error was swallowed by a surrounding try/except, so the API kept
+    # returning 200 while silently saving nothing. Reproduced by importing
+    # create_app() with no prior migrate step.
+    try:
+        from backend.app.database.init import initialize_database
+        initialize_database()
+    except Exception as e:  # pragma: no cover - depends on deploy environment
+        logger.warning("Database initialisation skipped: %s", e)
+
     app = FastAPI(
         title="F1 Predictor 2026 API",
         description="Flask → FastAPI minimal Python. Monte Carlo, Elo, grid-model. Preserves prediction parity. Docs at /docs.",

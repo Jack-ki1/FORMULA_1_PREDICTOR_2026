@@ -2,7 +2,6 @@
 FastF1 Provider — historical telemetry, session results, lap data.
 """
 import time
-from typing import Any, Dict, List
 from .base import F1DataProvider, DataProvenance, hash_response
 
 class FastF1Provider(F1DataProvider):

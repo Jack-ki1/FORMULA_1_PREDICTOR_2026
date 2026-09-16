@@ -2,10 +2,9 @@
 Feature engineering module - builds the feature matrix per driver per session.
 This transforms raw data into ML-ready features for prediction models.
 """
-import numpy as np
 import pandas as pd
-from typing import Dict, List, Any, Optional
-from backend.app.config.team_driver_lineup_2026 import get_all_drivers, get_driver_by_code
+from typing import Dict, List, Optional
+from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 from backend.app.config.constants import grid_prior_multiplier
 from backend.app.data.circuit_data import get_circuit_characteristics
 from backend.app.data.calendar_2026 import get_race_by_id
