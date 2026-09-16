@@ -12,9 +12,8 @@ import { ErrorBoundary } from '../components/common/ErrorBoundary'
 const DashboardPage = lazy(() => import('../pages/Dashboard').then(m => ({ default: m.DashboardPage })))
 const StandingsPage = lazy(() => import('../pages/Standings').then(m => ({ default: m.StandingsPage })))
 const H2HPage = lazy(() => import('../pages/H2H').then(m => ({ default: m.H2HPage })))
-const ConstructorsPage = lazy(() => import('../pages/Constructors').then(m => ({ default: m.ConstructorsPage })))
 const FantasyPage = lazy(() => import('../pages/Fantasy').then(m => ({ default: m.FantasyPage })))
-const AnalyticsPage = lazy(() => import('../pages/Analytics').then(m => ({ default: m.AnalyticsPage })))
+const GuidePage = lazy(() => import('../pages/Guide').then(m => ({ default: m.GuidePage })))
 const SettingsPage = lazy(() => import('../pages/Settings').then(m => ({ default: m.SettingsPage })))
 
 function Lazy({ children, label }: { children: ReactNode; label: string }) {
@@ -37,10 +36,7 @@ export const router = createBrowserRouter([
       { path:'standings', element:<Lazy label="Standings"><StandingsPage /></Lazy>},
       { path:'h2h', element:<Lazy label="H2H"><H2HPage /></Lazy>},
       { path:'fantasy', element:<Lazy label="Fantasy"><FantasyPage /></Lazy>},
-      { path:'teams', element:<Lazy label="Teams"><ConstructorsPage /></Lazy>},
-      { path:'constructors', element:<Lazy label="Teams"><ConstructorsPage /></Lazy>},
-      { path:'analytics', element:<Lazy label="Analytics & News"><AnalyticsPage /></Lazy>},
-      { path:'analytics-news', element:<Lazy label="Analytics & News"><AnalyticsPage /></Lazy>},
+      { path:'guide', element:<Lazy label="User Guide"><GuidePage /></Lazy>},
       { path:'settings', element:<Lazy label="Settings"><SettingsPage /></Lazy>},
     ]
   }

@@ -20,8 +20,7 @@ export function TopNavigation(){
           {link('/standings','Standings')}
           {link('/h2h','H2H')}
           {link('/fantasy','Fantasy')}
-          {link('/teams','Teams')}
-          {link('/analytics','Analytics & News')}
+          {link('/guide','Guide')}
           {link('/settings','Settings')}
         </nav>
         

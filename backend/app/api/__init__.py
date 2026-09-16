@@ -4,9 +4,8 @@ from backend.app.api.routes.races import router as races_router
 from backend.app.api.routes.predictions import router as predictions_router
 from backend.app.api.routes.standings import router as standings_router
 from backend.app.api.routes.h2h import router as h2h_router
-from backend.app.api.routes.constructors import router as constructors_router
-from backend.app.api.routes.analytics import router as analytics_router
+# Removed: constructors router - teams section eliminated
 from backend.app.api.routes.reports import router as reports_router
 from backend.app.api.routes.ai import router as ai_router
 
-__all__ = ["health_router","races_router","predictions_router","standings_router","h2h_router","constructors_router","analytics_router","reports_router","ai_router"]
+__all__ = ["health_router","races_router","predictions_router","standings_router","h2h_router","reports_router","ai_router"]

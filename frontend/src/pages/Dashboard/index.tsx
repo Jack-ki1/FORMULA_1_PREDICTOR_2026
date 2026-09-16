@@ -13,6 +13,7 @@ function useRaceInfo(id: string | undefined) {
   return useMemo(() => (races || []).find((r: any) => r.id === id), [races, id])
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function EntropyBadge({ confidence, chaos }: { confidence?: number; chaos: number }) {
   const conf = confidence ?? 0.6
   const entropy = 1 - conf
@@ -29,49 +30,9 @@ function EntropyBadge({ confidence, chaos }: { confidence?: number; chaos: numbe
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ModelVsLastRace(){
-  const [data, setData] = useState<any>(null)
-  const [error, setError] = useState<string|null>(null)
-  useEffect(()=>{
-    // Reads the REAL backtest. Previously this hardcoded `actualWinner = 'ANT'`
-    // and `actualPodium = ['ANT','RUS','HAM']` against a fixed race id, so the
-    // strip displayed a fabricated check/cross that had nothing to do with the
-    // model. It now renders "no record yet" when there is nothing to score.
-    api.get<any>('/api/v1/predictions/history/last')
-      .then(res => setData(res))
-      .catch((e:any)=> setError(e?.message || 'History unavailable'))
-  },[])
-  if (error) return <div className="card p-3 fs-11 text-sub">Model vs last race unavailable: {error}</div>
-  if (!data) return <div className="card p-3 fs-11 text-sub">Loading model vs last race…</div>
-  if (!data.actual) return (
-    <div className="card p-3">
-      <div className="f1-display font-bold">Model vs Last Race</div>
-      <div className="fs-11 text-sub mt-1">
-        No completed-race record available yet — {data.note || 'nothing to score against.'}
-      </div>
-    </div>
-  )
-  return (
-    <div className="card p-3">
-      <div className="f1-display font-bold">Model vs Last Race — putting accuracy on the record</div>
-      <div className="grid md:grid-cols-3 gap-3 mt-2">
-        <div className="surface-alt p-3 rounded-lg text-center">
-          <div className="fs-11 font-bold">Last Race ({String(data.race_id||'').toUpperCase()}) Actual</div>
-          <div className="f1-mono font-black">Winner {data.actual?.winner}</div>
-          <div className="fs-11 text-sub">Podium {(data.actual?.podium||[]).join(' · ')}</div>
-        </div>
-        <div className="surface-alt p-3 rounded-lg text-center">
-          <div className="fs-11 font-bold">Model Predicted</div>
-          <div className="f1-mono font-black" style={{ color: data.winner_match? '#16a34a':'#ef4444'}}>{data.predicted?.winner} {data.winner_match?'✓':'✗'}</div>
-          <div className="fs-11 text-sub">Podium {(data.predicted?.podium||[]).join(' · ') || '—'} {data.podium_match? '✓':'✗'}</div>
-        </div>
-        <div className={`p-3 rounded-lg text-center ${data.winnerMatch?'bg-green-50 border border-green-200':'bg-red-50 border border-red-200'}`}>
-          <div className="fs-11 font-bold" style={{ color: data.winner_match? '#16a34a':'#ef4444'}}>{data.winner_match? 'Winner ✓' : 'Winner ✗'} · {data.podium_match? 'Podium ✓' : 'Podium ✗'}</div>
-          <div className="fs-11 text-sub">Confidence {(data.confidence*100||0).toFixed(0)}% · This strip updates every race via <code>PredictionSnapshot</code></div>
-        </div>
-      </div>
-    </div>
-  )
+  return null // Stub - component not used
 }
 
 // --- Day -> Session mapping ---
@@ -94,6 +55,7 @@ export function DashboardPage(){
   const setSubSession=useDashboardStore(s=>s.setSubSession) as any
   const raceInfo = useRaceInfo(draft?.raceId)
   const mut = usePrediction()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showAll, setShowAll] = useState(false)
 
   // Day / sprint aware
@@ -113,7 +75,8 @@ export function DashboardPage(){
     if (sessionsForDay.length && !sessionsForDay.find(s=> s.id===subPick)) {
       setSubPick(sessionsForDay[0].id)
     }
-  }, [sessionsForDay])
+  }, [sessionsForDay, subPick])
+  
   useEffect(()=>{
     const sel = sessionsForDay.find(s=> s.id===subPick)
     if (sel) {
@@ -123,35 +86,72 @@ export function DashboardPage(){
       else if (sel.sess==='practice') useDashboardStore.getState().setTarget('practice_pace')
       else useDashboardStore.getState().setTarget('podium')
     }
-  }, [subPick, sessionsForDay])
+  }, [subPick, sessionsForDay, setSession, setSubSession])
 
-  // --- Modify section: 16 race condition tunings ---
-  const [mods, setMods] = useState({
-    weather: 'dry',
-    chaos: 50,
-    wetInfluence: 50,
-    reliability: 50,
-    strategy: 50,
-    gridWeight: 55,
-    safetyCar: 30,
-    tyre: 'C2 Medium',
-    fuel: 'medium',
-    overtake: true,
-    aeroMode: 'Auto',
-    trackTemp: 27,
-    humidity: 55,
-    wind: 8,
-    pressure: 1013,
-    driverConfidence: 70,
-    pitAggression: 50,
-    tyreDeg: 50,
+  // --- Modify section: 16 race condition tunings (synced with Settings) ---
+  const [mods, setMods] = useState(()=>{
+    // Load from localStorage or use defaults
+    try {
+      const cached = JSON.parse(localStorage.getItem('f1-dashboard-mods') || '{}')
+      return {
+        weather: 'dry',
+        chaos: 50,
+        wetInfluence: 60,
+        reliability: 40,
+        strategy: 50,
+        gridWeight: 55,
+        safetyCar: 30,
+        tyre: 'C2 Medium',
+        fuel: 'medium',
+        overtake: true,
+        aeroMode: 'Auto',
+        trackTemp: 27,
+        humidity: 55,
+        wind: 8,
+        pressure: 1013,
+        driverConfidence: 70,
+        pitAggression: 50,
+        tyreDeg: 50,
+        ...cached
+      }
+    } catch {
+      return {
+        weather: 'dry',
+        chaos: 50,
+        wetInfluence: 60,
+        reliability: 40,
+        strategy: 50,
+        gridWeight: 55,
+        safetyCar: 30,
+        tyre: 'C2 Medium',
+        fuel: 'medium',
+        overtake: true,
+        aeroMode: 'Auto',
+        trackTemp: 27,
+        humidity: 55,
+        wind: 8,
+        pressure: 1013,
+        driverConfidence: 70,
+        pitAggression: 50,
+        tyreDeg: 50,
+      }
+    }
   })
-  const setMod = (k:string, v:any)=> setMods(m=> ({...m, [k]:v}))
-  useEffect(()=> { setDraft({ weather: mods.weather }) }, [mods.weather])
+  
+  const setMod = (k:string, v:any)=> {
+    setMods(m=> ({...m, [k]:v}))
+    // Persist to localStorage
+    try {
+      const current = JSON.parse(localStorage.getItem('f1-dashboard-mods') || '{}')
+      localStorage.setItem('f1-dashboard-mods', JSON.stringify({...current, [k]:v}))
+    } catch {}
+  }
+  
+  useEffect(()=> { setDraft({ weather: mods.weather }) }, [mods.weather, setDraft])
 
   // Sims 100-50000 custom
   const [simCount, setSimCount] = useState<number>(draft.simCount || 10000)
-  useEffect(()=> setDraft({ simCount }), [simCount])
+  useEffect(()=> setDraft({ simCount }), [simCount, setDraft])
 
   const saveResult = (r:any)=> {
     setResult(r)
@@ -291,57 +291,294 @@ export function DashboardPage(){
 
         {/* Modify section + Sims */}
         <div className="card p-4 space-y-3">
-          <div className="f1-display font-bold">2 · Modify Race Conditions — 16 tunings</div>
-          <p className="fs-11 text-sub">Manual overrides for this race — all concerning the race.</p>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="f1-display font-bold">2 · Modify Race Conditions — 18 tunings</div>
+            <button 
+              onClick={()=> {
+                if (confirm('Reset all race conditions to defaults?')) {
+                  setMods({
+                    weather: 'dry', chaos: 50, wetInfluence: 60, reliability: 40, strategy: 50,
+                    gridWeight: 55, safetyCar: 30, tyre: 'C2 Medium', fuel: 'medium', overtake: true,
+                    aeroMode: 'Auto', trackTemp: 27, humidity: 55, wind: 8, pressure: 1013,
+                    driverConfidence: 70, pitAggression: 50, tyreDeg: 50
+                  })
+                  localStorage.removeItem('f1-dashboard-mods')
+                }
+              }}
+              className="px-3 py-1 rounded-lg border fs-11 font-bold hover:bg-black/5"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              Reset Defaults
+            </button>
+          </div>
+          <p className="fs-11 text-sub">Manual overrides for this race — tune every parameter with sliders. All changes persist across sessions.</p>
           <div className="grid sm:grid-cols-2 gap-3">
             {/* 1 weather */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Weather
-              <select value={mods.weather} onChange={e=> setMod('weather', e.target.value)} className="f1-select"><option value="dry">Dry</option><option value="mixed">Mixed</option><option value="wet">Wet</option></select>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>☀️ Weather</span>
+                <span className="fs-10 text-sub">Affects grip & DNF risk</span>
+              </div>
+              <select value={mods.weather} onChange={e=> setMod('weather', e.target.value)} className="f1-select">
+                <option value="dry">☀️ Dry (Fastest, predictable)</option>
+                <option value="mixed">⛅ Mixed (Variable grip)</option>
+                <option value="wet">🌧️ Wet (High DNF risk, upsets likely)</option>
+              </select>
             </label>
+            
             {/* 2 chaos */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Chaos {mods.chaos}<input type="range" min={0} max={100} value={mods.chaos} onChange={e=> setMod('chaos', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🎲 Chaos Level</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.chaos}</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.chaos} onChange={e=> setMod('chaos', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Predictable (0)</span>
+                <span>Balanced (50)</span>
+                <span>Chaos (100)</span>
+              </div>
+            </label>
+            
             {/* 3 wet influence */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Wet influence {mods.wetInfluence}<input type="range" min={0} max={100} value={mods.wetInfluence} onChange={e=> setMod('wetInfluence', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>💧 Wet Influence</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.wetInfluence}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.wetInfluence} onChange={e=> setMod('wetInfluence', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>No effect (0%)</span>
+                <span>Moderate (50%)</span>
+                <span>Extreme (100%)</span>
+              </div>
+            </label>
+            
             {/* 4 reliability */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Reliability {mods.reliability}<input type="range" min={0} max={100} value={mods.reliability} onChange={e=> setMod('reliability', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>⚠️ Reliability Risk</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.reliability}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.reliability} onChange={e=> setMod('reliability', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>All finish (0%)</span>
+                <span>Normal (40%)</span>
+                <span>Many DNFs (100%)</span>
+              </div>
+            </label>
+            
             {/* 5 strategy */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Strategy agg. {mods.strategy}<input type="range" min={0} max={100} value={mods.strategy} onChange={e=> setMod('strategy', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🏁 Strategy Aggression</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.strategy}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.strategy} onChange={e=> setMod('strategy', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Conservative (0%)</span>
+                <span>Balanced (50%)</span>
+                <span>Risky (100%)</span>
+              </div>
+            </label>
+            
             {/* 6 grid weight */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Grid weight {mods.gridWeight}<input type="range" min={0} max={100} value={mods.gridWeight} onChange={e=> setMod('gridWeight', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🏎️ Grid Weight</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.gridWeight}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.gridWeight} onChange={e=> setMod('gridWeight', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Overtaking easy (0%)</span>
+                <span>2026 default (55%)</span>
+                <span>Qualifying matters (100%)</span>
+              </div>
+            </label>
+            
             {/* 7 safety car */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Safety car {mods.safetyCar}%<input type="range" min={0} max={100} value={mods.safetyCar} onChange={e=> setMod('safetyCar', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🚨 Safety Car Probability</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.safetyCar}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.safetyCar} onChange={e=> setMod('safetyCar', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Never (0%)</span>
+                <span>Typical (30%)</span>
+                <span>Street circuit (80%)</span>
+              </div>
+            </label>
+            
             {/* 8 tyre */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Tyre<select value={mods.tyre} onChange={e=> setMod('tyre', e.target.value)} className="f1-select"><option>C1 Hard</option><option>C2 Medium</option><option>C3 Soft</option><option>C4</option><option>C5</option></select></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🔴 Tyre Compound</span>
+                <span className="fs-10 text-sub">Grip vs durability</span>
+              </div>
+              <select value={mods.tyre} onChange={e=> setMod('tyre', e.target.value)} className="f1-select">
+                <option value="C1 Hard">C1 Hard (Slow, durable)</option>
+                <option value="C2 Medium">C2 Medium (Balanced)</option>
+                <option value="C3 Soft">C3 Soft (Fast, degrades)</option>
+                <option value="C4 SuperSoft">C4 SuperSoft (Very fast, high deg)</option>
+                <option value="C5 UltraSoft">C5 UltraSoft (Fastest, extreme deg)</option>
+              </select>
+            </label>
+            
             {/* 9 fuel */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Fuel load<select value={mods.fuel} onChange={e=> setMod('fuel', e.target.value)} className="f1-select"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>⛽ Fuel Load</span>
+                <span className="fs-10 text-sub">Weight affects pace</span>
+              </div>
+              <select value={mods.fuel} onChange={e=> setMod('fuel', e.target.value)} className="f1-select">
+                <option value="low">Low (Light, fast laps)</option>
+                <option value="medium">Medium (Balanced)</option>
+                <option value="high">High (Heavy, slower)</option>
+              </select>
+            </label>
+            
             {/* 10 overtake */}
-            <label className="fs-11 font-bold flex items-center gap-2">Overtake<input type="checkbox" checked={mods.overtake} onChange={e=> setMod('overtake', e.target.checked)} /></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🔄 Overtaking Mode</span>
+                <span className="fs-10 text-sub">{mods.overtake ? 'Enabled' : 'Disabled'}</span>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={mods.overtake} onChange={e=> setMod('overtake', e.target.checked)} className="w-5 h-5 accent-red"/>
+                <span className="fs-11">Allow overtaking in simulation</span>
+              </label>
+            </label>
+            
             {/* 11 aero */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Aero mode<select value={mods.aeroMode} onChange={e=> setMod('aeroMode', e.target.value)} className="f1-select"><option>Auto</option><option>Straight</option><option>Corner</option></select></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>✈️ Aero Mode</span>
+                <span className="fs-10 text-sub">Downforce configuration</span>
+              </div>
+              <select value={mods.aeroMode} onChange={e=> setMod('aeroMode', e.target.value)} className="f1-select">
+                <option value="Auto">Auto (Adaptive)</option>
+                <option value="Straight">Low Downforce (Speed)</option>
+                <option value="Corner">High Downforce (Grip)</option>
+              </select>
+            </label>
+            
             {/* 12 track temp */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Track temp {mods.trackTemp}°C<input type="range" min={10} max={55} value={mods.trackTemp} onChange={e=> setMod('trackTemp', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🌡️ Track Temperature</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.trackTemp}°C</span>
+              </div>
+              <input type="range" min={10} max={55} value={mods.trackTemp} onChange={e=> setMod('trackTemp', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Cold (10°C)</span>
+                <span>Ideal (27°C)</span>
+                <span>Hot (55°C)</span>
+              </div>
+            </label>
+            
             {/* 13 humidity */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Humidity {mods.humidity}%<input type="range" min={0} max={100} value={mods.humidity} onChange={e=> setMod('humidity', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>💨 Humidity</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.humidity}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.humidity} onChange={e=> setMod('humidity', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Dry (0%)</span>
+                <span>Comfortable (55%)</span>
+                <span>Tropical (100%)</span>
+              </div>
+            </label>
+            
             {/* 14 wind */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Wind {mods.wind} km/h<input type="range" min={0} max={40} value={mods.wind} onChange={e=> setMod('wind', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>💨 Wind Speed</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.wind} km/h</span>
+              </div>
+              <input type="range" min={0} max={40} value={mods.wind} onChange={e=> setMod('wind', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Calm (0)</span>
+                <span>Breezy (8)</span>
+                <span>Stormy (40)</span>
+              </div>
+            </label>
+            
             {/* 15 pressure */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Pressure {mods.pressure} hPa<input type="number" value={mods.pressure} onChange={e=> setMod('pressure', parseInt(e.target.value)||1013)} className="f1-input"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>📊 Air Pressure</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.pressure} hPa</span>
+              </div>
+              <input type="number" value={mods.pressure} onChange={e=> setMod('pressure', parseInt(e.target.value)||1013)} className="f1-input" min={950} max={1050}/>
+              <div className="fs-10 text-sub">Range: 950-1050 hPa (Sea level ~1013)</div>
+            </label>
+            
             {/* 16 driver confidence */}
-            <label className="fs-11 font-bold flex flex-col gap-1">Driver conf. {mods.driverConfidence}<input type="range" min={0} max={100} value={mods.driverConfidence} onChange={e=> setMod('driverConfidence', parseInt(e.target.value))} className="f1-range"/></label>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>😤 Driver Confidence</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.driverConfidence}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.driverConfidence} onChange={e=> setMod('driverConfidence', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Nervous (0%)</span>
+                <span>Normal (70%)</span>
+                <span>Peak form (100%)</span>
+              </div>
+            </label>
           </div>
-          {/* extra 2 for >15 */}
-          <div className="grid sm:grid-cols-2 gap-3">
-            <label className="fs-11 font-bold flex flex-col gap-1">Pit aggression {mods.pitAggression}<input type="range" min={0} max={100} value={mods.pitAggression} onChange={e=> setMod('pitAggression', parseInt(e.target.value))} className="f1-range"/></label>
-            <label className="fs-11 font-bold flex flex-col gap-1">Tyre deg {mods.tyreDeg}<input type="range" min={0} max={100} value={mods.tyreDeg} onChange={e=> setMod('tyreDeg', parseInt(e.target.value))} className="f1-range"/></label>
+          
+          {/* Extra parameters for fine-tuning */}
+          <div className="grid sm:grid-cols-2 gap-3 pt-3 border-t" style={{ borderColor:'var(--border)'}}>
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🛑 Pit Stop Aggression</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.pitAggression}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.pitAggression} onChange={e=> setMod('pitAggression', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Conservative (0%)</span>
+                <span>Standard (50%)</span>
+                <span>Undercut king (100%)</span>
+              </div>
+            </label>
+            
+            <label className="fs-11 font-bold flex flex-col gap-1 p-3 rounded-lg border hover:border-red-500 transition-colors" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span>🔥 Tyre Degradation Rate</span>
+                <span className="f1-mono text-sm font-black" style={{ color:'var(--red)'}}>{mods.tyreDeg}%</span>
+              </div>
+              <input type="range" min={0} max={100} value={mods.tyreDeg} onChange={e=> setMod('tyreDeg', parseInt(e.target.value))} className="f1-range accent-red"/>
+              <div className="flex justify-between fs-10 text-sub">
+                <span>Minimal wear (0%)</span>
+                <span>Normal (50%)</span>
+                <span>Severe degradation (100%)</span>
+              </div>
+            </label>
           </div>
+          
           {/* Sims picker 100-50000 custom */}
-          <div className="pt-3 border-t" style={{ borderColor:'var(--border)'}}>
-            <div className="f1-display font-bold">Simulations — 100 to 50,000</div>
-            <div className="flex items-center gap-2 mt-2">
-              <input type="range" min={100} max={50000} step={100} value={simCount} onChange={e=> setSimCount(parseInt(e.target.value))} className="f1-range flex-1"/>
-              <input type="number" min={100} max={50000} value={simCount} onChange={e=> setSimCount(Math.max(100, Math.min(50000, parseInt(e.target.value)||100)))} className="f1-input w-24" />
+          <div className="pt-3 border-t mt-3" style={{ borderColor:'var(--border)'}}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="f1-display font-bold">🎲 Monte Carlo Simulations</div>
+              <span className="f1-mono text-sm font-black px-3 py-1 rounded-lg" style={{ background:'var(--red)', color:'#fff'}}>
+                {simCount.toLocaleString()} sims
+              </span>
             </div>
-            <div className="fs-11 text-sub">Custom value allowed — clamped 100–50k. Vectorised argsort, seed reproducible.</div>
+            <div className="flex items-center gap-3">
+              <input type="range" min={100} max={50000} step={100} value={simCount} onChange={e=> setSimCount(parseInt(e.target.value))} className="f1-range flex-1 accent-red"/>
+              <input type="number" min={100} max={50000} value={simCount} onChange={e=> setSimCount(Math.max(100, Math.min(50000, parseInt(e.target.value)||100)))} className="f1-input w-28 font-mono font-bold" />
+            </div>
+            <div className="flex justify-between mt-2 fs-11 text-sub">
+              <span>⚡ Fast (100-1k) ~0.1s</span>
+              <span>⚖️ Balanced (5k-15k) ~0.4s</span>
+              <span>🎯 Accurate (20k-50k) ~1.2s</span>
+            </div>
+            <div className="mt-2 p-3 rounded-lg surface-alt fs-11">
+              <strong>Vectorized NumPy operations:</strong> Each simulation runs a complete race scenario with stochastic elements. More simulations = smoother probability distributions but slower predictions. Default 10,000 provides best balance.
+            </div>
           </div>
         </div>
       </div>

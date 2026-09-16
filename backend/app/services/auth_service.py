@@ -1,18 +1,28 @@
 """
 Authentication service for user management and JWT token handling.
+NOTE: Authentication is currently disabled. This file is kept for future use.
 Implements secure password hashing, JWT token creation/validation, and user operations.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+
+# type: ignore - jose and passlib not installed, auth disabled
+try:
+    from jose import JWTError, jwt  # type: ignore
+except ImportError:
+    JWTError = Exception  # type: ignore
+    jwt = None  # type: ignore
+
+try:
+    from passlib.context import CryptContext  # type: ignore
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")  # type: ignore
+except ImportError:
+    pwd_context = None  # type: ignore
+
 from sqlalchemy.orm import Session
 
-from ..database.models import User
+from ..database.models import User  # type: ignore
 from ..config.settings import Settings
-
-# Password hashing context using bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Settings instance
 settings = Settings()

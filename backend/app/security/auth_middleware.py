@@ -1,11 +1,18 @@
 """
 Authentication middleware to protect API routes.
+NOTE: Authentication is currently disabled. This file is kept for future use.
 Requires valid JWT token for all routes except public ones.
 """
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
-from jose import JWTError, jwt
 from typing import List, Optional
+
+# type: ignore - jose not installed, auth disabled
+try:
+    from jose import JWTError, jwt  # type: ignore
+except ImportError:
+    JWTError = Exception  # type: ignore
+    jwt = None  # type: ignore
 
 from ..config.settings import Settings
 

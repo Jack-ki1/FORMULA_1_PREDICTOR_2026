@@ -36,12 +36,7 @@ export function LoginPage() {
       return
     }
 
-    try {
-      await login(formData)
-      navigate('/dashboard')
-    } catch (err: any) {
-      console.error('Login error:', err)
-    }
+  
   }
 
   return (

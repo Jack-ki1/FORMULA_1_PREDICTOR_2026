@@ -95,8 +95,8 @@ def create_app() -> FastAPI:
         from backend.app.api.routes.predictions import router as predictions_router
         from backend.app.api.routes.standings import router as standings_router
         from backend.app.api.routes.h2h import router as h2h_router
-        from backend.app.api.routes.constructors import router as constructors_router
-        from backend.app.api.routes.analytics import router as analytics_router
+        # Removed: constructors router - teams section eliminated
+        # Removed: analytics router - replaced with Guide page (frontend only)
         from backend.app.api.routes.reports import router as reports_router
         from backend.app.api.routes.ai import router as ai_router
         from backend.app.api.routes.openapi import router as openapi_router
@@ -105,7 +105,7 @@ def create_app() -> FastAPI:
         from backend.app.api.routes.live import router as live_router
         from backend.app.api.routes.jobs import router as jobs_router
         from backend.app.api.routes.settings import router as settings_router
-        from backend.app.api.routes.news import router as news_router
+        # Removed: news router - replaced with Guide page (frontend only)
         from backend.app.api.routes.grid import router as grid_router
         from backend.app.api.routes.fantasy import router as fantasy_router
 
@@ -115,8 +115,7 @@ def create_app() -> FastAPI:
         app.include_router(predictions_router)
         app.include_router(standings_router)
         app.include_router(h2h_router)
-        app.include_router(constructors_router)
-        app.include_router(analytics_router)
+        # Removed: constructors_router and analytics_router registration
         app.include_router(reports_router)
         app.include_router(ai_router)
         app.include_router(openapi_router)
@@ -125,10 +124,10 @@ def create_app() -> FastAPI:
         app.include_router(live_router)
         app.include_router(jobs_router)
         app.include_router(settings_router)
-        app.include_router(news_router)
+        # Removed: news_router registration
         app.include_router(grid_router)
         app.include_router(fantasy_router)
-        logger.info("Registered /api/v1 routers (including drivers)")
+        logger.info("Registered /api/v1 routers (simplified: no teams/analytics/news)")
     except Exception as e:
         logger.warning(f"Failed to register v1 routers: {e}")
 
