@@ -11,21 +11,9 @@ CACHE_KEY_RACES = "races:2026"
 
 class RaceService:
     def list_races(self) -> List[Dict]:
-        cache = get_cache()
-        cached = cache.get(CACHE_KEY_RACES)
-        if cached:
-            import json
-            try:
-                return json.loads(cached) if isinstance(cached, str) else cached
-            except Exception:
-                pass
-        # serve full calendar (including status) — frontend filters cancelled
-        data = CALENDAR_2026
-        try:
-            cache.set(CACHE_KEY_RACES, data, ttl=3600)
-        except Exception:
-            pass
-        return data
+        # Serve directly from memory - calendar is static and small
+        # Skip cache layer entirely for this to avoid Redis timeout delays
+        return CALENDAR_2026
 
     def get_race(self, race_id: str) -> Dict | None:
         return get_race_by_id(race_id)

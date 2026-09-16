@@ -236,7 +236,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ========== CTA ---------- */}
+      {/* ========== CTA Section ========== */}
       <section className="px-4 sm:px-8 pb-10">
         <div className="card p-6 text-center" style={{ background:'linear-gradient(135deg, #0a0a09, #16233F)', color:'#fff'}}>
           <h2 className="f1-display text-xl font-black">Your grid, your conditions, your call.</h2>

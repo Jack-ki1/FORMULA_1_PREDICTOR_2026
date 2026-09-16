@@ -129,13 +129,17 @@ export function AnalyticsPage(){
         <div className="card p-4">
           <div className="f1-display font-bold">Targets — Calibration</div>
           <p className="fs-11 text-sub">TARGETS from <code className="f1-mono">constants.py</code> — accuracy, baseline, note.</p>
-          <div className="grid sm:grid-cols-2 gap-3 mt-3">{Object.entries((acc as any)?.target_accuracies||{}).map(([k,v]:any)=>(
+          <div className="grid sm:grid-cols-2 gap-3 mt-3">{Object.entries((acc as any)?.target_accuracies||{}).map(([k,v]:any)=>{
+            const improvement = v.improvement_percentage ?? v.improvement ?? 0
+            const modelAcc = v.model_accuracy != null ? v.model_accuracy : 0
+            const baselineAcc = v.baseline_accuracy != null ? v.baseline_accuracy : 0
+            return (
             <div key={k} className="surface-alt p-3 rounded-lg">
               <div className="fs-11 font-black uppercase">{k}</div>
-              <div className="f1-mono text-sm">{(v.model_accuracy*100).toFixed(1)}% <span className="text-sub">/ baseline {(v.baseline_accuracy*100).toFixed(1)}%</span></div>
-              <div className="fs-11 text-sub mt-1">{v.target_label} — +{(v.improvement_percentage).toFixed(0)}% improvement</div>
+              <div className="f1-mono text-sm">{(modelAcc*100).toFixed(1)}% <span className="text-sub">/ baseline {(baselineAcc*100).toFixed(1)}%</span></div>
+              <div className="fs-11 text-sub mt-1">{v.target_label} — +{(improvement*100).toFixed(0)}% improvement</div>
             </div>
-          ))}</div>
+          )})}</div>
           <div className="flex flex-wrap gap-2 mt-3">{(((targets as any)?.data ?? targets) as any[] || []).slice(0,8).map((t:any)=><span key={t.id||t.label} className="badge-purple">{t.label||t.id}</span>)}</div>
         </div>
       </div>

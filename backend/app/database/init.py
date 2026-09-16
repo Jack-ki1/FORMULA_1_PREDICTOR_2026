@@ -1,42 +1,73 @@
-import logging
+"""
+Database initialization and migration.
+Creates tables and seeds initial data.
+"""
+import os
+import sys
+from pathlib import Path
 
-from sqlalchemy import create_engine, text
-from backend.app.database.migrations._001_initial_schema import upgrade
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-logger = logging.getLogger(__name__)
+from sqlalchemy import create_engine
+from backend.app.database.models import Base
+from backend.app.config.settings import Settings
+from backend.app.services.auth_service import create_admin_user, get_user_by_email
+from backend.app.database.connection import SessionLocal
 
-_initialized = False
+settings = Settings()
 
 
-def initialize_database(force: bool = False):
-    """Initialize the database with migrations.
+def initialize_database():
+    """Initialize database tables."""
+    engine = create_engine(settings.DATABASE_URL)
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created successfully.")
 
-    Idempotent AND memoised: `create_app()` calls this, and create_app() is
-    called once per test and once per worker — running the full migration each
-    time was pure startup cost. Migrations are only re-run with force=True.
-    """
-    global _initialized
-    if _initialized and not force:
-        return
+
+def seed_initial_data():
+    """Seed initial data including admin user."""
+    db = SessionLocal()
     try:
-        upgrade()
-        _initialized = True
-        logger.info("Database initialized successfully")
+        # Check if admin already exists
+        admin_email = os.getenv('ADMIN_EMAIL', 'admin@f1predictor.com')
+        admin_exists = get_user_by_email(db, admin_email)
+        
+        if not admin_exists:
+            # Create admin user from environment variables or defaults
+            admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+            admin_password = os.getenv('ADMIN_PASSWORD', 'F1Admin2026!Secure')
+            admin_name = os.getenv('ADMIN_NAME', 'F1 Predictor Admin')
+            
+            print(f"Creating admin user: {admin_email}")
+            admin_user = create_admin_user(
+                db=db,
+                email=admin_email,
+                username=admin_username,
+                password=admin_password,
+                full_name=admin_name
+            )
+            print(f"✓ Admin user created successfully!")
+            print(f"  Email: {admin_user.email}")
+            print(f"  Username: {admin_user.username}")
+            print(f"  ID: {admin_user.id}")
+            print(f"\n⚠️  IMPORTANT: Change the default password immediately!")
+            print(f"   Default password: {admin_password}")
+        else:
+            print(f"Admin user already exists: {admin_email}")
+        
+        db.commit()
     except Exception as e:
-        logger.error(f"Error initializing database: {e}")
+        db.rollback()
+        print(f"Error seeding data: {e}")
         raise
+    finally:
+        db.close()
 
 
-def verify_database_connection():
-    """Verify database connection is working."""
-    try:
-        from backend.app.config.settings import settings
-        engine = create_engine(settings.DATABASE_URL)
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT COUNT(*) FROM sqlite_master WHERE type='table'"))
-            table_count = result.scalar()
-            logger.info(f"Database connection verified. Found {table_count} tables.")
-            return True
-    except Exception as e:
-        logger.error(f"Database connection verification failed: {e}")
-        return False
+if __name__ == "__main__":
+    print("Initializing database...")
+    initialize_database()
+    print("\nSeeding initial data...")
+    seed_initial_data()
+    print("\n✓ Database initialization complete!")

@@ -65,7 +65,8 @@ def create_app() -> FastAPI:
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
         request.state.start_time = time.time()
-        # rate limit stub
+        
+        # Rate limit stub
         try:
             from backend.app.security.middleware import rate_limit_check_fastapi
             blocked = rate_limit_check_fastapi(request)
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     try:
         from backend.app.api.routes.health import router as health_router
         from backend.app.api.routes.races import router as races_router
+        from backend.app.api.routes.drivers import router as drivers_router
         from backend.app.api.routes.predictions import router as predictions_router
         from backend.app.api.routes.standings import router as standings_router
         from backend.app.api.routes.h2h import router as h2h_router
@@ -109,6 +111,7 @@ def create_app() -> FastAPI:
 
         app.include_router(health_router)
         app.include_router(races_router)
+        app.include_router(drivers_router)
         app.include_router(predictions_router)
         app.include_router(standings_router)
         app.include_router(h2h_router)
@@ -125,7 +128,7 @@ def create_app() -> FastAPI:
         app.include_router(news_router)
         app.include_router(grid_router)
         app.include_router(fantasy_router)
-        logger.info("Registered /api/v1 routers (including system/scenario/live/jobs+settings+news+grid+fantasy)")
+        logger.info("Registered /api/v1 routers (including drivers)")
     except Exception as e:
         logger.warning(f"Failed to register v1 routers: {e}")
 

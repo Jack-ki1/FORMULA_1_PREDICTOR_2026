@@ -60,7 +60,7 @@ class RedisCache:
         try:
             # Quick TCP connectivity check before attempting Redis connection
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
+            sock.settimeout(1)  # Reduced from 2s to 1s for faster fallback
             result = sock.connect_ex((settings.REDIS_HOST, settings.REDIS_PORT))
             sock.close()
             if result != 0:
@@ -73,10 +73,10 @@ class RedisCache:
                 db=settings.REDIS_DB,
                 password=settings.REDIS_PASSWORD,
                 decode_responses=True,
-                socket_connect_timeout=3,
-                socket_timeout=3
+                socket_connect_timeout=1,  # Reduced from 3s
+                socket_timeout=1  # Reduced from 3s
             )
-            # Test connection
+            # Test connection with short timeout
             self.client.ping()
             logger.info("Connected to Redis cache")
         except CacheError:

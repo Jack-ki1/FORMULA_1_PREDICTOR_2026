@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 import numpy as np
 
+from backend.app.config.settings import settings
 from backend.app.config.team_driver_lineup_2026 import get_all_drivers
 from backend.app.data.calendar_2026 import get_race_by_id
 from backend.app.models.prediction import Prediction
@@ -99,7 +100,7 @@ def generate_prediction(
     weather: str = "dry",
     grid_positions: Optional[Dict[str, int]] = None,
     feature_weights: Optional[Dict[str, float]] = None,
-    simulation_count: int = 10000,
+    simulation_count: int = 2000,
     ai_config: Optional[Dict[str, Any]] = None,
     **kwargs
 ) -> Dict[str, Any]:
@@ -122,7 +123,7 @@ def generate_prediction(
     weather = (weather or "dry").lower()
     weights = feature_weights or {}
     chaos_level = float(weights.get("chaos_level", 50))
-    sim_count = max(100, min(int(simulation_count or 10000), 100_000))
+    sim_count = max(100, min(int(simulation_count or 2000), settings.SIMULATION_MAX_COUNT))
 
     if not ai_config:
         ai_config = {}

@@ -1,39 +1,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+// PWA/service-worker plugin intentionally disabled (was `vite-plugin-pwa`'s VitePWA()).
+// It auto-registers a service worker on every page load with no update-prompt UI, which
+// caches the app shell + JS/CSS and stale-while-revalidates /api/v1/races and
+// /api/v1/standings for 5 minutes. During active development this reliably serves users
+// (including you, mid-testing) an old build or stale API data after a fresh deploy — the
+// exact "changes aren't showing up" / "not displaying things" symptom. Re-add deliberately,
+// later, once the app is stable and you want real offline support, with an explicit
+// "new version available, reload?" prompt (registerType: 'prompt') instead of silent
+// autoUpdate.
 
 export default defineConfig({
   plugins: [
     react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
-      manifest: {
-        name: 'F1 Predictor 2026',
-        short_name: 'F1 Predictor',
-        description: 'AI-powered Formula 1 predictions — Monte Carlo, Elo H2H, tire strategy. Frontend on 5178, API on 5000.',
-        theme_color: '#E10600',
-        background_color: '#F4F5F7',
-        display: 'standalone',
-        start_url: '/',
-        scope: '/',
-        icons: [
-          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/races') || url.pathname.startsWith('/api/v1/standings'),
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'f1-api-cache', expiration: { maxEntries: 50, maxAgeSeconds: 300 } },
-          },
-        ],
-      },
-    }),
   ],
   // Decoupled: frontend on 5178, backend on 5000. Vite proxies /api → backend for dev.
   // Note: 5178 avoids conflict with parallel workspace's 5173; use --port 5173 if free.

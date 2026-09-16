@@ -9,6 +9,21 @@
     <script>
       (function(){try{var s=localStorage.getItem('f1-theme');var t=s==='dark'?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
     </script>
+    <script>
+      // One-time cleanup: an earlier build registered a PWA service worker that's since
+      // been removed. Unregister any leftover worker and clear its caches so browsers that
+      // already installed it stop serving a stale app shell / stale cached API responses.
+      // Safe to delete this block a few weeks after deploying this fix, once you're
+      // confident no returning visitor still has the old worker installed.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((reg) => reg.unregister())
+        })
+      }
+      if ('caches' in window) {
+        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)))
+      }
+    </script>
   </head>
   <body class="bg-app">
     <div id="root"></div>

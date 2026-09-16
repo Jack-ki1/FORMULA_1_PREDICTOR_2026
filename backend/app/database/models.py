@@ -204,3 +204,61 @@ class CacheEntry(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
     source = Column(String(20), default='cached')
+
+
+class User(Base):
+    """User authentication model."""
+    __tablename__ = 'users'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(120), unique=True, nullable=False, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    full_name = Column(String(100))
+    is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
+    favorite_driver = Column(String(50))
+    favorite_team = Column(String(50))
+    theme_preference = Column(String(20), default='light')  # light, dark, auto
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login = Column(DateTime)
+    
+    # Relationships
+    predictions = relationship("UserPrediction", back_populates="user")
+    fantasy_teams = relationship("FantasyTeam", back_populates="user")
+
+
+class UserPrediction(Base):
+    """User's saved predictions."""
+    __tablename__ = 'user_predictions'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    race_id = Column(Integer, nullable=False)
+    session_type = Column(String(20), nullable=False)  # race, qualifying, practice
+    prediction_data = Column(Text, nullable=False)  # JSON string
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="predictions")
+
+
+class FantasyTeam(Base):
+    """User's fantasy team selections."""
+    __tablename__ = 'fantasy_teams'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    season = Column(Integer, nullable=False)
+    drivers = Column(Text, nullable=False)  # JSON array of driver codes
+    captain = Column(String(50))  # Captain driver code (2x points)
+    vice_captain = Column(String(50))  # Vice-captain (1.5x points)
+    total_budget = Column(Float, default=100.0)
+    remaining_budget = Column(Float, default=100.0)
+    total_points = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="fantasy_teams")

@@ -1,11 +1,9 @@
 """
-StandingsService — live-source + local-fallback pattern preserved.
+StandingsService — optimized for 2026 season with immediate local fallback.
 """
 import logging
 from typing import Dict
 from backend.app.data.season_2026 import get_driver_standings, get_constructor_standings
-from backend.app.data.jolpica_client import JolpicaClient
-from backend.app.config.settings import settings
 from backend.app.cache.redis import get_cache
 logger = logging.getLogger(__name__)
 
@@ -13,15 +11,7 @@ DRIVER_STANDINGS_KEY = "standings:drivers:2026"
 CONSTRUCTOR_STANDINGS_KEY = "standings:constructors:2026"
 
 class StandingsService:
-    """Standings with a read-through cache.
-
-    NOTE on ordering: this used to hit the network FIRST and only consult the
-    cache on the failure path, so a successful live result was re-fetched from
-    upstream on every single request (~0.45s each, plus a ~4s JolpicaClient
-    construction). The cache was written but never read on the happy path.
-    Now the cache is checked first, so a repeat visit is instant, and the
-    client is only constructed when a refresh is actually needed.
-    """
+    """Standings with cache-first approach. For 2026, uses local data immediately."""
 
     TTL = 300
 
@@ -51,32 +41,32 @@ class StandingsService:
             pass
 
     def get_driver_standings(self) -> Dict:
+        # Check cache first
         hit = self._from_cache(DRIVER_STANDINGS_KEY)
         if hit:
             return {**hit, "cache": "hit"}
-        try:
-            result = JolpicaClient().get_driver_standings(settings.SEASON_YEAR)
-            if result.get("source") in ("live", "cached") and (result.get("standings") or result.get("data")):
-                self._to_cache(DRIVER_STANDINGS_KEY, result)
-                return result
-        except Exception as e:
-            logger.warning("Live driver standings failed, fallback: %s", e)
+        
+        # For 2026, use local data immediately - no network calls
         standings = get_driver_standings()
-        return {"standings": standings, "data": standings, "source": "local"}
+        result = {"standings": standings, "data": standings, "source": "local"}
+        
+        # Cache the result
+        self._to_cache(DRIVER_STANDINGS_KEY, result)
+        return result
 
     def get_constructor_standings(self) -> Dict:
+        # Check cache first
         hit = self._from_cache(CONSTRUCTOR_STANDINGS_KEY)
         if hit:
             return {**hit, "cache": "hit"}
-        try:
-            result = JolpicaClient().get_constructor_standings()
-            if result.get("source") in ("live", "cached") and (result.get("standings") or result.get("data")):
-                self._to_cache(CONSTRUCTOR_STANDINGS_KEY, result)
-                return result
-        except Exception as e:
-            logger.warning("Live constructor standings failed, fallback: %s", e)
+        
+        # For 2026, use local data immediately - no network calls
         standings = get_constructor_standings()
-        return {"standings": standings, "data": standings, "source": "local"}
+        result = {"standings": standings, "data": standings, "source": "local"}
+        
+        # Cache the result
+        self._to_cache(CONSTRUCTOR_STANDINGS_KEY, result)
+        return result
 
 
 standings_service = StandingsService()

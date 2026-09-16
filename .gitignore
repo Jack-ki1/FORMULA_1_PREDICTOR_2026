@@ -26,6 +26,7 @@ cache/model_cache/
 .DS_Store
 .vscode/*
 !.vscode/settings.json
+*:Zone.Identifier
 
 # Build artifacts
 build/

@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from backend.app.config.settings import settings
 from backend.app import create_app
 from backend.app.data.live_updater import start_live_updater
-from backend.app.database.init import initialize_database
 
 
 def main():
@@ -26,9 +25,7 @@ def main():
     print("Initializing directories...")
     print("[OK] Directories initialized")
 
-    print("Initializing database...")
-    initialize_database()
-    print("[OK] Database initialized")
+    print("Database initialization skipped (authentication disabled)")
 
     if settings.LIVE_UPDATE_INTERVAL > 0:
         print(f"Starting live updater ({settings.LIVE_UPDATE_INTERVAL}s interval)...")
