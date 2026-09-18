@@ -38,5 +38,8 @@ export default defineConfig({
   // GitHub Pages deployment: base path set via VITE_BASE_PATH env var
   // Default to '/' for local development, override for GH Pages subpath
   base: process.env.VITE_BASE_PATH || '/',
+  define: {
+    __BASE_PATH__: JSON.stringify(process.env.VITE_BASE_PATH || '/'),
+  },
   build: { outDir: 'dist' },
 })
