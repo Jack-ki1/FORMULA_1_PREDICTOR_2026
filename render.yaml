@@ -1,35 +1,39 @@
 services:
   - type: web
     name: f1-predictor-backend
-    runtime: docker
-    # Explicit path — no longer relies on the bare "Dockerfile" default.
-    dockerfilePath: ./Dockerfile.legacy-monolith
-    dockerContext: .
+    env: docker
+    dockerfilePath: ./Dockerfile.render
     plan: free
     healthCheckPath: /health
     envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: PORT
-        value: "5000"
-      - key: DEBUG
-        value: "false"
+      # Required secrets - generate on first deploy
       - key: SECRET_KEY
         generateValue: true
-      # Free-tier Render web services have no persistent disk, so SQLite
-      # (the default DATABASE_URL) resets on every deploy/restart. Point
-      # this at a free hosted Postgres (Neon, Supabase, or Render's own
-      # Postgres) if predictions/accuracy history need to survive restarts.
+        sync: false
+      
+      # Database connection (set to your Neon/Supabase PostgreSQL URL)
       - key: DATABASE_URL
         sync: false
-      # Optional — Redis is not required (see "Data & cache" above).
-      - key: REDIS_HOST
+      
+      # CORS - set to your GitHub Pages URL after deployment
+      - key: FRONTEND_ORIGIN
         sync: false
-      - key: REDIS_PORT
-        sync: false
-      - key: REDIS_PASSWORD
-        sync: false
-      # Restrict CORS to the deployed frontend once you know its domain
-      # (Option B path above).
-      - key: CORS_ORIGINS
-        sync: false
+      
+      # Production settings
+      - key: ENVIRONMENT
+        value: production
+      
+      # Cache configuration - use in-memory fallback (no Redis on free tier)
+      - key: REDIS_REQUIRED
+        value: "false"
+      
+      - key: ENABLE_IN_MEMORY_FALLBACK
+        value: "true"
+      
+      # Optional: live data update interval (seconds)
+      - key: LIVE_UPDATE_INTERVAL
+        value: "300"
+      
+      # Debug mode (should be false in production)
+      - key: DEBUG
+        value: "false"

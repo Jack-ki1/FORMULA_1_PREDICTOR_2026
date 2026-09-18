@@ -35,13 +35,30 @@ class DatabaseConnection:
         # Import Base here to avoid circular import
         from backend.app.database.models import Base
         
-        self.engine = create_engine(
-            self.database_url,
-            echo=settings.DEBUG,
-            pool_pre_ping=True,  # Verify connections before using
-            pool_size=5,
-            max_overflow=10,
-        )
+        # Determine if we're using SQLite or PostgreSQL
+        is_sqlite = self.database_url.startswith('sqlite')
+        
+        # Configure engine based on database type
+        engine_kwargs = {
+            'echo': settings.DEBUG,
+            'pool_pre_ping': True,  # Verify connections before using
+        }
+        
+        # SQLite-specific settings (not applicable to PostgreSQL)
+        if is_sqlite:
+            engine_kwargs.update({
+                'pool_size': 5,
+                'max_overflow': 10,
+                'connect_args': {'check_same_thread': False}  # SQLite threading workaround
+            })
+        else:
+            # PostgreSQL uses different pool defaults
+            engine_kwargs.update({
+                'pool_size': 10,  # Higher default for Postgres
+                'max_overflow': 20,
+            })
+        
+        self.engine = create_engine(self.database_url, **engine_kwargs)
         
         self.SessionLocal = scoped_session(
             sessionmaker(

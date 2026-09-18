@@ -17,6 +17,9 @@ pydantic-settings>=2.0.0
 
 # --- Database (raw SQLAlchemy — no Flask-SQLAlchemy/Flask-Migrate/alembic in use) ---
 SQLAlchemy>=2.0.0
+# PostgreSQL driver - required when DATABASE_URL uses postgresql:// scheme
+# (SQLite works without this, but managed Postgres on Neon/Supabase needs it)
+psycopg2-binary>=2.9
 
 # --- Auth (security/auth.py — PyJWT, not the unrelated "jwt" package) ---
 PyJWT>=2.8.0

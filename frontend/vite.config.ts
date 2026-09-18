@@ -35,6 +35,8 @@ export default defineConfig({
       '/openapi.json': { target: 'http://localhost:5000', changeOrigin: true },
     },
   },
-  base: '/',
+  // GitHub Pages deployment: base path set via VITE_BASE_PATH env var
+  // Default to '/' for local development, override for GH Pages subpath
+  base: process.env.VITE_BASE_PATH || '/',
   build: { outDir: 'dist' },
 })

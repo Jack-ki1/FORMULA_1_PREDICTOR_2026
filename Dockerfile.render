@@ -1,0 +1,46 @@
+# Optimized Dockerfile for Render deployment (API-only, no frontend)
+# This is faster than Dockerfile.legacy-monolith because it skips the Node.js build stage
+# Frontend is deployed separately to GitHub Pages
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies.
+# gcc/g++: build a couple of ML wheels that don't ship manylinux binaries.
+# curl: container HEALTHCHECK.
+# libpango/libcairo/libgdk-pixbuf/shared-mime-info/fonts-liberation: WeasyPrint
+#   (reports/pdf_generator.py) needs these at *runtime*, not just build time —
+#   without them, PDF export 500s the first time anyone requests one.
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libcairo2 \
+    libffi-dev \
+    shared-mime-info \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy only backend code (skip frontend directory entirely)
+COPY backend/ ./backend/
+
+# Create cache directories
+RUN mkdir -p cache/api_responses cache/fastf1_cache cache/model_cache
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+# HOST and PORT are injected by Render at runtime - don't hardcode defaults here
+# The app reads them from environment in backend/main.py
+
+# Expose port (Render will override with its own PORT env var)
+EXPOSE 5000
+
+# Run the application
+CMD ["python", "backend/main.py"]

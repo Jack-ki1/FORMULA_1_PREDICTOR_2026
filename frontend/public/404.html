@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>F1 Predictor 2026</title>
+  <script type="text/javascript">
+    // Single Page Apps for GitHub Pages
+    // https://github.com/rafgraph/spa-github-pages
+    // 
+    // This script takes the current URL and converts it to a query string
+    // that can be used by the client-side router to restore the correct route.
+    // 
+    // For example, if you navigate to:
+    // https://username.github.io/FORMULA_1_PREDICTOR_2026/dashboard
+    // 
+    // This script will redirect to:
+    // https://username.github.io/FORMULA_1_PREDICTOR_2026/?p=/dashboard
+    // 
+    // The client-side router (React Router) will then read the 'p' parameter
+    // and navigate to the correct route without requiring server-side rewrites.
+    
+    var segmentCount = 0; // Number of path segments to strip (0 for root, 1 for /repo-name/)
+    
+    // Detect if we're on GitHub Pages with a subpath
+    var location = window.location;
+    var pathname = location.pathname;
+    
+    // If we're not at the root and there's no query string, redirect with the path as a parameter
+    if (pathname !== '/' && !location.search) {
+      // Strip the leading slash and encode the path
+      var path = pathname.substring(1);
+      
+      // For GitHub Pages repos, we need to account for the repo name in the path
+      // e.g., /FORMULA_1_PREDICTOR_2026/dashboard -> dashboard
+      var parts = path.split('/');
+      if (parts.length > 1 && parts[0] === 'FORMULA_1_PREDICTOR_2026') {
+        // Remove the repo name from the path
+        parts.shift();
+        path = parts.join('/');
+      }
+      
+      // Redirect to index.html with the path as a query parameter
+      location.replace(
+        location.protocol + '//' + location.host + location.pathname.split('/').slice(0, -1).join('/') + '/?p=/' + path
+      );
+    }
+  </script>
+</head>
+<body>
+  <!-- This page is only shown briefly before redirecting to index.html -->
+  <p>Redirecting...</p>
+</body>
+</html>

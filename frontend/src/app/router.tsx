@@ -40,4 +40,8 @@ export const router = createBrowserRouter([
       { path:'settings', element:<Lazy label="Settings"><SettingsPage /></Lazy>},
     ]
   }
-])
+], {
+  // GitHub Pages deployment: use Vite's BASE_URL (matches the `base` config in vite.config.ts)
+  // This ensures all routes resolve correctly under the subpath (e.g., /FORMULA_1_PREDICTOR_2026/)
+  basename: import.meta.env.BASE_URL
+})

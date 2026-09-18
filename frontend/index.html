@@ -37,6 +37,34 @@
         navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()))
       }
     </script>
+    <!-- GitHub Pages SPA fallback: restore route from ?p= query parameter -->
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      // 
+      // This script reads the 'p' query parameter (set by 404.html redirect)
+      // and tells React Router to navigate to that path instead of '/'.
+      // Without this, refreshing on /dashboard would always show the home page.
+      
+      (function(l) {
+        if (l.search[1] === '?' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          
+          // Check if we have a 'p' parameter with a path
+          var params = new URLSearchParams(l.search);
+          var path = params.get('p');
+          
+          if (path) {
+            // Replace the URL without reload so React Router can handle it
+            window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + path + l.hash
+            );
+          }
+        }
+      }(window.location))
+    </script>
   </head>
   <body class="bg-app">
     <div id="root"></div>
