@@ -1,1 +1,0 @@
-export function DisplayPreferencesPanel({ prefs, onChange }:any){ return <div className="card p-4"><div className="font-bold">Display Preferences</div><label className="flex gap-2 fs-11"><input type="checkbox" checked={!!prefs?.compact} onChange={e=>onChange({...prefs,compact:e.target.checked})} /> Compact grid</label></div>}

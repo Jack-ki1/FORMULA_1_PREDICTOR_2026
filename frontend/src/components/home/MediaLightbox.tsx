@@ -1,15 +1,15 @@
 import { useState } from 'react'
 
 const GALLERY = [
-  { src: '/media/p1.png', label: 'P1' },
-  { src: '/media/p2.png', label: 'P2' },
-  { src: '/media/p3.png', label: 'P3' },
-  { src: '/media/podium_all.png', label: 'Podium' },
-  { src: '/media/racer1.png', label: 'Racer 1' },
-  { src: '/media/racer2.png', label: 'Racer 2' },
-  { src: '/media/racer3.png', label: 'Racer 3' },
-  { src: '/media/circuit1.png', label: 'Circuit 1' },
-  { src: '/media/circuit2.png', label: 'Circuit 2' },
+  { src: '/media/p1.webp', label: 'P1' },
+  { src: '/media/p2.webp', label: 'P2' },
+  { src: '/media/p3.webp', label: 'P3' },
+  { src: '/media/podium_all.webp', label: 'Podium' },
+  { src: '/media/racer1.webp', label: 'Racer 1' },
+  { src: '/media/racer2.webp', label: 'Racer 2' },
+  { src: '/media/racer3.webp', label: 'Racer 3' },
+  { src: '/media/circuit1.webp', label: 'Circuit 1' },
+  { src: '/media/circuit2.webp', label: 'Circuit 2' },
 ]
 
 export function MediaLightbox() {

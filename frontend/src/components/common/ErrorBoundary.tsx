@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="fs-11 text-sub mb-4">
             {this.state.error?.message || 'An unexpected error occurred while rendering this section.'}
           </div>
-          <button className="btn btn-sm" onClick={this.reset}>Try again</button>
+          <button className="btn-ghost" onClick={this.reset}>Try again</button>
         </div>
       )
     }

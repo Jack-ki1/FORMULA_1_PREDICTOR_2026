@@ -17,9 +17,9 @@ export function GarageSection() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <img src="/media/f1_cartoon.png" alt="F1 cartoon" loading="lazy" className="rounded-xl object-cover h-48 w-full shadow-lg" />
-          <img src="/media/sunset_race.png" alt="Sunset race" loading="lazy" className="rounded-xl object-cover h-48 w-full shadow-lg" />
-          <img src="/media/night_race.png" alt="Night race" loading="lazy" className="rounded-xl object-cover h-40 w-full shadow-lg col-span-2" />
+          <img src="/media/f1_cartoon.webp" alt="F1 cartoon" loading="lazy" className="rounded-xl object-cover h-48 w-full shadow-lg" />
+          <img src="/media/sunset_race.webp" alt="Sunset race" loading="lazy" className="rounded-xl object-cover h-48 w-full shadow-lg" />
+          <img src="/media/night_race.webp" alt="Night race" loading="lazy" className="rounded-xl object-cover h-40 w-full shadow-lg col-span-2" />
         </div>
       </div>
     </section>

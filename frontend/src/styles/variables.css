@@ -1,7 +1,91 @@
-@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap');
+
 :root {
-  --red: #E10600; --red-dark: #B80500; --red-tint: #FDEDEC; --bg: #F4F5F7; --surface: #FFFFFF; --surface-alt: #EEF0F3; --border: #E3E5EA; --text: #15151E; --sub: #6B7280; --muted: #9AA0AC; --navy: #16233F; --navy-light: #22345A; --purple: #9D4EDD; --purple-tint: #F4EBFC; --green: #1DA36B; --amber: #D97B0A; --gridline: #ECEDF1;
+  /* --- Core palette (overridable live from Settings > Appearance) --- */
+  --red: #E10600; --red-dark: #B80500; --red-tint: #FDEDEC;
+  --bg: #F4F5F7; --surface: #FFFFFF; --surface-alt: #EEF0F3; --border: #E3E5EA;
+  --text: #15151E; --sub: #6B7280; --muted: #9AA0AC;
+  --navy: #16233F; --navy-light: #22345A;
+  --purple: #9D4EDD; --purple-tint: #F4EBFC;
+  --green: #1DA36B; --amber: #D97B0A; --blue: #2563EB;
+  --gridline: #ECEDF1;
+
+  /* Semantic status — consistent across every page instead of ad hoc hexes */
+  --success: #16a34a; --success-tint: #ecfdf3;
+  --warning: #d97706; --warning-tint: #fffbeb;
+  --danger: #dc2626; --danger-tint: #fef2f2;
+  --info: #2563eb; --info-tint: #eff6ff;
+
+  /* --- Scales --- */
+  --font-scale: 1;
+  --radius-base: 12px;
+  --radius-sm: calc(var(--radius-base) * 0.5);
+  --radius-lg: calc(var(--radius-base) * 1.4);
+  --radius-full: 999px;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 18, 26, 0.06);
+  --shadow-md: 0 8px 24px rgba(15, 18, 26, 0.08);
+  --shadow-lg: 0 20px 50px rgba(15, 18, 26, 0.16);
+
+  --ease: cubic-bezier(.4,0,.2,1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 400ms;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Titillium Web', var(--font-sans);
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --nav-height: 60px;
 }
+
 [data-theme="dark"] {
-  --red: #FF3B30; --red-dark: #E8002D; --red-tint: rgba(255,59,48,0.14); --bg: #0A0C10; --surface: #15181F; --surface-alt: #1C2028; --border: #2B3039; --text: #F1F2F5; --sub: #9BA2AF; --muted: #6B7280; --navy: #0D1526; --navy-light: #16233F; --purple: #B983F2; --purple-tint: rgba(157,78,221,0.2); --green: #2ECC8F; --amber: #F0A93B; --gridline: #2B3039;
+  --red: #FF3B30; --red-dark: #E8002D; --red-tint: rgba(255,59,48,0.14);
+  --bg: #0A0C10; --surface: #15181F; --surface-alt: #1C2028; --border: #2B3039;
+  --text: #F1F2F5; --sub: #9BA2AF; --muted: #6B7280;
+  --navy: #0D1526; --navy-light: #16233F;
+  --purple: #B983F2; --purple-tint: rgba(157,78,221,0.2);
+  --green: #2ECC8F; --amber: #F0A93B;
+  --gridline: #2B3039;
+  --success: #2ECC8F; --success-tint: rgba(46,204,143,0.12);
+  --warning: #F0A93B; --warning-tint: rgba(240,169,59,0.12);
+  --danger: #FF5C5C; --danger-tint: rgba(255,92,92,0.12);
+  --info: #5B9CFF; --info-tint: rgba(91,156,255,0.12);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,0.55);
 }
+
+/* --- Density --- */
+[data-density="compact"] {
+  --space-3: 8px; --space-4: 12px; --space-5: 14px; --space-6: 16px; --space-8: 22px;
+}
+
+/* --- Accessibility --- */
+[data-reduced-motion="true"] *, [data-reduced-motion="true"] *::before, [data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+[data-dyslexia-font="true"] { --font-sans: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif; --font-display: 'Atkinson Hyperlegible', var(--font-sans); }
+
+[data-underline-links="true"] a:not(.no-underline) { text-decoration: underline; text-underline-offset: 3px; }
+
+[data-high-contrast="true"] {
+  --border: #6b7280; --sub: #3f4552;
+}
+[data-high-contrast="true"][data-theme="dark"] {
+  --border: #8b94a3; --sub: #cfd4dc; --text: #ffffff;
+}
+[data-high-contrast="true"] .card, [data-high-contrast="true"] .f1-input, [data-high-contrast="true"] .f1-select {
+  border-width: 2px !important;
+}
+[data-high-contrast="true"] :focus-visible { outline: 3px solid var(--red) !important; outline-offset: 2px; }

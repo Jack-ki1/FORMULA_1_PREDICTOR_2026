@@ -8,32 +8,32 @@ export const F1_MEDIA = {
     dusk: "/media/Formula_One_race_at_dusk_1.mp4",
   },
   hero: {
-    poster: "/media/night_race.png",
-    sunset: "/media/sunset_race.png",
-    cartoon: "/media/f1_cartoon.png",
+    poster: "/media/night_race.webp",
+    sunset: "/media/sunset_race.webp",
+    cartoon: "/media/f1_cartoon.webp",
   },
   circuits: {
-    albertPark: "/media/circuit1.png",
-    monza: "/media/circuit2.png",
+    albertPark: "/media/circuit1.webp",
+    monza: "/media/circuit2.webp",
   },
   podium: {
-    p1: "/media/p1.png",
-    p2: "/media/p2.png",
-    p3: "/media/p3.png",
-    all: "/media/podium_all.png",
+    p1: "/media/p1.webp",
+    p2: "/media/p2.webp",
+    p3: "/media/p3.webp",
+    all: "/media/podium_all.webp",
   },
   racers: {
-    r1: "/media/racer1.png",
-    r2: "/media/racer2.png",
-    r3: "/media/racer3.png",
+    r1: "/media/racer1.webp",
+    r2: "/media/racer2.webp",
+    r3: "/media/racer3.webp",
   },
   garage: {
-    carParts: "/media/car_parts.png",
-    simulation: "/media/f1_simulation.png",
-    pitStop: "/media/pit_stop.jpg",
+    carParts: "/media/car_parts.webp",
+    simulation: "/media/f1_simulation.webp",
+    pitStop: "/media/pit_stop.webp",
   },
   gallery: [
-    "/media/p1.png","/media/p2.png","/media/p3.png","/media/podium_all.png",
-    "/media/racer1.png","/media/racer2.png","/media/racer3.png","/media/circuit1.png","/media/circuit2.png"
+    "/media/p1.webp","/media/p2.webp","/media/p3.webp","/media/podium_all.webp",
+    "/media/racer1.webp","/media/racer2.webp","/media/racer3.webp","/media/circuit1.webp","/media/circuit2.webp"
   ],
 } as const;

@@ -15,7 +15,7 @@ export function H2HPage(){
   }, [drivers])
   const racerImg = (code:string) => {
     const idx = (code.charCodeAt(0) + (code.charCodeAt(1)||0)) % 3
-    return ['/media/racer1.png','/media/racer2.png','/media/racer3.png'][idx]
+    return ['/media/racer1.webp','/media/racer2.webp','/media/racer3.webp'][idx]
   }
   const pctA = mut.data ? (mut.data.win_probability*100) : 50
   const pctB = mut.data ? (mut.data.reverse_probability*100) : 50
@@ -40,12 +40,12 @@ export function H2HPage(){
       {/* Hero */}
       <div className="card p-0 overflow-hidden">
         <div className="grid md:grid-cols-2 gap-0">
-          <img src="/media/racer1.png" alt="Duel" loading="lazy" className="w-full h-44 object-cover" />
+          <img src="/media/racer1.webp" alt="Duel" loading="lazy" className="w-full h-44 object-cover" />
           <div className="p-6">
             <h2 className="f1-display text-xl font-black">Head-to-Head — 2026 Duel</h2>
-            <p className="fs-11 text-sub mt-1">Elo 400-pt divisor + wet/consistency. 15+ plots, green Run, accuracy via <code className="f1-mono">/api/v1/h2h/compare</code>.</p>
+            <p className="fs-11 text-sub mt-1">Elo rating model (400-point divisor) blended with wet-weather skill and consistency.</p>
             <div className="flex gap-2 mt-3">
-              <span className="badge">Elo 400</span><span className="badge">15+ charts</span><span className="badge">2026 Active aero</span>
+              <span className="badge badge-neutral">Elo 400</span><span className="badge badge-neutral">16 charts</span><span className="badge badge-neutral">2026 Active aero</span>
             </div>
           </div>
         </div>
@@ -57,9 +57,9 @@ export function H2HPage(){
         <div className="grid sm:grid-cols-3 gap-3">
           <select value={a} onChange={e=>setA(e.target.value)} className="f1-select"><option value="">Driver A</option>{(drivers||[]).map((d:any)=><option key={d.code} value={d.code}>{d.code} — {d.name} ({d.team_id})</option>)}</select>
           <select value={b} onChange={e=>setB(e.target.value)} className="f1-select"><option value="">Driver B</option>{(drivers||[]).map((d:any)=><option key={d.code} value={d.code}>{d.code} — {d.name} ({d.team_id})</option>)}</select>
-          <button onClick={()=> mut.mutate({a,b})} disabled={!a||!b||mut.isPending} className="btn-primary disabled:opacity-50" style={{ background:'#16a34a', borderColor:'#16a34a'}}>{mut.isPending? 'Calculating…':'Compare — Elo (Green)'}</button>
+          <button onClick={()=> mut.mutate({a,b})} disabled={!a||!b||mut.isPending} className="btn-primary disabled:opacity-50" style={{ background:'#16a34a', borderColor:'#16a34a'}}>{mut.isPending? 'Calculating…':'Compare Drivers'}</button>
         </div>
-        <div className="fs-11 text-sub mt-2">Accuracy: Elo expected score = 1/(1+10^((Rb-Ra)/400)). Try VER vs HAM, NOR vs PIA.</div>
+        <div className="fs-11 text-sub mt-2">Uses the Elo expected-score formula: 1/(1+10^((Rb-Ra)/400)). Try VER vs HAM, or NOR vs PIA.</div>
       </div>
 
       {mut.data && (
@@ -84,7 +84,7 @@ export function H2HPage(){
                   <div className="h-full" style={{ width:`${pctA}%`, background: driverMap[mut.data.driver_a.code]?.team_color||'#16a34a'}} />
                   <div className="h-full" style={{ width:`${pctB}%`, background: driverMap[mut.data.driver_b.code]?.team_color||'#3671C6'}} />
                 </div>
-                <div className="fs-11 text-sub mt-1">Elo win prob via <code className="f1-mono">/api/v1/h2h/compare</code> — accuracy: {(Math.abs(pctA-50)/50).toFixed(2)} delta</div>
+                <div className="fs-11 text-sub mt-1">Win probability from the Elo model · <code className="f1-mono">/api/v1/h2h/compare</code></div>
               </div>
             </div>
             <div className="card p-4 text-center">
@@ -205,7 +205,7 @@ export function H2HPage(){
                 <tr><td>Team</td><td>{aData?.team_name}</td><td>{bData?.team_name}</td><td>{aData?.team_id===bData?.team_id?'Teammates':'Rivals'}</td></tr>
               </tbody></table>
               <div className="mt-3 p-3 surface-alt rounded-lg fs-11">
-                <strong>Idea:</strong> Add qualifying head-to-head (Q1/Q2/Q3), race pace delta, tyre deg edge, and predict next duel via <code className="f1-mono">POST /api/v1/predictions</code> with both drivers' grid P1 vs P2. Accuracy shown as Elo delta; green Run validates.
+                Elo is a relative rating: the gap between two drivers' ratings converts directly into a win probability, independent of anyone else in the field. A 100-point Elo gap is roughly a 64/36 split; 400 points is roughly 91/9.
               </div>
             </div>
             {/* 16 extra */}
@@ -219,9 +219,9 @@ export function H2HPage(){
       {mut.isError && <div className="card p-4 text-red border-red/30">Error: {(mut.error as any).message}</div>}
       {!mut.data && !mut.isError && (
         <div className="card p-6 text-center">
-          <img src="/media/racer3.png" alt="Racers" className="w-32 h-32 mx-auto rounded-full object-cover opacity-60" loading="lazy" />
-          <div className="f1-display font-bold mt-3">Pick two drivers to duel</div>
-          <p className="fs-11 text-sub mt-1">16 plots — accuracy via Elo 400, green Run button, history, radar, scatter, bubble.</p>
+          <img src="/media/racer3.webp" alt="Racers" className="w-32 h-32 mx-auto rounded-full object-cover opacity-60" loading="lazy" />
+          <div className="f1-display font-bold mt-3">Pick two drivers to compare</div>
+          <p className="fs-11 text-sub mt-1">16 charts — win probability, form history, radar, scatter, and more, all from live Elo ratings.</p>
         </div>
       )}
     </div>

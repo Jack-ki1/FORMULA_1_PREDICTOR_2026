@@ -1,0 +1,192 @@
+/* ==========================================================================
+   COMPONENT LAYER — redesign pass.
+   Loaded after variables.css + legacy.css so these rules win the cascade
+   without needing to touch every call site across 7 pages. New, previously
+   nonexistent components (nav drawer, settings shell, switches, kbd, icon
+   sizing) live here too.
+   ========================================================================== */
+
+html { font-size: calc(16px * var(--font-scale, 1)); }
+body { font-family: var(--font-sans); }
+.f1-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+.f1-mono { font-family: var(--font-mono); }
+
+/* ---- Surfaces ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+}
+.card-hover:hover { border-color: color-mix(in srgb, var(--red) 35%, var(--border)); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.card-elevated { box-shadow: var(--shadow-md); }
+
+/* ---- Buttons ---- */
+.btn-primary, .btn-ghost, .btn-outline, .btn-danger, .btn-icon {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  font-family: var(--font-sans); cursor: pointer; white-space: nowrap;
+  border-radius: var(--radius-sm); font-size: 0.8125rem;
+}
+.btn-primary {
+  background: var(--red); color: #fff; font-weight: 700;
+  padding: .65rem 1.15rem;
+  box-shadow: 0 1px 0 rgba(0,0,0,.08), 0 6px 16px -6px color-mix(in srgb, var(--red) 55%, transparent);
+  transition: background-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.btn-primary:hover { background: var(--red-dark); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0) scale(.98); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.btn-ghost {
+  background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 600;
+  padding: .6rem 1.05rem;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.btn-ghost:hover { background: var(--surface-alt); border-color: var(--muted); }
+
+.btn-outline {
+  background: transparent; border: 1.5px solid var(--red); color: var(--red); font-weight: 700;
+  padding: .55rem 1rem;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.btn-outline:hover { background: var(--red); color: #fff; }
+
+.btn-danger {
+  background: var(--danger-tint); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); color: var(--danger); font-weight: 700;
+  padding: .55rem 1rem;
+}
+.btn-danger:hover { background: var(--danger); color: #fff; }
+
+.btn-icon {
+  width: 38px; height: 38px; padding: 0; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.btn-icon:hover { background: var(--surface-alt); }
+.btn-icon.is-active { background: var(--red-tint); border-color: var(--red); color: var(--red); }
+
+/* ---- Inputs ---- */
+.f1-input, .f1-select {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius-sm); padding: .55rem .75rem; font-size: 0.8125rem;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  width: 100%;
+}
+.f1-input:focus, .f1-select:focus {
+  outline: none; border-color: var(--red);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent);
+}
+.f1-range { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--surface-alt); outline: none; }
+.f1-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--red); border: 2px solid var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer;
+}
+.f1-range::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%; background: var(--red); border: 2px solid var(--surface); cursor: pointer;
+}
+
+/* ---- Switch (refined) ---- */
+.f1-switch {
+  --w: 42px; --h: 24px;
+  width: var(--w); height: var(--h); border-radius: var(--h);
+  background: var(--border); position: relative; flex-shrink: 0;
+  transition: background-color var(--dur-fast) var(--ease);
+  border: none; cursor: pointer;
+}
+.f1-switch .knob {
+  position: absolute; top: 3px; left: 3px; width: calc(var(--h) - 6px); height: calc(var(--h) - 6px);
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.f1-switch.is-on { background: var(--red); }
+.f1-switch.is-on .knob { transform: translateX(calc(var(--w) - var(--h))); }
+.f1-switch:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---- Badges / pills / tier tags ---- */
+.badge { display: inline-flex; align-items: center; gap: .3rem; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: .22rem .55rem; border-radius: var(--radius-full); }
+.badge-live { background: var(--success-tint); color: var(--success); }
+.badge-planned { background: var(--warning-tint); color: var(--warning); }
+.badge-admin { background: var(--info-tint); color: var(--info); }
+.badge-neutral { background: var(--surface-alt); color: var(--sub); border: 1px solid var(--border); }
+
+/* ---- Keyboard shortcut key ---- */
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: 5px; border: 1px solid var(--border); border-bottom-width: 2px;
+  background: var(--surface-alt); font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text);
+}
+
+/* ---- Icon sizing (used with the inline SVG set in components/icons) ---- */
+.icon { width: 18px; height: 18px; display: inline-block; flex-shrink: 0; }
+.icon-sm { width: 14px; height: 14px; }
+.icon-lg { width: 22px; height: 22px; }
+
+/* ==========================================================================
+   NAVIGATION — sticky bar + mobile drawer
+   ========================================================================== */
+.f1-nav { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--surface) 92%, transparent); border-bottom: 1px solid var(--border); backdrop-filter: blur(10px); height: var(--nav-height); }
+.f1-nav-logo { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--red); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; flex-shrink: 0; font-family: var(--font-display); }
+.f1-nav-link { display: inline-flex; align-items: center; gap: .4rem; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .035em; color: var(--sub); padding: .4rem .2rem; border-bottom: 2px solid transparent; transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.f1-nav-link:hover { color: var(--text); }
+.f1-nav-link.is-active { color: var(--red); border-color: var(--red); }
+
+.nav-desktop-links { display: none; }
+.nav-hamburger { display: inline-flex; }
+@media (min-width: 900px) {
+  .nav-desktop-links { display: flex; }
+  .nav-hamburger { display: none; }
+}
+
+.nav-drawer-backdrop { position: fixed; inset: 0; background: rgba(10,12,16,.55); z-index: 60; animation: fade-in var(--dur-base) var(--ease); }
+.nav-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(85vw, 320px); background: var(--surface); z-index: 61; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; padding: var(--space-4); gap: var(--space-2); animation: drawer-in var(--dur-base) var(--ease); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: .4; } to { transform: translateX(0); opacity: 1; } }
+.nav-drawer-link { display: flex; align-items: center; gap: .65rem; padding: .8rem .9rem; border-radius: var(--radius-sm); font-weight: 700; font-size: .9rem; color: var(--text); }
+.nav-drawer-link.is-active { background: var(--red-tint); color: var(--red); }
+.nav-drawer-link:not(.is-active):hover { background: var(--surface-alt); }
+
+/* ==========================================================================
+   SETTINGS SHELL — sidebar + content, used only by pages/Settings
+   ========================================================================== */
+.settings-shell { display: grid; grid-template-columns: 1fr; gap: var(--space-4); align-items: start; }
+@media (min-width: 960px) { .settings-shell { grid-template-columns: 248px 1fr; gap: var(--space-6); } }
+
+.settings-sidebar { display: flex; flex-direction: row; overflow-x: auto; gap: 4px; padding: 6px; }
+@media (min-width: 960px) {
+  .settings-sidebar { flex-direction: column; position: sticky; top: calc(var(--nav-height) + 16px); overflow-x: visible; }
+}
+.settings-nav-item {
+  display: flex; align-items: center; gap: .65rem; padding: .65rem .8rem; border-radius: var(--radius-sm);
+  font-size: .82rem; font-weight: 700; color: var(--sub); white-space: nowrap; text-align: left;
+  border: 1px solid transparent;
+}
+.settings-nav-item:hover { background: var(--surface-alt); color: var(--text); }
+.settings-nav-item.is-active { background: var(--red-tint); color: var(--red); border-color: color-mix(in srgb, var(--red) 30%, transparent); }
+.settings-nav-item .count { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--surface-alt); color: var(--sub); }
+.settings-nav-item.is-active .count { background: var(--red); color: #fff; }
+
+.setting-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4);
+  padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border);
+  transition: border-color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.setting-row.is-dirty { border-color: var(--warning); background: var(--warning-tint); }
+.setting-row .setting-control { width: min(280px, 45%); flex-shrink: 0; }
+@media (max-width: 640px) { .setting-row { flex-direction: column; } .setting-row .setting-control { width: 100%; } }
+
+/* ==========================================================================
+   MISC UTILITIES
+   ========================================================================== */
+.skeleton { background: linear-gradient(90deg, var(--surface-alt) 25%, var(--border) 37%, var(--surface-alt) 63%); background-size: 400% 100%; animation: skeleton-sweep 1.4s ease infinite; border-radius: var(--radius-sm); }
+@keyframes skeleton-sweep { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+.divider { height: 1px; background: var(--border); border: none; }
+.text-sub { color: var(--sub); }
+
+/* Reduce-data mode (Settings > Advanced > "Reduce data usage") replaces the
+   decorative hero videos with their static poster images for people on slow
+   or metered connections — the video is hidden, and a matching <img> (added
+   as a sibling, class .hp-hero-poster-fallback) is shown in its place. */
+[data-reduce-data="true"] .hp-hero-video { display: none !important; }
+.hp-hero-poster-fallback { display: none; }
+[data-reduce-data="true"] .hp-hero-poster-fallback { display: block !important; }

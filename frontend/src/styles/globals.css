@@ -1,10 +1,11 @@
 @import './variables.css';
 @import './legacy.css';
+@import './components.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 * { box-sizing: border-box; }
-html, body { background: var(--bg); color: var(--text); font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font-sans); }
 
 /* ==========================================================================
    HOME PAGE — hero, countdown, stat ticker, feature grid, checkered divider

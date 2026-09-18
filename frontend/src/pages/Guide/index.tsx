@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 type GuideSection = 'getting-started' | 'predictions' | 'standings' | 'h2h' | 'fantasy' | 'models' | 'settings' | 'faq'
 
@@ -611,17 +612,17 @@ export function GuidePage() {
       {/* Hero Section */}
       <div className="card p-0 overflow-hidden">
         <div className="grid md:grid-cols-2 gap-0">
-          <img src="/media/f1_simulation.png" alt="F1 Simulation" loading="lazy" className="w-full h-56 object-cover" />
+          <img src="/media/f1_simulation.webp" alt="F1 Simulation" loading="lazy" className="w-full h-56 object-cover" />
           <div className="p-6 flex flex-col justify-center">
             <h1 className="f1-display text-2xl font-black">User Guide</h1>
             <p className="fs-11 text-sub mt-2">
               Everything you need to know about F1 Predictor 2026. From making your first prediction to advanced model tuning.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className="badge">Monte Carlo Powered</span>
-              <span className="badge">22 Drivers</span>
-              <span className="badge">23 Races</span>
-              <span className="badge">Real-time Data</span>
+              <span className="badge badge-neutral">Monte Carlo Powered</span>
+              <span className="badge badge-neutral">22 Drivers</span>
+              <span className="badge badge-neutral">23 Races</span>
+              <span className="badge badge-neutral">Real-time Data</span>
             </div>
           </div>
         </div>
@@ -634,11 +635,8 @@ export function GuidePage() {
             <button
               key={sectionId}
               onClick={() => setActiveSection(sectionId)}
-              className={`px-4 py-2 rounded-full fs-11 font-bold transition-colors ${
-                activeSection === sectionId
-                  ? 'bg-black text-white'
-                  : 'bg-white border hover:bg-black/5'
-              }`}
+              className={`btn-ghost !py-2 !px-4 fs-11 ${activeSection === sectionId ? 'is-active' : ''}`}
+              style={activeSection === sectionId ? { background: 'var(--red-tint)', borderColor: 'var(--red)', color: 'var(--red)' } : {}}
             >
               <span className="mr-1">{sections[sectionId].icon}</span>
               {sections[sectionId].title}
@@ -656,11 +654,11 @@ export function GuidePage() {
       <div className="card p-4">
         <div className="fs-11 font-bold mb-2">Quick Links</div>
         <div className="flex flex-wrap gap-2 fs-11">
-          <a href="/dashboard" className="px-3 py-1 rounded-full bg-black/5 hover:bg-black/10">→ Go to Predictions</a>
-          <a href="/standings" className="px-3 py-1 rounded-full bg-black/5 hover:bg-black/10">→ View Standings</a>
-          <a href="/h2h" className="px-3 py-1 rounded-full bg-black/5 hover:bg-black/10">→ Compare Drivers</a>
-          <a href="/fantasy" className="px-3 py-1 rounded-full bg-black/5 hover:bg-black/10">→ Build Fantasy Team</a>
-          <a href="/settings" className="px-3 py-1 rounded-full bg-black/5 hover:bg-black/10">→ Open Settings</a>
+          <Link to="/dashboard" className="btn-ghost !py-1.5 !px-3">→ Go to Predictions</Link>
+          <Link to="/standings" className="btn-ghost !py-1.5 !px-3">→ View Standings</Link>
+          <Link to="/h2h" className="btn-ghost !py-1.5 !px-3">→ Compare Drivers</Link>
+          <Link to="/fantasy" className="btn-ghost !py-1.5 !px-3">→ Build Fantasy Team</Link>
+          <Link to="/settings" className="btn-ghost !py-1.5 !px-3">→ Open Settings</Link>
         </div>
       </div>
     </div>

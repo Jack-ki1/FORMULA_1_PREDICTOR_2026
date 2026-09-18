@@ -5,23 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>F1 Predictor 2026</title>
     <meta name="description" content="AI-powered Formula 1 predictions for the 2026 season — race, qualifying and practice forecasts built on a real prediction engine.">
-    <script src="https://js.puter.com/v2/"></script>
+    <!--
+      The Puter.js AI script (js.puter.com) used to be loaded here unconditionally for
+      every visitor on every page, even though the AI assistant sidebar already lazy-loads
+      the same script itself the first time someone opens it (see
+      features/ai-assistant/AISidebar.tsx). Loading it twice — once eagerly, once on
+      demand — bought nothing; removed the eager copy. The on-demand loader is the only
+      one left.
+    -->
     <script>
-      (function(){try{var s=localStorage.getItem('f1-theme');var t=s==='dark'?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+      // Apply theme before first paint to avoid a flash of the wrong theme.
+      // Reads the same 'f1-preferences-v3' object the app's preferences store uses
+      // (see features/preferences/store.ts) so this stays in sync with Settings.
+      (function(){
+        try{
+          var raw = localStorage.getItem('f1-preferences-v3');
+          var mode = raw ? (JSON.parse(raw).appearance || {}).themeMode : null;
+          var resolved = mode === 'dark' ? 'dark'
+            : mode === 'light' ? 'light'
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', resolved);
+        }catch(e){}
+      })();
     </script>
     <script>
-      // One-time cleanup: an earlier build registered a PWA service worker that's since
-      // been removed. Unregister any leftover worker and clear its caches so browsers that
-      // already installed it stop serving a stale app shell / stale cached API responses.
-      // Safe to delete this block a few weeks after deploying this fix, once you're
-      // confident no returning visitor still has the old worker installed.
+      // Safety net kept from the previous build: the PWA plugin that used to auto-register
+      // a service worker is disabled (see vite.config.ts), but a visitor with that old
+      // worker still cached in their browser from before it was disabled would otherwise
+      // keep getting served a stale app shell after this deploy. No-op for everyone else.
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((regs) => {
-          regs.forEach((reg) => reg.unregister())
-        })
-      }
-      if ('caches' in window) {
-        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)))
+        navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()))
       }
     </script>
   </head>

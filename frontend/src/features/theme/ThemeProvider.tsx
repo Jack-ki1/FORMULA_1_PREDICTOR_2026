@@ -1,7 +1,12 @@
-import { createContext, useEffect, useState } from 'react'
-export const ThemeCtx = createContext<{theme:string; toggle:()=>void}>({theme:'light', toggle:()=>{}})
-export function ThemeProvider({children}:{children:any}){
-  const [theme,setTheme]=useState(localStorage.getItem('f1-theme')||'light')
-  useEffect(()=>{ document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('f1-theme', theme)},[theme])
-  return <ThemeCtx.Provider value={{theme, toggle:()=> setTheme(theme==='dark'?'light':'dark')}}>{children}</ThemeCtx.Provider>
+import { useEffect } from 'react'
+import { usePreferences, applyPreferencesToDocument } from '../preferences/store'
+
+// Thin wrapper now — the preferences store is the single source of truth for
+// theme + colors + accessibility flags (see features/preferences/store.ts).
+// This component's only job is to re-apply document attributes whenever
+// preferences change (it already applies once at import time for first paint).
+export function ThemeProvider({ children }: { children: any }) {
+  const prefs = usePreferences((s: any) => s.prefs)
+  useEffect(() => { applyPreferencesToDocument(prefs) }, [prefs])
+  return children
 }

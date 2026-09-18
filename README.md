@@ -41,12 +41,13 @@ F1 Predictor 2026 is a cutting-edge web application that provides AI-powered pre
 **Frontend:**
 - React 18 + TypeScript
 - Vite (build tool)
-- Zustand (state management)
+- A small hand-rolled store (`stores/create.ts`, `useSyncExternalStore`-based) — not Zustand; no such dependency is installed
 - Chart.js (visualizations)
 - Tailwind CSS (styling)
 
 **Backend:**
 - Python 3.11+
+- **uv** - Ultra-fast Python package installer and resolver (10-100x faster than pip)
 - FastAPI (REST API)
 - SQLAlchemy (database ORM)
 - NumPy/Pandas (numerical computing)
@@ -918,148 +919,512 @@ All errors follow this format:
 
 ## Running Guidelines
 
+### ⚡ Quick Start (TL;DR)
+
+Get up and running in under 5 minutes:
+
+```bash
+# 1. Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Clone and setup
+git clone <repository-url> && cd FORMULA_1_PREDICTOR_2026
+cp .env.example .env
+
+# 3. Backend setup with uv
+cd backend && uv venv && source .venv/bin/activate
+uv pip install -e "..[dev]"
+python main.py  # Terminal 1 - runs on port 5000
+
+# 4. Frontend setup
+cd ../frontend && npm install
+npm run dev     # Terminal 2 - runs on port 5178
+
+# 5. Open http://localhost:5178 in your browser
+```
+
+---
+
 ### Prerequisites
 
-**Required Software**:
-- Python 3.11+
-- Node.js 18+
-- npm or yarn
-- Redis 7+ (optional, for caching)
-- Docker & Docker Compose (optional, for containerized deployment)
+Before running the project, ensure you have the following installed:
 
-**System Requirements**:
-- CPU: 2+ cores (4+ recommended for fast simulations)
-- RAM: 4GB minimum, 8GB recommended
-- Storage: 2GB free space
-- OS: Linux/macOS/Windows
+**Required:**
+- **Python 3.11+**: [Download from python.org](https://www.python.org/downloads/)
+- **Node.js 20+ and npm 10+**: [Download from nodejs.org](https://nodejs.org/)
+- **uv**: Ultra-fast Python package installer and resolver ([Install uv](https://docs.astral.sh/uv/getting-started/installation/))
+  ```bash
+  # macOS (Homebrew)
+  brew install uv
+  
+  # Linux/macOS (curl)
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  
+  # Windows (PowerShell)
+  powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+  
+  # Verify installation
+  uv --version
+  ```
 
 ---
 
-### Quick Start (Development)
+### Why We Use uv
 
-#### Option 1: Manual Setup
+This project uses **uv** instead of traditional pip for Python dependency management. Here's why:
 
-**Terminal 1 - Backend**:
+#### Benefits of uv:
+
+1. **⚡ Blazing Fast**: 10-100x faster than pip for dependency resolution and installation
+   - Fresh install: ~2-5 seconds vs 30-60 seconds with pip
+   - Cached installs: Near-instantaneous
+
+2. **🔒 Deterministic Builds**: Uses lock files for reproducible environments
+   - Same dependencies across all machines
+   - No "works on my machine" issues
+
+3. **🎯 Better Dependency Resolution**: Automatically resolves conflicts
+   - Smart conflict detection and resolution
+   - Clear error messages when conflicts occur
+
+4. **💾 Disk Space Efficient**: Shared cache across all projects
+   - Single copy of each package version
+   - Significant disk space savings for multiple projects
+
+5. **🔄 Seamless Virtual Environment Management**: Built-in venv support
+   - `uv venv` creates environments instantly
+   - Automatic Python version management
+
+6. **🛠️ Modern Tooling**: Actively maintained with regular updates
+   - Compatible with existing Python workflows
+   - Drop-in replacement for pip, pip-tools, virtualenv
+
+#### Migration from pip:
+
+If you're coming from a pip-based workflow:
+
 ```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
-
-# Install dependencies
+# Old way (slow)
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
-# Set environment variables
-export DATABASE_URL=sqlite:///./f1_predictor.db
-export REDIS_URL=redis://localhost:6379
-export SECRET_KEY=your-secret-key-here
+# New way with uv (fast!)
+uv venv
+source .venv/bin/activate
+uv pip install -e "..[dev]"
 
-# Run migrations (if using Alembic)
-alembic upgrade head
-
-# Start server
-python main.py
+# Speed comparison:
+# pip:  ~30-60 seconds
+# uv:   ~2-5 seconds (10-30x faster!)
 ```
 
-Backend runs at: `http://localhost:5000`
+The project configuration is in [`pyproject.toml`](pyproject.toml), which replaces the need for separate `requirements.txt` files. All dependencies are managed through this single file.
 
-**Terminal 2 - Frontend**:
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-```
-
-Frontend runs at: `http://localhost:5173`
+**Optional (for production deployment):**
+- Docker Engine 20+ and Docker Compose v2
+- Redis Server (optional - app falls back to in-memory cache if unavailable)
 
 ---
 
-#### Option 2: Docker Compose (Recommended)
+### Quick Start (Development Mode)
+
+The fastest way to get started is using `uv` for backend dependencies and npm for frontend:
+
+#### Step 1: Clone and Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd FORMULA_1_PREDICTOR_2026
+
+# Copy environment configuration
+cp .env.example .env
+
+# Edit .env if needed (optional - defaults work for local development)
+nano .env  # or use your preferred editor
+```
+
+#### Step 2: Backend Setup with uv
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Create virtual environment using uv (fast!)
+uv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+.venv\Scripts\activate
+
+# Install all dependencies using uv (10-100x faster than pip!)
+uv pip install -e "..[dev]"
+
+# Alternative: If you prefer installing from pyproject.toml directly
+uv sync
+
+# Verify installation
+python -c "import fastapi; print('Backend dependencies installed successfully')"
+```
+
+**Why uv?**
+- ⚡ **10-100x faster** than pip for dependency resolution and installation
+- 🔒 **Deterministic builds** with lock file support
+- 🎯 **Better dependency resolution** - avoids conflicts automatically
+- 💾 **Disk space efficient** - shared cache across projects
+- 🔄 **Seamless virtual environment management**
+
+#### Step 3: Frontend Setup
+
+```bash
+# Navigate to frontend directory
+cd ../frontend
+
+# Install Node.js dependencies
+npm install
+
+# Verify installation
+npm run build  # Should complete without errors
+```
+
+#### Step 4: Run Both Services
+
+**Terminal 1 - Backend (FastAPI):**
+```bash
+# Make sure you're in the backend directory with venv activated
+cd backend
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+
+# Start the backend server
+python main.py
+
+# You should see:
+# ============================================================
+# F1 PREDICTOR 2026 — FastAPI minimal
+# ============================================================
+# Starting FastAPI server on 0.0.0.0:5000...
+# INFO:     Uvicorn running on http://0.0.0.0:5000
+```
+
+**Terminal 2 - Frontend (Vite + React):**
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Start the development server with hot-reload
+npm run dev
+
+# You should see:
+# VITE v8.0.0  ready in xxx ms
+# ➜  Local:   http://localhost:5178/
+# ➜  Network: use --host to expose
+```
+
+#### Step 5: Access the Application
+
+Open your browser and navigate to:
+- **Frontend (UI)**: http://localhost:5178
+- **Backend API**: http://localhost:5000
+- **API Documentation**: http://localhost:5000/docs (Swagger UI)
+- **Health Check**: http://localhost:5000/health
+
+---
+
+### Alternative: Using Docker (Production-Like Environment)
+
+If you prefer containerized deployment or want to match production exactly:
 
 ```bash
 # Build and start all services
 docker compose up --build -d
 
 # View logs
-docker compose logs -f
+docker compose logs -f backend
+docker compose logs -f frontend
 
 # Stop services
 docker compose down
+
+# Rebuild after code changes
+docker compose up --build
 ```
 
-Services:
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:5000`
-- Redis: `localhost:6379`
-- Database: `localhost:5432` (PostgreSQL)
+**Access points remain the same:**
+- Frontend: http://localhost:5178
+- Backend: http://localhost:5000
 
 ---
 
-### Production Deployment
+### Development Workflow Tips
 
-#### Docker Production Build
+#### Hot Reload & Auto-Refresh
 
-```bash
-# Build optimized images
-docker compose -f docker-compose.prod.yml build
+Both services support hot reloading:
+- **Backend**: Code changes auto-reload (Uvicorn watch mode)
+- **Frontend**: Vite HMR (Hot Module Replacement) - instant updates without page refresh
 
-# Deploy
-docker compose -f docker-compose.prod.yml up -d
+#### Working with Virtual Environments
 
-# Scale backend workers
-docker compose up -d --scale backend=3
-```
-
-#### Vercel (Frontend) + Railway (Backend)
-
-**Frontend (Vercel)**:
-```bash
-cd frontend
-vercel deploy --prod
-```
-
-**Backend (Railway)**:
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Deploy
-railway up
-```
-
-Set environment variables in Railway dashboard:
-- `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string
-- `SECRET_KEY`: Random 32-char string
-- `CORS_ORIGINS`: Your frontend URL
-
----
-
-### Testing
-
-**Backend Tests**:
+**Activate venv:**
 ```bash
 cd backend
-pytest tests/ -v
+source .venv/bin/activate  # macOS/Linux
+.venv\Scripts\activate     # Windows
 ```
 
-**Frontend Tests**:
+**Deactivate venv:**
+```bash
+deactivate
+```
+
+**Check active Python:**
+```bash
+which python  # macOS/Linux
+where python  # Windows
+# Should point to backend/.venv/bin/python
+```
+
+**Add new dependencies:**
+```bash
+# Add a new package to pyproject.toml dependencies
+# Then reinstall:
+uv pip install -e "..[dev]"
+
+# Or add directly with uv:
+uv pip install <package-name>
+```
+
+**Update dependencies:**
+```bash
+uv pip install --upgrade -e "..[dev]"
+```
+
+#### Running Tests
+
+**Backend tests:**
+```bash
+cd backend
+source .venv/bin/activate
+pytest app/tests/ -v
+```
+
+**Frontend tests:**
 ```bash
 cd frontend
 npm test
 ```
 
-**Integration Tests**:
+#### Database Management
+
+The app uses SQLite by default (no setup required):
 ```bash
-# Run full stack tests
-python test_integration.py
+# Database file location
+backend/f1_predictions.db
+
+# To use PostgreSQL instead:
+# 1. Install PostgreSQL
+# 2. Update .env:
+DATABASE_URL=postgresql://user:pass@localhost:5432/f1_predictor
+# 3. Restart backend
 ```
+
+#### Cache Management
+
+Redis is optional - the app gracefully falls back to in-memory caching:
+
+**Without Redis (default):**
+```bash
+# Just run normally - uses DictCache automatically
+python backend/main.py
+```
+
+**With Redis (recommended for production):**
+```bash
+# Install Redis
+brew install redis        # macOS
+sudo apt install redis    # Ubuntu
+
+# Start Redis
+redis-server
+
+# Configure in .env:
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Start backend - will connect to Redis automatically
+python backend/main.py
+```
+
+---
+
+### Common Commands Reference
+
+#### Backend Commands
+
+```bash
+# Navigate to backend
+cd backend
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Start server
+python main.py
+
+# Run with custom host/port
+HOST=0.0.0.0 PORT=8000 python main.py
+
+# Enable debug mode
+DEBUG=true python main.py
+
+# Check dependencies
+uv pip list
+
+# Export current environment (if needed)
+uv pip freeze > requirements.txt
+```
+
+#### Frontend Commands
+
+```bash
+# Navigate to frontend
+cd frontend
+
+# Development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Lint code
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Run tests
+npm test
+```
+
+---
+
+### Troubleshooting Common Issues
+
+#### Issue 1: "uv: command not found"
+
+**Solution:**
+```bash
+# Install uv first
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add to PATH (macOS/Linux)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Verify
+uv --version
+```
+
+#### Issue 2: Virtual environment activation fails
+
+**Solution:**
+```bash
+# Recreate virtual environment
+cd backend
+rm -rf .venv
+uv venv
+source .venv/bin/activate
+uv pip install -e "..[dev]"
+```
+
+#### Issue 3: Port already in use
+
+**Solution:**
+```bash
+# Find process using port 5000 or 5178
+lsof -i :5000  # macOS/Linux
+netstat -ano | findstr :5000  # Windows
+
+# Kill the process
+kill -9 <PID>
+
+# Or use different ports:
+PORT=8000 python backend/main.py  # Backend on 8000
+npm run dev -- --port 3000        # Frontend on 3000
+```
+
+#### Issue 4: ModuleNotFoundError after adding dependencies
+
+**Solution:**
+```bash
+cd backend
+source .venv/bin/activate
+uv pip install -e "..[dev]"
+# Restart the backend server
+```
+
+#### Issue 5: Frontend can't connect to backend
+
+**Solution:**
+1. Ensure backend is running on port 5000
+2. Check CORS settings in `.env`:
+   ```bash
+   FRONTEND_ORIGIN=http://localhost:5178
+   ```
+3. Restart backend after changing .env
+4. Check browser console for CORS errors
+
+---
+
+### Performance Tips
+
+#### Faster Dependency Installation
+
+Using `uv` vs traditional `pip`:
+```bash
+# Traditional pip (slow)
+pip install -r requirements.txt
+# Takes: ~30-60 seconds
+
+# uv (fast!)
+uv pip install -e "..[dev]"
+# Takes: ~2-5 seconds (10-30x faster!)
+```
+
+#### Optimizing Development
+
+1. **Use separate terminals** for backend and frontend
+2. **Keep venv activated** in backend terminal to avoid reactivation
+3. **Use tmux/screen** for managing multiple terminals
+4. **Enable Redis** for better caching in development
+5. **Use SQLite** for faster local development (PostgreSQL for production)
+
+#### Production Optimization
+
+See [Deployment](#deployment) section for production-specific optimizations including:
+- Gunicorn workers configuration
+- Redis clustering
+- CDN for static assets
+- Database connection pooling
+
+---
+
+### Next Steps
+
+Once your development environment is running:
+
+1. **Explore the Dashboard**: http://localhost:5178/dashboard
+2. **Adjust Settings**: http://localhost:5178/settings
+3. **Read the User Guide**: http://localhost:5178/guide
+4. **Try API Endpoints**: http://localhost:5000/docs
+5. **Check Project Structure**: See [Folder Structure](#folder-structure) section
+
+For detailed configuration options, see [Configuration & Customization](#configuration--customization).
 
 ---
 

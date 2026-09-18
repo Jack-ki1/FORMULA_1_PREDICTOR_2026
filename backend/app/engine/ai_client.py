@@ -6,16 +6,15 @@ import logging
 import requests
 import json
 from typing import Dict, Any, Optional
-from backend.app.ai.provider import AIProviderManager
 
 logger = logging.getLogger(__name__)
 
 
 class AIClient:
     """Client for AI/LLM providers to enhance predictions and chat."""
-    
+
     def __init__(self):
-        self.provider_manager = AIProviderManager()
+        pass
     
     def _determine_provider(self, model: str) -> str:
         """Determine provider from model name."""
@@ -210,31 +209,25 @@ class AIClient:
         context: Dict[str, Any] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Call the Multi-Agent Pit Wall system to analyze a 'What-If' scenario.
-        
-        Args:
-            query: Natural language scenario (e.g., "What happens if a Safety Car deploys on Lap 24?")
-            context: Additional context like race_id, session_type, current_grid, etc.
-        
-        Returns:
-            Dictionary with analysis results and broadcast-style narrative.
+        Placeholder for a "Multi-Agent Pit Wall" what-if scenario feature.
+
+        This used to import `backend.app.ai.provider.AIProviderManager` at
+        module load time. That module was never actually committed to the
+        repository, so the import failed every time this file loaded —
+        which, because Python imports are eager, took down the *entire*
+        `/api/v1` router registration in backend/app/__init__.py (predictions,
+        standings, h2h, fantasy, settings — everything), silently, caught by
+        a broad `except Exception` that only logged a warning. No route
+        anywhere in the backend or frontend actually calls this method
+        (verified with a repo-wide search), so the safest fix was to drop the
+        dead import rather than build a real implementation for a feature
+        with no caller and no defined contract. If this feature is wanted,
+        implement `AIProviderManager` in `backend/app/ai/provider.py` first,
+        following the same "real provider, no fabricated output" pattern as
+        `call_ai()` below, then re-add the call site here.
         """
-        try:
-            result = self.provider_manager.call_multi_agent(query, context)
-            
-            if result.get("success"):
-                return {
-                    "result": result["result"],
-                    "provider": result["provider"],
-                    "timestamp": result.get("timestamp", "")
-                }
-            else:
-                logger.error(f"Multi-Agent Pit Wall failed: {result.get('error', 'Unknown error')}")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Multi-Agent Pit Wall call failed: {e}")
-            return None
+        logger.info("call_multi_agent() is not implemented — no caller currently reaches this method.")
+        return None
     
     def get_prediction_insights(
         self,

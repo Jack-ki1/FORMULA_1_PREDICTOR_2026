@@ -44,9 +44,10 @@ export function HomePage() {
     <div>
       {/* ---------- HERO — Monaco video ---------- */}
       <section className="hp-hero relative overflow-hidden">
-        <video autoPlay muted loop playsInline preload="metadata" poster="/media/night_race.png" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true">
+        <video autoPlay muted loop playsInline preload="metadata" poster="/media/night_race.webp" className="hp-hero-video absolute inset-0 w-full h-full object-cover" aria-hidden="true">
           <source src="/media/F1_monaco.mp4" type="video/mp4" />
         </video>
+        <img src="/media/night_race.webp" alt="" className="hp-hero-poster-fallback absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" aria-hidden="true" />
         <div className="hp-hero-grid-bg" aria-hidden="true" />
         <div className="hp-hero-glow" aria-hidden="true" />
@@ -83,9 +84,10 @@ export function HomePage() {
 
       {/* ========== NEW: Cinematic Dusk Break — uses the OTHER video ========== */}
       <section className="relative overflow-hidden" style={{ minHeight:'420px'}}>
-        <video autoPlay muted loop playsInline preload="metadata" poster="/media/sunset_race.png" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true">
+        <video autoPlay muted loop playsInline preload="metadata" poster="/media/sunset_race.webp" className="hp-hero-video absolute inset-0 w-full h-full object-cover" aria-hidden="true">
           <source src="/media/Formula_One_race_at_dusk_1.mp4" type="video/mp4" />
         </video>
+        <img src="/media/sunset_race.webp" alt="" className="hp-hero-poster-fallback absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
         <div className="absolute inset-0" style={{ background:'linear-gradient(90deg, rgba(10,12,16,0.88) 0%, rgba(10,12,16,0.55) 55%, rgba(10,12,16,0.75) 100%)'}} aria-hidden="true" />
         <div className="relative px-4 sm:px-8 py-12 sm:py-16 grid lg:grid-cols-2 gap-8 items-center">
           <div>
@@ -143,8 +145,8 @@ export function HomePage() {
       <section className="px-4 sm:px-8 py-8">
         <div className="navy-panel p-6 rounded-xl">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="f1-display text-xl font-bold" style={{ color:'#fff'}}>Prediction Playground — touch the model</h2>
-            <span className="px-3 py-1 rounded-full bg-white text-black fs-11 font-bold">No login · 4 races</span>
+            <h2 className="f1-display text-xl font-bold" style={{ color:'#fff'}}>Prediction Playground — a preview of the format</h2>
+            <span className="px-3 py-1 rounded-full bg-white text-black fs-11 font-bold">Illustrative · 4 races</span>
           </div>
           <div className="grid lg:grid-cols-[240px_1fr] gap-4 mt-5">
             <div className="space-y-2">
@@ -173,7 +175,7 @@ export function HomePage() {
                   )
                 })}
               </div>
-              <div className="fs-11 text-sub mt-3">This is the same Monte Carlo that powers <Link to="/dashboard" className="underline" style={{ color:'var(--red)'}}>Dashboard</Link> — just smaller. Chaos 50 → 30% uniform blend.</div>
+              <div className="fs-11 text-sub mt-3">Sample numbers to show the format — open the <Link to="/dashboard" className="underline" style={{ color:'var(--red)'}}>Dashboard</Link> to run the real Monte Carlo engine on live data.</div>
             </div>
           </div>
         </div>
@@ -197,7 +199,7 @@ export function HomePage() {
           ].map(t=> (
             <Link key={t.id} to="/teams" className="card p-3 min-w-[180px] snap-start hover:shadow-lg transition-shadow">
               <div className="h-1 rounded-full" style={{ background: t.color}} />
-              <img src="/media/car_parts.png" alt={t.name} className="w-full h-14 object-contain mt-2" loading="lazy" />
+              <img src="/media/car_parts.webp" alt={t.name} className="w-full h-14 object-contain mt-2" loading="lazy" />
               <div className="f1-display font-black text-sm mt-2">{t.name}</div>
               <div className="fs-11 text-sub">{t.note}</div>
             </Link>
@@ -226,7 +228,7 @@ export function HomePage() {
             <div className="space-y-2 mt-3">
               {liveNews.length? liveNews.map((n:any,i:number)=> (
                 <a key={i} href={n.url} target="_blank" rel="noreferrer" className="flex gap-3 p-2 rounded-lg hover:bg-black/5 transition-colors">
-                  <img src={n.image||'/media/circuit1.png'} alt="" className="w-16 h-12 object-cover rounded" loading="lazy" />
+                  <img src={n.image||'/media/circuit1.webp'} alt="" className="w-16 h-12 object-cover rounded" loading="lazy" />
                   <div className="min-w-0"><div className="fs-11 font-bold line-clamp-1">{n.title}</div><div className="fs-11 text-sub line-clamp-1">{n.source} · {n.date}</div></div>
                 </a>
               )) : <div className="fs-11 text-sub p-4 text-center">Loading news via <code className="f1-mono">/api/v1/news</code>…</div>}

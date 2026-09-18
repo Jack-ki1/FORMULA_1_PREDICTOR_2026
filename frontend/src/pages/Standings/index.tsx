@@ -2,12 +2,16 @@ import { useDriverStandings, useConstructorStandings } from '../../hooks/useStan
 import { useDrivers } from '../../hooks/useH2H'
 import { TeamStripe } from '../../components/shared/TeamStripe'
 import { F1Chart } from '../../components/charts/F1Chart'
+import { Icon } from '../../components/icons/Icon'
+import { usePreferences } from '../../features/preferences/store'
 import { useMemo, useState } from 'react'
 
 export function StandingsPage(){
   const {data: drivers, isLoading: ld} = useDriverStandings()
   const {data: constructors, isLoading: lc} = useConstructorStandings()
   const {data: allDrivers} = useDrivers()
+  const favoriteDriverCode = usePreferences((s: any) => s.prefs.profile.favoriteDriverCode)
+  const compactTables = usePreferences((s: any) => s.prefs.dashboardLayout.compactTables)
   const [tab, setTab] = useState<'drivers'|'constructors'>('drivers')
   const [round, setRound] = useState<number>(14)
   const [showAll, setShowAll] = useState(false)
@@ -79,7 +83,7 @@ export function StandingsPage(){
           {[top3[1], top3[0], top3[2]].map((d:any,i:number)=>{
             const rank = [2,1,3][i]
             const code = d.driver_code||d.code
-            const img = rank===1 ? '/media/p1.png' : rank===2 ? '/media/p2.png' : '/media/p3.png'
+            const img = rank===1 ? '/media/p1.webp' : rank===2 ? '/media/p2.webp' : '/media/p3.webp'
             const isFirst = rank===1
             return (
               <div key={code} className="card overflow-hidden text-center group hover:shadow-xl transition-shadow" style={{ borderTop: `4px solid ${colorByCode[code]||tc(d.team)}`, transform: isFirst ? 'scale(1.05)' : 'none' }}>
@@ -100,10 +104,10 @@ export function StandingsPage(){
         </div>
       )}
 
-      {/* Trust note — chart count raised */}
+      {/* Data source note */}
       <div className="card p-3 flex items-center gap-2" style={{ borderLeft:'4px solid #16a34a'}}>
         <span className="w-2 h-2 rounded-full animate-pulse" style={{ background:'#16a34a'}} />
-        <span className="fs-11"><strong>Trust:</strong> 5 core charts are real (Jolpica/local), 7 more behind toggle are deterministic (no Math.random). Every panel now tells you its source.</span>
+        <span className="fs-11"><strong>Data source:</strong> the 5 charts below use live standings data. The 7 additional charts behind "Show all" are derived from those same standings for extra context — not a separate live feed.</span>
         <button onClick={()=> setShowAll(!showAll)} className="ml-auto btn-ghost text-xs">{showAll? 'Show 5 core' : 'Show all 12'}</button>
       </div>
 
@@ -175,16 +179,16 @@ export function StandingsPage(){
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-4">
           <div className="f1-display font-bold mb-2">Driver Table — 23 · dynamic</div>
-          {ld? 'Loading…': <div className="overflow-x-auto"><table className="f1-table w-full"><thead><tr><th>#</th><th>Driver</th><th>Pts</th><th>W</th><th>P</th><th>Gap</th></tr></thead><tbody>{driverList.map((d:any,i:number)=> {
+          {ld? 'Loading…': <div className="overflow-x-auto"><table className={`f1-table w-full ${compactTables ? "compact" : ""}`}><thead><tr><th>#</th><th>Driver</th><th>Pts</th><th>W</th><th>P</th><th>Gap</th></tr></thead><tbody>{driverList.map((d:any,i:number)=> {
             const code = d.driver_code||d.code
             const gap = i===0? '—' : `-${(driverList[0].points||0)-(d.points||0)}`
-            return <tr key={code||i} className={i===0?'bg-yellow-50/80 font-bold': i<3?'bg-yellow-50/50':''}><td>{d.position||i+1}</td><td className="flex items-center gap-2"><TeamStripe color={colorByCode[code]} />{d.driver_name||d.name||code} <span className="fs-11 text-sub">{d.team}</span></td><td className="f1-mono font-black">{d.points??'-'}</td><td className="f1-mono">{d.wins??0}</td><td className="f1-mono">{d.podiums??0}</td><td className="fs-11 text-sub">{gap}</td></tr>
+            const isFavorite = favoriteDriverCode && code === favoriteDriverCode
+            return <tr key={code||i} className={i===0?'bg-yellow-50/80 font-bold': i<3?'bg-yellow-50/50':''}><td>{d.position||i+1}</td><td className="flex items-center gap-2"><TeamStripe color={colorByCode[code]} />{isFavorite && <Icon name="fantasy" className="icon-sm" style={{ color: 'var(--red)' }} />}{d.driver_name||d.name||code} <span className="fs-11 text-sub">{d.team}</span></td><td className="f1-mono font-black">{d.points??'-'}</td><td className="f1-mono">{d.wins??0}</td><td className="f1-mono">{d.podiums??0}</td><td className="fs-11 text-sub">{gap}</td></tr>
           })}</tbody></table></div>}
         </div>
         <div className="card p-4">
-          <div className="f1-display font-bold mb-2">Constructor Table — 11 · fixed mapping</div>
-          {lc? 'Loading…': <div className="overflow-x-auto"><table className="f1-table w-full"><thead><tr><th>#</th><th>Team</th><th>Pts</th><th>W</th><th>P</th><th>Form</th></tr></thead><tbody>{constructorList.slice(0,11).map((t:any,i:number)=> <tr key={t.team||i}><td>{t.position||i+1}</td><td className="flex items-center gap-2"><span className="team-bar" style={{background: tc(t.team)}} />{t.name} {['audi','cadillac'].includes((t.team||'').toLowerCase()) && <span className="badge">2026 NEW</span>}</td><td className="f1-mono font-bold">{t.points??'-'}</td><td className="f1-mono">{t.wins??0}</td><td className="f1-mono">{t.podiums??0}</td><td><span className="w-12 h-1.5 bg-black/10 rounded-full inline-block overflow-hidden"><span className="h-full block" style={{width: `${Math.min(100, (t.points||0)/6)}%`, background: tc(t.team)}} /></span></td></tr>)}</tbody></table></div>}
-          <div className="fs-11 text-sub mt-2">Constructors now correctly show team_id→team mapping — previously `t.team` was undefined for `team_id` payload.</div>
+          <div className="f1-display font-bold mb-2">Constructor Table</div>
+          {lc? 'Loading…': <div className="overflow-x-auto"><table className={`f1-table w-full ${compactTables ? "compact" : ""}`}><thead><tr><th>#</th><th>Team</th><th>Pts</th><th>W</th><th>P</th><th>Form</th></tr></thead><tbody>{constructorList.slice(0,11).map((t:any,i:number)=> <tr key={t.team||i}><td>{t.position||i+1}</td><td className="flex items-center gap-2"><span className="team-bar" style={{background: tc(t.team)}} />{t.name} {['audi','cadillac'].includes((t.team||'').toLowerCase()) && <span className="badge badge-neutral">2026 NEW</span>}</td><td className="f1-mono font-bold">{t.points??'-'}</td><td className="f1-mono">{t.wins??0}</td><td className="f1-mono">{t.podiums??0}</td><td><span className="w-12 h-1.5 bg-black/10 rounded-full inline-block overflow-hidden"><span className="h-full block" style={{width: `${Math.min(100, (t.points||0)/6)}%`, background: tc(t.team)}} /></span></td></tr>)}</tbody></table></div>}
         </div>
       </div>
     </div>

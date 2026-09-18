@@ -22,7 +22,7 @@ function priceForTeam(power:number): number {
 }
 function driverImg(code:string){
   const idx = (code.charCodeAt(0) + (code.charCodeAt(1)||0)) % 3
-  return ['/media/racer1.png','/media/racer2.png','/media/racer3.png'][idx]
+  return ['/media/racer1.webp','/media/racer2.webp','/media/racer3.webp'][idx]
 }
 
 export function FantasyPage(){
@@ -171,7 +171,7 @@ export function FantasyPage(){
             {predError && <div className="fs-11 text-amber-600 mt-1">Prediction fallback: {predError}</div>}
           </div>
           <div className="lg:col-span-2 relative min-h-[280px] bg-black">
-            <img src="/media/podium_all.png" alt="Fantasy" className="absolute inset-0 w-full h-full object-cover opacity-60" loading="lazy" />
+            <img src="/media/podium_all.webp" alt="Fantasy" className="absolute inset-0 w-full h-full object-cover opacity-60" loading="lazy" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
               <div className="f1-display font-bold">Your Team at a glance</div>

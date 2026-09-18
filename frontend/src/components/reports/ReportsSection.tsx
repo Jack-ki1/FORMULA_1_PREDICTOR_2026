@@ -46,7 +46,7 @@ export function ReportsSection({ currentRaceId, currentPredictions }: { currentR
       {/* Hero - compact variant */}
       <div className="card p-0 overflow-hidden">
         <div className="grid md:grid-cols-2 gap-0">
-          <img src="/media/pit_stop.jpg" alt="Pit stop" loading="lazy" className="w-full h-48 object-cover" />
+          <img src="/media/pit_stop.webp" alt="Pit stop" loading="lazy" className="w-full h-48 object-cover" />
           <div className="p-5">
             <h3 className="f1-display font-bold">Export from Dashboard</h3>
             <p className="text-sub fs-11 mt-1">Run Monte Carlo above, then export below without leaving the page. Also saved to <code className="f1-mono">localStorage f1-last-prediction</code>.</p>
@@ -87,7 +87,7 @@ export function ReportsSection({ currentRaceId, currentPredictions }: { currentR
       {/* 2026 template mini */}
       <div className="card p-0 overflow-hidden">
         <div className="grid md:grid-cols-3 gap-0">
-          <img src="/media/podium_all.png" alt="Podium" loading="lazy" className="w-full h-36 object-cover" />
+          <img src="/media/podium_all.webp" alt="Podium" loading="lazy" className="w-full h-36 object-cover" />
           <div className="p-5 md:col-span-2">
             <div className="f1-display font-bold">2026 Race Sheet — New Template</div>
             <p className="fs-11 text-sub mt-1">Sustainable fuel era, active aero, 30kg lighter. PDF now includes <strong>Straight/Corner mode splits</strong>, <strong>Overtake Mode eligibility</strong>, and <strong>PU deploy map</strong>.</p>
@@ -110,7 +110,7 @@ export function ReportsSection({ currentRaceId, currentPredictions }: { currentR
           <li>Choose format — <code className="f1-mono">POST /api/v1/reports/export</code> returns <code>csv</code>/<code>pdf</code> as download or <code>json</code>/<code>share</code> as JSON</li>
           <li>PDF uses <code>WeasyPrint</code> (lazy import) — fallback is raw HTML if not installed</li>
         </ol>
-        <img src="/media/circuit1.png" alt="Circuit" loading="lazy" className="w-full h-24 object-cover rounded-lg mt-4 opacity-60" />
+        <img src="/media/circuit1.webp" alt="Circuit" loading="lazy" className="w-full h-24 object-cover rounded-lg mt-4 opacity-60" />
       </div>
     </div>
   )
