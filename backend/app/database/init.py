@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from backend.app.database.models import Base
 from backend.app.config.settings import Settings
 from backend.app.services.auth_service import create_admin_user, get_user_by_email
-from backend.app.database.connection import SessionLocal
+from backend.app.database.connection import db as db_connection
 
 settings = Settings()
 
@@ -27,7 +27,7 @@ def initialize_database():
 
 def seed_initial_data():
     """Seed initial data including admin user."""
-    db = SessionLocal()
+    db = db_connection.get_session()
     try:
         # Check if admin already exists
         admin_email = os.getenv('ADMIN_EMAIL', 'admin@f1predictor.com')
