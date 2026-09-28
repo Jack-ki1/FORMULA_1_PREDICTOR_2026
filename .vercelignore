@@ -1,0 +1,75 @@
+# Vercel deployment - ignore build artifacts and sensitive files
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Database files (SQLite not compatible with Vercel)
+*.db
+*.sqlite
+*.sqlite3
+f1_predictions.db
+
+# Cache directories (Vercel has ephemeral filesystem)
+cache/
+backend/cache/
+frontend/dist/
+
+# Environment files (use Vercel Environment Variables UI)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker (not needed for Vercel)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+
+# Render/Railway configs (using Vercel instead)
+render.yaml
+
+# Documentation (optional - include if you want)
+# docs/
+# *.md
+
+# Scripts (not needed in production)
+scripts/
+
+# Training data (too large for Vercel)
+training/
+
+# Git
+.git/
+.gitignore

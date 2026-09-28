@@ -1809,25 +1809,252 @@ def predict_race(params):
 
 ## Deployment Guide
 
-**🚀 YES - This project is FULLY ready for production deployment!**
+**🚀 This project is ready for Vercel deployment!**
 
-The codebase includes everything needed for live deployment:
-- ✅ Production-ready Docker configuration
-- ✅ FastAPI with Uvicorn (ASGI server)
-- ✅ Environment variable management
-- ✅ Redis caching with graceful fallback
-- ✅ PostgreSQL/SQLite database support
-- ✅ Health check endpoints
-- ✅ CORS configuration
-- ✅ Security headers and rate limiting
-- ✅ Prometheus metrics
-- ✅ Static file serving for React frontend
+See [VERCEL.md](VERCEL.md) for complete deployment instructions.
+
+### Quick Deploy
+
+1. Set up PostgreSQL database (Supabase or Neon - both free)
+2. Push code to GitHub
+3. Import repository on [vercel.com](https://vercel.com)
+4. Configure environment variables in Vercel dashboard
+5. Deploy!
+
+### Why Vercel?
+
+✅ Zero configuration with `vercel.json`  
+✅ Frontend + Backend in one deployment  
+✅ Automatic HTTPS and global CDN  
+✅ Free tier available ($0/month)  
+✅ Instant rollbacks and preview deployments  
+
+### Requirements
+
+- PostgreSQL database (SQLite not compatible with serverless)
+- Environment variables configured
+- ~5 minutes setup time
+
+See [VERCEL.md](VERCEL.md) for detailed steps.
+
+---
+
+## 🆕 Vercel Deployment (NEW - 2026)
+
+**Vercel now supports full-stack monorepo deployment with Python FastAPI backends!** 
+
+Thanks to **Vercel Services** (launched June 2026), you can deploy both frontend and backend in a single project with automatic routing.
+
+### Why Vercel?
+
+✅ **Zero Configuration**: Automatic builds from Git
+✅ **Global CDN**: Instant loading worldwide
+✅ **Automatic HTTPS**: SSL certificates included
+✅ **Preview Deployments**: Test every PR automatically
+✅ **Free Tier**: Generous limits for personal projects
+✅ **Instant Rollbacks**: One-click revert to previous version
+✅ **Built-in Analytics**: Track usage and performance
+
+### Quick Start (5 Minutes)
+
+#### Step 1: Set Up PostgreSQL Database
+
+Vercel doesn't support SQLite (ephemeral filesystem). Use one of these free options:
+
+**Option A: Supabase (Recommended)**
+1. Sign up at [supabase.com](https://supabase.com)
+2. Create new project
+3. Copy connection string from Settings → Database
+4. Format: `postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres`
+
+**Option B: Neon.tech**
+1. Sign up at [neon.tech](https://neon.tech)
+2. Create new project
+3. Copy connection string from dashboard
+
+#### Step 2: Push to Git
+
+```bash
+git add .
+git commit -m "Prepare for Vercel deployment"
+git push origin main
+```
+
+#### Step 3: Deploy on Vercel
+
+**Option A: Web Interface (Easiest)**
+1. Go to [vercel.com](https://vercel.com) and sign in
+2. Click "Add New Project"
+3. Import your Git repository
+4. Vercel auto-detects the monorepo structure
+5. Click "Deploy"
+
+**Option B: CLI**
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Login
+vercel login
+
+# Deploy from project root
+cd F1_PREDICTOR_26
+vercel --prod
+```
+
+#### Step 4: Configure Environment Variables
+
+In Vercel Dashboard → Your Project → Settings → Environment Variables, add:
+
+```bash
+# REQUIRED
+DATABASE_URL=postgresql://user:pass@host:5432/f1_predictor
+SECRET_KEY=<run: python -c "import secrets; print(secrets.token_urlsafe(32))">
+FRONTEND_ORIGIN=https://your-app.vercel.app
+
+# PRODUCTION
+ENVIRONMENT=production
+DEBUG=false
+REDIS_REQUIRED=false
+ENABLE_IN_MEMORY_FALLBACK=true
+LIVE_UPDATE_INTERVAL=300
+
+# OPTIONAL (AI features)
+AI_PROVIDER=huggingface
+HUGGINGFACE_API_KEY=your-key-here
+```
+
+**Important:** Set variables for all environments (Production, Preview, Development)
+
+#### Step 5: Test Your Deployment
+
+Visit:
+- **Frontend**: `https://your-app.vercel.app`
+- **API Docs**: `https://your-app.vercel.app/docs`
+- **Health Check**: `https://your-app.vercel.app/health`
+
+### Automated Deployment Script
+
+We've included helper scripts for easy deployment:
+
+**Linux/Mac:**
+```bash
+chmod +x deploy-vercel.sh
+./deploy-vercel.sh
+```
+
+**Windows:**
+```bash
+deploy-vercel.bat
+```
+
+The script checks prerequisites and guides you through the process.
+
+### Configuration Files
+
+The project includes these Vercel-specific files:
+
+- **`vercel.json`**: Monorepo configuration with service routing
+- **`.vercelignore`**: Files to exclude from deployment
+- **`.env.example`**: Template for environment variables
+- **`backend/vercel.py`**: Serverless entry point for FastAPI
+- **`VERCEL_DEPLOYMENT_GUIDE.md`**: Comprehensive deployment guide
+
+### Architecture on Vercel
+
+```
+┌─────────────────────────────────────┐
+│         Vercel Edge Network          │
+│      (Global CDN + HTTPS)            │
+└──────────────┬──────────────────────┘
+               │
+        ┌──────┴──────┐
+        │   Routing    │
+        │  (vercel.json)│
+        └──────┬──────┘
+               │
+     ┌─────────┴─────────┐
+     │                   │
+┌────▼────┐       ┌─────▼────┐
+│Frontend │       │ Backend  │
+│ (Vite)  │       │(FastAPI) │
+│Static   │       │Serverless│
+└─────────┘       └────┬─────┘
+                       │
+                ┌──────▼──────┐
+                │  PostgreSQL │
+                │ (Supabase/  │
+                │   Neon)     │
+                └─────────────┘
+```
+
+### Important Limitations
+
+⚠️ **Vercel Serverless Constraints:**
+
+1. **No SQLite**: Must use external PostgreSQL
+2. **No Redis**: Use in-memory cache (already configured)
+3. **Function Timeout**: 
+   - Hobby plan: 10s default, 60s max
+   - Pro plan: 15s default, 300s max
+4. **Memory Limit**: 1024 MB per function
+5. **Cold Starts**: First request after inactivity may be slow (5-30s)
+6. **No Background Processes**: Live updater disabled in serverless
+
+### Performance Tips for Vercel
+
+1. **Reduce Simulation Count** (if hitting timeout):
+   ```bash
+   MONTE_CARLO_SIMULATIONS=500  # Default is 1000
+   ```
+
+2. **Enable Keep-Warm** (prevent cold starts):
+   - Use UptimeRobot or Cron-job.org
+   - Ping `/health` every 5 minutes
+
+3. **Upgrade to Pro Plan** ($20/month):
+   - 60s timeout instead of 10s
+   - Better cold start performance
+   - Team collaboration features
+
+### Cost Breakdown
+
+**Free Tier (Hobby):**
+- ✅ 100 GB bandwidth/month
+- ✅ 1000 function invocations/day
+- ✅ Unlimited deployments
+- ❌ 10s function timeout
+- **Cost: $0/month**
+
+**Pro Tier ($20/month):**
+- ✅ 1 TB bandwidth/month
+- ✅ 100,000 function invocations/day
+- ✅ 60s function timeout
+- ✅ Team collaboration
+- **Cost: $20/month**
+
+**Database (Supabase/Neon):**
+- Free tier available (500MB - 3GB storage)
+- **Cost: $0/month** for small projects
+
+**Total Estimated Cost: $0-20/month**
+
+### Troubleshooting
+
+See [`VERCEL_DEPLOYMENT_GUIDE.md`](VERCEL_DEPLOYMENT_GUIDE.md) for detailed troubleshooting including:
+- Build failures
+- Database connection errors
+- CORS issues
+- Function timeouts
+- Cold start optimization
+
+---
 
 ### 🏆 Recommended Platforms (2026)
 
 Based on extensive research, here are the best options:
 
-#### **1. Railway.app (⭐ BEST CHOICE)**
+#### **1. Railway.app (⭐ BEST CHOICE for Full Control)**
 - Perfect for full-stack Python + React apps
 - $5 free credit monthly
 - Built-in PostgreSQL & Redis
@@ -1841,10 +2068,12 @@ Based on extensive research, here are the best options:
 - Free tier available (but sleeps after 15 min idle)
 - **Cost:** ~$21/month for always-on
 
-#### **3. Vercel (Frontend) + Railway (Backend)**
-- Best frontend performance (Vercel CDN)
-- Robust backend on Railway
-- **Cost:** ~$10-15/month
+#### **3. Vercel (⭐ EASIEST DEPLOYMENT)**
+- Zero-config monorepo deployment
+- Frontend + Backend in one project
+- Automatic HTTPS and CDN
+- Best developer experience
+- **Cost:** $0-20/month
 
 #### **4. Fly.io**
 - Container-native deployment
