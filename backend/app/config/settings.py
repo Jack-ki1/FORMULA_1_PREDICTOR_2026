@@ -49,10 +49,15 @@ class Settings(BaseSettings):
     API_CACHE_TTL: int = 300  # 5 minutes default
     CACHE_TTL_SHORT: int = 60  # 1 minute
     CACHE_TTL_LONG: int = 3600  # 1 hour
-    API_RESPONSES_CACHE: str = 'cache/api_responses'
+    
+    # Vercel has a read-only filesystem except /tmp, so cache paths must be under /tmp when deployed there
+    _is_vercel = os.environ.get("VERCEL") == "1"
+    _cache_root = "/tmp" if _is_vercel else "."
+    
+    API_RESPONSES_CACHE: str = f"{_cache_root}/cache/api_responses"
     FASTF1_CACHE_ENABLED: bool = True
-    FASTF1_CACHE_PATH: str = 'cache/fastf1_cache'
-    MODEL_CACHE_PATH: str = 'cache/model_cache'
+    FASTF1_CACHE_PATH: str = f"{_cache_root}/cache/fastf1_cache"
+    MODEL_CACHE_PATH: str = f"{_cache_root}/cache/model_cache"
 
     # Database configuration
     DATABASE_URL: str = 'sqlite:///./f1_predictions.db'
@@ -228,12 +233,12 @@ class Settings(BaseSettings):
     def _init_directories(self):
         """Initialize required directories."""
         import os
+        
+        # Cache paths are already set to /tmp on Vercel in the field definitions above
         directories = [
             self.FASTF1_CACHE_PATH,
             self.MODEL_CACHE_PATH,
-            'cache/api_responses',
-            'cache/fastf1_cache',
-            'cache/model_cache'
+            self.API_RESPONSES_CACHE,
         ]
         for directory in directories:
             os.makedirs(directory, exist_ok=True)
