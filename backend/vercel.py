@@ -1,31 +1,57 @@
 """
-Vercel serverless entry point for F1 Predictor 2026.
-This file is required by Vercel's FastAPI integration.
-It wraps the main application for serverless deployment.
+Vercel serverless entry point for F1 Predictor 2026 (Vercel Services, service root = backend/).
 """
-import sys
+import importlib.util
 import os
+import sys
+import traceback
+import types
 
-# Ensure repo root is on sys.path
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_PARENT = os.path.dirname(_HERE)
+for _p in (_PARENT, _HERE):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
-# Import the FastAPI app from main module
-from backend.app import create_app
 
-# Create the app instance - Vercel expects 'app' variable
-app = create_app()
+def _ensure_backend_package() -> None:
+    """Make `import backend.app` work whether or not the bundle keeps a backend/ folder."""
+    try:
+        spec = importlib.util.find_spec("backend.app")
+    except ModuleNotFoundError:
+        spec = None
+    if spec is not None:
+        return
+    pkg = types.ModuleType("backend")
+    pkg.__path__ = [_HERE]
+    pkg.__file__ = os.path.join(_HERE, "__init__.py")
+    pkg.__package__ = "backend"
+    sys.modules["backend"] = pkg
 
-# Initialize database on cold start
+
 try:
-    from backend.app.database.init import initialize_database
-    initialize_database()
-except Exception as e:
-    print(f"Database initialization note: {e}")
+    _ensure_backend_package()
+    import backend.app as _backend_app
 
-# Note: Background schedulers (live_updater) are disabled in serverless
-# Vercel Functions are stateless and ephemeral - no long-running processes
-print("F1 Predictor 2026 - Vercel serverless deployment")
-print("Note: Live updater disabled in serverless environment")
+    # backend/app/__init__.py already builds `app` (and initialises the DB schema) at import.
+    app = getattr(_backend_app, "app", None) or _backend_app.create_app()
+    print("F1 Predictor 2026 - Vercel serverless app ready", flush=True)
+except Exception as exc:  # keep the function alive so the failure is visible
+    _tb = traceback.format_exc()
+    print("F1 Predictor boot failure:\n" + _tb, flush=True)
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+
+    _message = f"{type(exc).__name__}: {exc}"
+    _tail = _tb[-2000:]
+    app = FastAPI(title="F1 Predictor 2026 API (boot failed)")
+
+    @app.api_route(
+        "/{path:path}",
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    )
+    async def _boot_failed(path: str):
+        return JSONResponse(
+            {"error": {"code": "BOOT_FAILED", "message": _message, "traceback_tail": _tail}},
+            status_code=503,
+        )
