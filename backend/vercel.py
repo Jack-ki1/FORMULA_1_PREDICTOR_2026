@@ -29,29 +29,35 @@ def _ensure_backend_package() -> None:
     sys.modules["backend"] = pkg
 
 
-try:
-    _ensure_backend_package()
-    import backend.app as _backend_app
+def _build_app():
+    try:
+        _ensure_backend_package()
+        import backend.app as backend_app
 
-    # backend/app/__init__.py already builds `app` (and initialises the DB schema) at import.
-    app = getattr(_backend_app, "app", None) or _backend_app.create_app()
-    print("F1 Predictor 2026 - Vercel serverless app ready", flush=True)
-except Exception as exc:  # keep the function alive so the failure is visible
-    _tb = traceback.format_exc()
-    print("F1 Predictor boot failure:\n" + _tb, flush=True)
-    from fastapi import FastAPI
-    from fastapi.responses import JSONResponse
+        built = getattr(backend_app, "app", None) or backend_app.create_app()
+        print("F1 Predictor 2026 - Vercel serverless app ready", flush=True)
+        return built
+    except Exception as exc:  # keep the function alive so the failure is visible
+        tb = traceback.format_exc()
+        print("F1 Predictor boot failure:\n" + tb, flush=True)
+        from fastapi import FastAPI
+        from fastapi.responses import JSONResponse
 
-    _message = f"{type(exc).__name__}: {exc}"
-    _tail = _tb[-2000:]
-    app = FastAPI(title="F1 Predictor 2026 API (boot failed)")
+        message = f"{type(exc).__name__}: {exc}"
+        tail = tb[-2000:]
+        fallback = FastAPI(title="F1 Predictor 2026 API (boot failed)")
 
-    @app.api_route(
-        "/{path:path}",
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-    )
-    async def _boot_failed(path: str):
-        return JSONResponse(
-            {"error": {"code": "BOOT_FAILED", "message": _message, "traceback_tail": _tail}},
-            status_code=503,
+        @fallback.api_route(
+            "/{path:path}",
+            methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
         )
+        async def _boot_failed(path: str):
+            return JSONResponse(
+                {"error": {"code": "BOOT_FAILED", "message": message, "traceback_tail": tail}},
+                status_code=503,
+            )
+
+        return fallback
+
+
+app = _build_app()
