@@ -22,7 +22,7 @@ build/
 f1_predictions.db
 
 # Cache directories (Vercel has ephemeral filesystem)
-cache/
+/cache/
 backend/cache/
 frontend/dist/
 
@@ -73,3 +73,5 @@ training/
 # Git
 .git/
 .gitignore
+
+!backend/app/cache/
