@@ -1,43 +1,9 @@
-# Byte-compiled / cache
-__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-
-# Virtual environments
-venv/
-.venv/
-env/
-
-# Environment variables (real secrets/config; .env.example stays tracked)
-.env
-
-# Databases (local dev state — not source)
-*.db
-*.sqlite
-*.sqlite3
-
-# Runtime caches (regenerated on demand, not source)
-cache/fastf1_cache/
-cache/api_responses/*.json
-cache/model_cache/
-
-# Editor/OS noise
-.DS_Store
-.vscode/*
-!.vscode/settings.json
-*:Zone.Identifier
-
-# Build artifacts
-build/
-dist/
-frontend/dist/
 node_modules/
-frontend/node_modules/
-frontend/.vite/
-*.egg-info/
-
-# Golden fixtures are generated, but keep versioned fixtures
-# tests/fixtures/golden/ is tracked
-# OS
-Thumbs.db
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+.env.local
+.vercel/

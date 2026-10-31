@@ -1,72 +1,14 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>F1 Predictor 2026</title>
-    <meta name="description" content="AI-powered Formula 1 predictions for the 2026 season — race, qualifying and practice forecasts built on a real prediction engine.">
-    <!--
-      The Puter.js AI script (js.puter.com) used to be loaded here unconditionally for
-      every visitor on every page, even though the AI assistant sidebar already lazy-loads
-      the same script itself the first time someone opens it (see
-      features/ai-assistant/AISidebar.tsx). Loading it twice — once eagerly, once on
-      demand — bought nothing; removed the eager copy. The on-demand loader is the only
-      one left.
-    -->
-    <script>
-      // Apply theme before first paint to avoid a flash of the wrong theme.
-      // Reads the same 'f1-preferences-v3' object the app's preferences store uses
-      // (see features/preferences/store.ts) so this stays in sync with Settings.
-      (function(){
-        try{
-          var raw = localStorage.getItem('f1-preferences-v3');
-          var mode = raw ? (JSON.parse(raw).appearance || {}).themeMode : null;
-          var resolved = mode === 'dark' ? 'dark'
-            : mode === 'light' ? 'light'
-            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-          document.documentElement.setAttribute('data-theme', resolved);
-        }catch(e){}
-      })();
-    </script>
-    <script>
-      // Safety net kept from the previous build: the PWA plugin that used to auto-register
-      // a service worker is disabled (see vite.config.ts), but a visitor with that old
-      // worker still cached in their browser from before it was disabled would otherwise
-      // keep getting served a stale app shell after this deploy. No-op for everyone else.
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()))
-      }
-    </script>
-    <!-- GitHub Pages SPA fallback: restore route from ?p= query parameter -->
-    <script type="text/javascript">
-      // Single Page Apps for GitHub Pages
-      // https://github.com/rafgraph/spa-github-pages
-      // 
-      // This script reads the 'p' query parameter (set by 404.html redirect)
-      // and tells React Router to navigate to that path instead of '/'.
-      // Without this, refreshing on /dashboard would always show the home page.
-      
-      (function(l) {
-        if (l.search[1] === '?' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) { 
-            return s.replace(/~and~/g, '&')
-          }).join('?');
-          
-          // Check if we have a 'p' parameter with a path
-          var params = new URLSearchParams(l.search);
-          var path = params.get('p');
-          
-          if (path) {
-            // Replace the URL without reload so React Router can handle it
-            window.history.replaceState(null, null,
-              l.pathname.slice(0, -1) + path + l.hash
-            );
-          }
-        }
-      }(window.location))
-    </script>
+    <meta name="theme-color" content="#050a17" />
+    <meta name="description" content="F1 Predictor 2026 — race intelligence, reimagined. Monte Carlo race, qualifying and strategy predictions for the 2026 season." />
+    <link rel="icon" type="image/png" href="/img/logo-f1.png" />
+    <title>F1 Predictor 2026 — Race Intelligence, Reimagined</title>
   </head>
-  <body class="bg-app">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

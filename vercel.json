@@ -1,25 +1,26 @@
 {
-  "version": 2,
-  "services": {
-    "frontend": {
-      "root": "frontend",
-      "framework": "vite",
-      "buildCommand": "npm run build",
-      "outputDirectory": "dist"
-    },
-    "backend": {
-      "root": "backend",
-      "framework": "fastapi",
-      "entrypoint": "vercel:app"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd frontend && npm ci && npm run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30,
+      "includeFiles": "backend/**"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": { "service": "backend" } },
-    { "source": "/health", "destination": { "service": "backend" } },
-    { "source": "/metrics", "destination": { "service": "backend" } },
-    { "source": "/docs", "destination": { "service": "backend" } },
-    { "source": "/redoc", "destination": { "service": "backend" } },
-    { "source": "/(.*)", "destination": { "service": "frontend" } }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!api/|img/|assets/).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
@@ -34,23 +35,27 @@
           "value": "DENY"
         },
         {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
         },
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/img/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
         }
       ]
     }
-  ],
-  "env": {
-    "ENVIRONMENT": "production",
-    "DEBUG": "false",
-    "REDIS_REQUIRED": "false",
-    "ENABLE_IN_MEMORY_FALLBACK": "true",
-    "LIVE_UPDATE_INTERVAL": "300",
-    "HOST": "0.0.0.0",
-    "PORT": "5000"
-  }
+  ]
 }

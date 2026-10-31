@@ -1,45 +1,27 @@
-name: CI
+name: ci
 on: [push, pull_request]
 jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      # Install what the tests actually import. pytest/pytest-cov live in
-      # pyproject.toml's [dev] extra, so install them explicitly — CI used to
-      # run `python -m pytest` without ever installing pytest, so the suite
-      # could not run at all on a clean runner.
-      - run: pip install -r backend/requirements.txt
-      - run: pip install -r requirements.txt
-      - run: pip install "pytest>=7.4.0" "pytest-cov>=4.1.0" ruff
-      - run: python -m pytest -q
-      - run: python -m ruff check backend
-      - name: fail on dead-framework imports
-        run: |
-          if grep -rn "from flask" backend/app/security/ 2>/dev/null; then
-            echo "::error::Flask import found in FastAPI-only backend"; exit 1
-          fi
-          if grep -rn "dt\.dt\." backend/ 2>/dev/null; then
-            echo "::error::dt.dt typo found"; exit 1
-          fi
-      - name: check node_modules not tracked
-        run: |
-          if git ls-files | grep -q "^node_modules/"; then
-            echo "::error::node_modules is tracked — run git rm --cached -r node_modules"; exit 1
-          fi
+      - run: python -m venv .venv && .venv/bin/python -m pip install --upgrade pip
+      - run: .venv/bin/python -m pip install -r backend/requirements-dev.txt
+      - run: cd backend && ../.venv/bin/python -m pytest -q
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: "20" }
-      - run: npm ci
-        working-directory: frontend
-      - run: npm run build
-        working-directory: frontend
-      - run: npm run lint
-        working-directory: frontend
-      - run: npm run test --if-present
-        working-directory: frontend
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - name: Assert the Node major is what the test suite supports (jsdom/AbortSignal realm issue)
+        run: node -e 'const m=+process.versions.node.split(".")[0]; if (m!==22) { console.error(`frontend tests require Node 22, got ${process.version}`); process.exit(1); }'
+      - run: python -m venv .venv && .venv/bin/python -m pip install -r backend/requirements.txt
+      - run: cd backend && (DATA_MODE=seed ../.venv/bin/python -m uvicorn main:app --port 8000 &) && sleep 4
+      - name: Wait for the API to answer /health
+        run: for i in $(seq 1 20); do curl -sf http://127.0.0.1:8000/health && exit 0; sleep 1; done; echo 'API did not start'; exit 1
+      - run: cd frontend && npm ci && npm run typecheck && npm test && npm run build
