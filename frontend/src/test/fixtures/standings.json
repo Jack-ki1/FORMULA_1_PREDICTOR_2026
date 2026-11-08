@@ -1,0 +1,251 @@
+{
+  "source": "seed",
+  "as_of_round": 17,
+  "note": "Offline snapshot. Calendar dates and session times are estimates; standings are after round 17 (Singapore) and only the 13 drivers with confirmed points are listed. Ratings are model priors, not facts. Live data (Jolpica) replaces this automatically.",
+  "drivers": [
+    {
+      "code": "ANT",
+      "name": "Kimi Antonelli",
+      "team": {
+        "id": "mercedes",
+        "name": "Mercedes",
+        "color": "#27F4D2"
+      },
+      "cc": "IT",
+      "points": 340,
+      "wins": null,
+      "podiums": null,
+      "pos": 1
+    },
+    {
+      "code": "RUS",
+      "name": "George Russell",
+      "team": {
+        "id": "mercedes",
+        "name": "Mercedes",
+        "color": "#27F4D2"
+      },
+      "cc": "GB",
+      "points": 238,
+      "wins": null,
+      "podiums": null,
+      "pos": 2
+    },
+    {
+      "code": "HAM",
+      "name": "Lewis Hamilton",
+      "team": {
+        "id": "ferrari",
+        "name": "Ferrari",
+        "color": "#E8002D"
+      },
+      "cc": "GB",
+      "points": 229,
+      "wins": null,
+      "podiums": null,
+      "pos": 3
+    },
+    {
+      "code": "VER",
+      "name": "Max Verstappen",
+      "team": {
+        "id": "red_bull",
+        "name": "Red Bull",
+        "color": "#3671C6"
+      },
+      "cc": "NL",
+      "points": 221,
+      "wins": null,
+      "podiums": null,
+      "pos": 4
+    },
+    {
+      "code": "LEC",
+      "name": "Charles Leclerc",
+      "team": {
+        "id": "ferrari",
+        "name": "Ferrari",
+        "color": "#E8002D"
+      },
+      "cc": "MC",
+      "points": 215,
+      "wins": null,
+      "podiums": null,
+      "pos": 5
+    },
+    {
+      "code": "NOR",
+      "name": "Lando Norris",
+      "team": {
+        "id": "mclaren",
+        "name": "McLaren",
+        "color": "#FF8000"
+      },
+      "cc": "GB",
+      "points": 201,
+      "wins": null,
+      "podiums": null,
+      "pos": 6
+    },
+    {
+      "code": "PIA",
+      "name": "Oscar Piastri",
+      "team": {
+        "id": "mclaren",
+        "name": "McLaren",
+        "color": "#FF8000"
+      },
+      "cc": "AU",
+      "points": 138,
+      "wins": null,
+      "podiums": null,
+      "pos": 7
+    },
+    {
+      "code": "HAD",
+      "name": "Isack Hadjar",
+      "team": {
+        "id": "red_bull",
+        "name": "Red Bull",
+        "color": "#3671C6"
+      },
+      "cc": "FR",
+      "points": 97,
+      "wins": null,
+      "podiums": null,
+      "pos": 8
+    },
+    {
+      "code": "LAW",
+      "name": "Liam Lawson",
+      "team": {
+        "id": "racing_bulls",
+        "name": "Racing Bulls",
+        "color": "#6692FF"
+      },
+      "cc": "NZ",
+      "points": 75,
+      "wins": null,
+      "podiums": null,
+      "pos": 9
+    },
+    {
+      "code": "GAS",
+      "name": "Pierre Gasly",
+      "team": {
+        "id": "alpine",
+        "name": "Alpine",
+        "color": "#FF87BC"
+      },
+      "cc": "FR",
+      "points": 41,
+      "wins": null,
+      "podiums": null,
+      "pos": 10
+    },
+    {
+      "code": "LIN",
+      "name": "Arvid Lindblad",
+      "team": {
+        "id": "racing_bulls",
+        "name": "Racing Bulls",
+        "color": "#6692FF"
+      },
+      "cc": "GB",
+      "points": 38,
+      "wins": null,
+      "podiums": null,
+      "pos": 11
+    },
+    {
+      "code": "COL",
+      "name": "Franco Colapinto",
+      "team": {
+        "id": "alpine",
+        "name": "Alpine",
+        "color": "#FF87BC"
+      },
+      "cc": "AR",
+      "points": 27,
+      "wins": null,
+      "podiums": null,
+      "pos": 12
+    },
+    {
+      "code": "BEA",
+      "name": "Oliver Bearman",
+      "team": {
+        "id": "haas",
+        "name": "Haas",
+        "color": "#B6BABD"
+      },
+      "cc": "GB",
+      "points": 23,
+      "wins": null,
+      "podiums": null,
+      "pos": 13
+    }
+  ],
+  "constructors": [
+    {
+      "team": {
+        "id": "mercedes",
+        "name": "Mercedes",
+        "color": "#27F4D2"
+      },
+      "points": 578,
+      "wins": null,
+      "pos": 1
+    },
+    {
+      "team": {
+        "id": "ferrari",
+        "name": "Ferrari",
+        "color": "#E8002D"
+      },
+      "points": 444,
+      "wins": null,
+      "pos": 2
+    },
+    {
+      "team": {
+        "id": "mclaren",
+        "name": "McLaren",
+        "color": "#FF8000"
+      },
+      "points": 339,
+      "wins": null,
+      "pos": 3
+    },
+    {
+      "team": {
+        "id": "red_bull",
+        "name": "Red Bull",
+        "color": "#3671C6"
+      },
+      "points": 318,
+      "wins": null,
+      "pos": 4
+    },
+    {
+      "team": {
+        "id": "racing_bulls",
+        "name": "Racing Bulls",
+        "color": "#6692FF"
+      },
+      "points": 113,
+      "wins": null,
+      "pos": 5
+    },
+    {
+      "team": {
+        "id": "alpine",
+        "name": "Alpine",
+        "color": "#FF87BC"
+      },
+      "points": 68,
+      "wins": null,
+      "pos": 6
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "race": {
+    "round": 19,
+    "circuit_id": "rodriguez",
+    "name": "Mexico City Grand Prix",
+    "country": "Mexico",
+    "cc": "MX",
+    "date_start": "2026-10-30",
+    "date_end": "2026-11-01",
+    "start_utc": "2026-11-01T20:00:00Z",
+    "sprint": false,
+    "winner": null,
+    "circuit_name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+    "locality": "Mexico City",
+    "lat": 19.4042,
+    "lon": -99.0907,
+    "sessions": [
+      {
+        "key": "FP1",
+        "name": "Practice 1",
+        "start_utc": "2026-10-30T18:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "FP2",
+        "name": "Practice 2",
+        "start_utc": "2026-10-30T22:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "FP3",
+        "name": "Practice 3",
+        "start_utc": "2026-10-31T17:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "Q",
+        "name": "Qualifying",
+        "start_utc": "2026-10-31T21:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "R",
+        "name": "Grand Prix",
+        "start_utc": "2026-11-01T20:00:00Z",
+        "estimated": true
+      }
+    ],
+    "id": "19",
+    "status": "completed",
+    "labels": {
+      "practice_day": "Friday",
+      "quali_day": "Saturday",
+      "race_day": "Sunday"
+    },
+    "circuit": {
+      "length_km": 4.304,
+      "turns": 17,
+      "lap_record": "1:17.774",
+      "drs": 3,
+      "laps": 71,
+      "tyre_wear": 0.35,
+      "overtaking": 0.5,
+      "sc_prob": 0.4,
+      "name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+      "locality": "Mexico City",
+      "lat": 19.4042,
+      "lon": -99.0907,
+      "id": "rodriguez",
+      "lap_ref": 77.774
+    }
+  },
+  "a": {
+    "code": "VER",
+    "name": "Max Verstappen",
+    "team": {
+      "id": "red_bull",
+      "name": "Red Bull",
+      "color": "#3671C6"
+    },
+    "cc": "NL",
+    "points": 221,
+    "wins": null,
+    "podiums": null,
+    "avg_quali": null,
+    "win_prob": 0.13525,
+    "podium_prob": 0.412,
+    "exp_pos": 4.639721627408994,
+    "pole_prob": 0.05075
+  },
+  "b": {
+    "code": "NOR",
+    "name": "Lando Norris",
+    "team": {
+      "id": "mclaren",
+      "name": "McLaren",
+      "color": "#FF8000"
+    },
+    "cc": "GB",
+    "points": 201,
+    "wins": null,
+    "podiums": null,
+    "avg_quali": null,
+    "win_prob": 0.07775,
+    "podium_prob": 0.3225,
+    "exp_pos": 5.512447033898305,
+    "pole_prob": 0.018
+  },
+  "record": null,
+  "source": "seed"
+}

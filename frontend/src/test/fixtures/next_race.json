@@ -1,0 +1,71 @@
+{
+  "round": 20,
+  "circuit_id": "interlagos",
+  "name": "S\u00e3o Paulo Grand Prix",
+  "country": "Brazil",
+  "cc": "BR",
+  "date_start": "2026-11-06",
+  "date_end": "2026-11-08",
+  "start_utc": "2026-11-08T17:00:00Z",
+  "sprint": false,
+  "winner": null,
+  "circuit_name": "Aut\u00f3dromo Jos\u00e9 Carlos Pace",
+  "locality": "S\u00e3o Paulo",
+  "lat": -23.7036,
+  "lon": -46.6997,
+  "sessions": [
+    {
+      "key": "FP1",
+      "name": "Practice 1",
+      "start_utc": "2026-11-06T15:00:00Z",
+      "estimated": true
+    },
+    {
+      "key": "FP2",
+      "name": "Practice 2",
+      "start_utc": "2026-11-06T19:00:00Z",
+      "estimated": true
+    },
+    {
+      "key": "FP3",
+      "name": "Practice 3",
+      "start_utc": "2026-11-07T14:00:00Z",
+      "estimated": true
+    },
+    {
+      "key": "Q",
+      "name": "Qualifying",
+      "start_utc": "2026-11-07T18:00:00Z",
+      "estimated": true
+    },
+    {
+      "key": "R",
+      "name": "Grand Prix",
+      "start_utc": "2026-11-08T17:00:00Z",
+      "estimated": true
+    }
+  ],
+  "id": "20",
+  "status": "upcoming",
+  "labels": {
+    "practice_day": "Friday",
+    "quali_day": "Saturday",
+    "race_day": "Sunday"
+  },
+  "circuit": {
+    "length_km": 4.309,
+    "turns": 15,
+    "lap_record": "1:10.540",
+    "drs": 2,
+    "laps": 71,
+    "tyre_wear": 0.55,
+    "overtaking": 0.8,
+    "sc_prob": 0.6,
+    "name": "Aut\u00f3dromo Jos\u00e9 Carlos Pace",
+    "locality": "S\u00e3o Paulo",
+    "lat": -23.7036,
+    "lon": -46.6997,
+    "id": "interlagos",
+    "lap_ref": 70.53999999999999
+  }
+}

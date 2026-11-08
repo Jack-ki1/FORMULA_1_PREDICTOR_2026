@@ -1,0 +1,349 @@
+{
+  "race": {
+    "round": 19,
+    "circuit_id": "rodriguez",
+    "name": "Mexico City Grand Prix",
+    "country": "Mexico",
+    "cc": "MX",
+    "date_start": "2026-10-30",
+    "date_end": "2026-11-01",
+    "start_utc": "2026-11-01T20:00:00Z",
+    "sprint": false,
+    "winner": null,
+    "circuit_name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+    "locality": "Mexico City",
+    "lat": 19.4042,
+    "lon": -99.0907,
+    "sessions": [
+      {
+        "key": "FP1",
+        "name": "Practice 1",
+        "start_utc": "2026-10-30T18:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "FP2",
+        "name": "Practice 2",
+        "start_utc": "2026-10-30T22:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "FP3",
+        "name": "Practice 3",
+        "start_utc": "2026-10-31T17:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "Q",
+        "name": "Qualifying",
+        "start_utc": "2026-10-31T21:00:00Z",
+        "estimated": true
+      },
+      {
+        "key": "R",
+        "name": "Grand Prix",
+        "start_utc": "2026-11-01T20:00:00Z",
+        "estimated": true
+      }
+    ],
+    "id": "19",
+    "status": "completed",
+    "labels": {
+      "practice_day": "Friday",
+      "quali_day": "Saturday",
+      "race_day": "Sunday"
+    },
+    "circuit": {
+      "length_km": 4.304,
+      "turns": 17,
+      "lap_record": "1:17.774",
+      "drs": 3,
+      "laps": 71,
+      "tyre_wear": 0.35,
+      "overtaking": 0.5,
+      "sc_prob": 0.4,
+      "name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+      "locality": "Mexico City",
+      "lat": 19.4042,
+      "lon": -99.0907,
+      "id": "rodriguez",
+      "lap_ref": 77.774
+    }
+  },
+  "budget": 100.0,
+  "picks": 5,
+  "pool": [
+    {
+      "code": "ANT",
+      "name": "Kimi Antonelli",
+      "team": {
+        "id": "mercedes",
+        "name": "Mercedes",
+        "color": "#27F4D2"
+      },
+      "cc": "IT",
+      "price": 30.0,
+      "exp_points": 16.34
+    },
+    {
+      "code": "RUS",
+      "name": "George Russell",
+      "team": {
+        "id": "mercedes",
+        "name": "Mercedes",
+        "color": "#27F4D2"
+      },
+      "cc": "GB",
+      "price": 27.1,
+      "exp_points": 12.43
+    },
+    {
+      "code": "VER",
+      "name": "Max Verstappen",
+      "team": {
+        "id": "red_bull",
+        "name": "Red Bull",
+        "color": "#3671C6"
+      },
+      "cc": "NL",
+      "price": 26.4,
+      "exp_points": 11.83
+    },
+    {
+      "code": "HAM",
+      "name": "Lewis Hamilton",
+      "team": {
+        "id": "ferrari",
+        "name": "Ferrari",
+        "color": "#E8002D"
+      },
+      "cc": "GB",
+      "price": 26.0,
+      "exp_points": 10.99
+    },
+    {
+      "code": "LEC",
+      "name": "Charles Leclerc",
+      "team": {
+        "id": "ferrari",
+        "name": "Ferrari",
+        "color": "#E8002D"
+      },
+      "cc": "MC",
+      "price": 25.7,
+      "exp_points": 10.67
+    },
+    {
+      "code": "NOR",
+      "name": "Lando Norris",
+      "team": {
+        "id": "mclaren",
+        "name": "McLaren",
+        "color": "#FF8000"
+      },
+      "cc": "GB",
+      "price": 25.1,
+      "exp_points": 10.06
+    },
+    {
+      "code": "PIA",
+      "name": "Oscar Piastri",
+      "team": {
+        "id": "mclaren",
+        "name": "McLaren",
+        "color": "#FF8000"
+      },
+      "cc": "AU",
+      "price": 22.6,
+      "exp_points": 7.29
+    },
+    {
+      "code": "HAD",
+      "name": "Isack Hadjar",
+      "team": {
+        "id": "red_bull",
+        "name": "Red Bull",
+        "color": "#3671C6"
+      },
+      "cc": "FR",
+      "price": 19.1,
+      "exp_points": 4.28
+    },
+    {
+      "code": "SAI",
+      "name": "Carlos Sainz",
+      "team": {
+        "id": "williams",
+        "name": "Williams",
+        "color": "#64C4FF"
+      },
+      "cc": "ES",
+      "price": 16.8,
+      "exp_points": 2.47
+    },
+    {
+      "code": "LAW",
+      "name": "Liam Lawson",
+      "team": {
+        "id": "racing_bulls",
+        "name": "Racing Bulls",
+        "color": "#6692FF"
+      },
+      "cc": "NZ",
+      "price": 16.2,
+      "exp_points": 2.11
+    },
+    {
+      "code": "ALO",
+      "name": "Fernando Alonso",
+      "team": {
+        "id": "aston_martin",
+        "name": "Aston Martin",
+        "color": "#229971"
+      },
+      "cc": "ES",
+      "price": 15.8,
+      "exp_points": 1.97
+    },
+    {
+      "code": "GAS",
+      "name": "Pierre Gasly",
+      "team": {
+        "id": "alpine",
+        "name": "Alpine",
+        "color": "#FF87BC"
+      },
+      "cc": "FR",
+      "price": 15.4,
+      "exp_points": 1.69
+    },
+    {
+      "code": "ALB",
+      "name": "Alexander Albon",
+      "team": {
+        "id": "williams",
+        "name": "Williams",
+        "color": "#64C4FF"
+      },
+      "cc": "TH",
+      "price": 15.2,
+      "exp_points": 1.63
+    },
+    {
+      "code": "LIN",
+      "name": "Arvid Lindblad",
+      "team": {
+        "id": "racing_bulls",
+        "name": "Racing Bulls",
+        "color": "#6692FF"
+      },
+      "cc": "GB",
+      "price": 14.3,
+      "exp_points": 1.24
+    },
+    {
+      "code": "OCO",
+      "name": "Esteban Ocon",
+      "team": {
+        "id": "haas",
+        "name": "Haas",
+        "color": "#B6BABD"
+      },
+      "cc": "FR",
+      "price": 13.8,
+      "exp_points": 1.05
+    },
+    {
+      "code": "BEA",
+      "name": "Oliver Bearman",
+      "team": {
+        "id": "haas",
+        "name": "Haas",
+        "color": "#B6BABD"
+      },
+      "cc": "GB",
+      "price": 13.6,
+      "exp_points": 1.0
+    },
+    {
+      "code": "HUL",
+      "name": "Nico Hulkenberg",
+      "team": {
+        "id": "audi",
+        "name": "Audi",
+        "color": "#E4002B"
+      },
+      "cc": "DE",
+      "price": 13.5,
+      "exp_points": 1.0
+    },
+    {
+      "code": "COL",
+      "name": "Franco Colapinto",
+      "team": {
+        "id": "alpine",
+        "name": "Alpine",
+        "color": "#FF87BC"
+      },
+      "cc": "AR",
+      "price": 13.4,
+      "exp_points": 0.97
+    },
+    {
+      "code": "BOR",
+      "name": "Gabriel Bortoleto",
+      "team": {
+        "id": "audi",
+        "name": "Audi",
+        "color": "#E4002B"
+      },
+      "cc": "BR",
+      "price": 12.0,
+      "exp_points": 0.58
+    },
+    {
+      "code": "STR",
+      "name": "Lance Stroll",
+      "team": {
+        "id": "aston_martin",
+        "name": "Aston Martin",
+        "color": "#229971"
+      },
+      "cc": "CA",
+      "price": 11.3,
+      "exp_points": 0.5
+    },
+    {
+      "code": "BOT",
+      "name": "Valtteri Bottas",
+      "team": {
+        "id": "cadillac",
+        "name": "Cadillac",
+        "color": "#9AA3B2"
+      },
+      "cc": "FI",
+      "price": 11.2,
+      "exp_points": 0.48
+    },
+    {
+      "code": "PER",
+      "name": "Sergio Perez",
+      "team": {
+        "id": "cadillac",
+        "name": "Cadillac",
+        "color": "#9AA3B2"
+      },
+      "cc": "MX",
+      "price": 11.2,
+      "exp_points": 0.44
+    }
+  ],
+  "optimal": [
+    "ANT",
+    "RUS",
+    "HAD",
+    "BOR",
+    "STR"
+  ],
+  "optimal_points": 34.13
+}

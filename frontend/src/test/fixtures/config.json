@@ -1,0 +1,18 @@
+{
+  "cache_ttl": 600,
+  "source_priority": "seed_only",
+  "live_interval": 300,
+  "model_type": "monte_carlo_form",
+  "admin_enabled": false,
+  "choices": {
+    "source_priority": [
+      "jolpica_first",
+      "seed_only"
+    ],
+    "model_type": [
+      "monte_carlo",
+      "monte_carlo_form"
+    ]
+  },
+  "persistent": false
+}

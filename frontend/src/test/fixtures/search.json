@@ -1,0 +1,23 @@
+{
+  "races": [
+    {
+      "id": "10",
+      "name": "Belgian Grand Prix",
+      "cc": "BE",
+      "circuit": "Circuit de Spa-Francorchamps"
+    }
+  ],
+  "drivers": [
+    {
+      "code": "HAM",
+      "name": "Lewis Hamilton",
+      "team": {
+        "id": "ferrari",
+        "name": "Ferrari",
+        "color": "#E8002D"
+      },
+      "cc": "GB"
+    }
+  ],
+  "teams": []
+}

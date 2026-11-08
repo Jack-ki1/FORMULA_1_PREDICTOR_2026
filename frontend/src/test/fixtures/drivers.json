@@ -1,0 +1,222 @@
+[
+  {
+    "code": "ANT",
+    "name": "Kimi Antonelli",
+    "team": {
+      "id": "mercedes",
+      "name": "Mercedes",
+      "color": "#27F4D2"
+    },
+    "cc": "IT"
+  },
+  {
+    "code": "RUS",
+    "name": "George Russell",
+    "team": {
+      "id": "mercedes",
+      "name": "Mercedes",
+      "color": "#27F4D2"
+    },
+    "cc": "GB"
+  },
+  {
+    "code": "HAM",
+    "name": "Lewis Hamilton",
+    "team": {
+      "id": "ferrari",
+      "name": "Ferrari",
+      "color": "#E8002D"
+    },
+    "cc": "GB"
+  },
+  {
+    "code": "LEC",
+    "name": "Charles Leclerc",
+    "team": {
+      "id": "ferrari",
+      "name": "Ferrari",
+      "color": "#E8002D"
+    },
+    "cc": "MC"
+  },
+  {
+    "code": "NOR",
+    "name": "Lando Norris",
+    "team": {
+      "id": "mclaren",
+      "name": "McLaren",
+      "color": "#FF8000"
+    },
+    "cc": "GB"
+  },
+  {
+    "code": "PIA",
+    "name": "Oscar Piastri",
+    "team": {
+      "id": "mclaren",
+      "name": "McLaren",
+      "color": "#FF8000"
+    },
+    "cc": "AU"
+  },
+  {
+    "code": "VER",
+    "name": "Max Verstappen",
+    "team": {
+      "id": "red_bull",
+      "name": "Red Bull",
+      "color": "#3671C6"
+    },
+    "cc": "NL"
+  },
+  {
+    "code": "HAD",
+    "name": "Isack Hadjar",
+    "team": {
+      "id": "red_bull",
+      "name": "Red Bull",
+      "color": "#3671C6"
+    },
+    "cc": "FR"
+  },
+  {
+    "code": "LAW",
+    "name": "Liam Lawson",
+    "team": {
+      "id": "racing_bulls",
+      "name": "Racing Bulls",
+      "color": "#6692FF"
+    },
+    "cc": "NZ"
+  },
+  {
+    "code": "LIN",
+    "name": "Arvid Lindblad",
+    "team": {
+      "id": "racing_bulls",
+      "name": "Racing Bulls",
+      "color": "#6692FF"
+    },
+    "cc": "GB"
+  },
+  {
+    "code": "GAS",
+    "name": "Pierre Gasly",
+    "team": {
+      "id": "alpine",
+      "name": "Alpine",
+      "color": "#FF87BC"
+    },
+    "cc": "FR"
+  },
+  {
+    "code": "COL",
+    "name": "Franco Colapinto",
+    "team": {
+      "id": "alpine",
+      "name": "Alpine",
+      "color": "#FF87BC"
+    },
+    "cc": "AR"
+  },
+  {
+    "code": "BEA",
+    "name": "Oliver Bearman",
+    "team": {
+      "id": "haas",
+      "name": "Haas",
+      "color": "#B6BABD"
+    },
+    "cc": "GB"
+  },
+  {
+    "code": "OCO",
+    "name": "Esteban Ocon",
+    "team": {
+      "id": "haas",
+      "name": "Haas",
+      "color": "#B6BABD"
+    },
+    "cc": "FR"
+  },
+  {
+    "code": "ALB",
+    "name": "Alexander Albon",
+    "team": {
+      "id": "williams",
+      "name": "Williams",
+      "color": "#64C4FF"
+    },
+    "cc": "TH"
+  },
+  {
+    "code": "SAI",
+    "name": "Carlos Sainz",
+    "team": {
+      "id": "williams",
+      "name": "Williams",
+      "color": "#64C4FF"
+    },
+    "cc": "ES"
+  },
+  {
+    "code": "HUL",
+    "name": "Nico Hulkenberg",
+    "team": {
+      "id": "audi",
+      "name": "Audi",
+      "color": "#E4002B"
+    },
+    "cc": "DE"
+  },
+  {
+    "code": "BOR",
+    "name": "Gabriel Bortoleto",
+    "team": {
+      "id": "audi",
+      "name": "Audi",
+      "color": "#E4002B"
+    },
+    "cc": "BR"
+  },
+  {
+    "code": "ALO",
+    "name": "Fernando Alonso",
+    "team": {
+      "id": "aston_martin",
+      "name": "Aston Martin",
+      "color": "#229971"
+    },
+    "cc": "ES"
+  },
+  {
+    "code": "STR",
+    "name": "Lance Stroll",
+    "team": {
+      "id": "aston_martin",
+      "name": "Aston Martin",
+      "color": "#229971"
+    },
+    "cc": "CA"
+  },
+  {
+    "code": "PER",
+    "name": "Sergio Perez",
+    "team": {
+      "id": "cadillac",
+      "name": "Cadillac",
+      "color": "#9AA3B2"
+    },
+    "cc": "MX"
+  },
+  {
+    "code": "BOT",
+    "name": "Valtteri Bottas",
+    "team": {
+      "id": "cadillac",
+      "name": "Cadillac",
+      "color": "#9AA3B2"
+    },
+    "cc": "FI"
+  }
+]

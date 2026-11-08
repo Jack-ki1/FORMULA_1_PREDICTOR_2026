@@ -1,0 +1,38 @@
+[
+  {
+    "id": "19",
+    "name": "Mexico City Grand Prix",
+    "cc": "MX",
+    "winner": null,
+    "winner_name": null,
+    "points": null,
+    "next": false
+  },
+  {
+    "id": "18",
+    "name": "United States Grand Prix",
+    "cc": "US",
+    "winner": null,
+    "winner_name": null,
+    "points": null,
+    "next": false
+  },
+  {
+    "id": "17",
+    "name": "Singapore Grand Prix",
+    "cc": "SG",
+    "winner": "VER",
+    "winner_name": "Max Verstappen",
+    "points": 25,
+    "next": false
+  },
+  {
+    "id": "20",
+    "name": "S\u00e3o Paulo Grand Prix",
+    "cc": "BR",
+    "winner": null,
+    "winner_name": null,
+    "points": null,
+    "next": true
+  }
+]
