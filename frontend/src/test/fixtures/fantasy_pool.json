@@ -10,7 +10,7 @@
     "start_utc": "2026-11-01T20:00:00Z",
     "sprint": false,
     "winner": null,
-    "circuit_name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+    "circuit_name": "Autódromo Hermanos Rodríguez",
     "locality": "Mexico City",
     "lat": 19.4042,
     "lon": -99.0907,
@@ -62,7 +62,7 @@
       "tyre_wear": 0.35,
       "overtaking": 0.5,
       "sc_prob": 0.4,
-      "name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+      "name": "Autódromo Hermanos Rodríguez",
       "locality": "Mexico City",
       "lat": 19.4042,
       "lon": -99.0907,
@@ -242,8 +242,8 @@
       "exp_points": 1.24
     },
     {
-      "code": "OCO",
-      "name": "Esteban Ocon",
+      "code": "CAM",
+      "name": "Rafael Câmara",
       "team": {
         "id": "haas",
         "name": "Haas",

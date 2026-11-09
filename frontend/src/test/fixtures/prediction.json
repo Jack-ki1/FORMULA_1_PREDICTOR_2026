@@ -10,7 +10,7 @@
     "start_utc": "2026-11-01T20:00:00Z",
     "sprint": false,
     "winner": null,
-    "circuit_name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+    "circuit_name": "Autódromo Hermanos Rodríguez",
     "locality": "Mexico City",
     "lat": 19.4042,
     "lon": -99.0907,
@@ -62,7 +62,7 @@
       "tyre_wear": 0.35,
       "overtaking": 0.5,
       "sc_prob": 0.4,
-      "name": "Aut\u00f3dromo Hermanos Rodr\u00edguez",
+      "name": "Autódromo Hermanos Rodríguez",
       "locality": "Mexico City",
       "lat": 19.4042,
       "lon": -99.0907,
@@ -135,7 +135,7 @@
       "kind": "rain"
     },
     "units": {
-      "temp": "\u00b0C",
+      "temp": "°C",
       "wind": "km/h"
     }
   },
@@ -769,8 +769,8 @@
       "number": 41
     },
     {
-      "code": "OCO",
-      "name": "Esteban Ocon",
+      "code": "CAM",
+      "name": "Rafael Câmara",
       "team": {
         "id": "haas",
         "name": "Haas",
@@ -1202,12 +1202,13 @@
     },
     {
       "pos": 15,
-      "code": "OCO",
+      "code": "CAM",
       "pole": 0.0,
       "gap": 0.6410573669856511,
       "time": "1:18.415",
       "q2": 0.597,
-      "q3": 0.087
+      "q3": 0.087,
+      "name": "Rafael Câmara"
     },
     {
       "pos": 16,
@@ -1277,21 +1278,21 @@
     {
       "name": "Strategy 1",
       "stops": "1 Stop",
-      "tyres": "Medium \u2192 Hard",
+      "tyres": "Medium → Hard",
       "prob": 27,
       "optimal": false
     },
     {
       "name": "Strategy 2",
       "stops": "2 Stops",
-      "tyres": "Medium \u2192 Medium \u2192 Hard",
+      "tyres": "Medium → Medium → Hard",
       "prob": 38,
       "optimal": true
     },
     {
       "name": "Strategy 3",
       "stops": "1 Stop",
-      "tyres": "Soft \u2192 Hard",
+      "tyres": "Soft → Hard",
       "prob": 35,
       "optimal": false
     }

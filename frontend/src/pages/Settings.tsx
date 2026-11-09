@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Accessibility, Bell, Cpu, Database, Keyboard, LayoutDashboard, Palette, Server, Shield, SlidersHorizontal, User, Wrench } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api, type SimParams } from "../lib/api";
-import { useDrivers, useServerConfig } from "../lib/hooks";
+import { useDrivers, useServerConfig, useMeta } from "../lib/hooks";
 import { DEFAULT_SETTINGS, DEFAULT_SIM, type Settings, useApp } from "../lib/store";
 import { download } from "../lib/util";
 import { SHORTCUTS } from "../components/Shortcuts";
@@ -47,6 +47,8 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const { data: drivers } = useDrivers();
   const { data: cfg, refetch: refetchCfg } = useServerConfig();
+  const { data: meta } = useMeta();
+  const maxSims = meta?.max_sims ?? 20000;
   const [msg, setMsg] = useState("");
   const [active, setActive] = useState("appearance");
   const [token, setToken] = useState(sessionStorage.getItem("f1p26_admin") ?? "");
@@ -99,8 +101,17 @@ export default function SettingsPage() {
           <Row label="Font size" tag="live" desc="Scales all text app-wide, independent of your browser zoom."><Slider value={s.fontScale} min={0.85} max={1.25} step={0.05} onChange={(fontScale) => set({ fontScale })} fmt={(v) => `${v.toFixed(2)}×`} /></Row>
           <Row label="Corner roundness" tag="live" desc="Applies to cards, buttons, inputs, and panels."><Slider value={s.radius} min={0} max={16} step={1} onChange={(radius) => set({ radius })} fmt={(v) => `${v}px`} /></Row>
           <Row label="Density" tag="live" desc="Compact tightens spacing across every page for more on-screen at once."><Segmented value={s.density} onChange={(density) => set({ density })} options={[{ v: "comfortable", label: "Comfortable" }, { v: "compact", label: "Compact" }]} /></Row>
-          <details className="py-3"><summary className="cursor-pointer text-[12px] font-semibold">Advanced colors (background, surface, border, text)</summary>
-            <div className="mt-3 flex flex-wrap gap-4">{colorRow("bg", "Background", "#050a17")}{colorRow("surface", "Surface", "#0b1430")}{colorRow("border", "Border", "#182644")}{colorRow("text", "Text", "#f1f5f9")}<button className="btn-ghost" onClick={() => set({ colors: {} })}>Reset colors</button></div></details>
+          <details className="py-3"><summary className="cursor-pointer text-[12px] font-semibold">Project colors (tune all UI/chart/tooltip colors)</summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-mute sm:col-span-2 lg:col-span-3">Core</div>
+              {colorRow("bg", "Background", "#050a17")}{colorRow("surface", "Surface", "#0b1430")}{colorRow("border", "Border", "#182644")}{colorRow("text", "Text", "#f1f5f9")}{colorRow("mute", "Muted text", "#8793ad")}{colorRow("accent2", "Accent highlight", "#ff2d46")}
+              <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-mute sm:col-span-2 lg:col-span-3">Status</div>
+              {colorRow("success", "Success", "#22c55e")}{colorRow("warning", "Warning", "#f59e0b")}{colorRow("danger", "Danger", "#ef4444")}{colorRow("info", "Info", "#38bdf8")}
+              <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-mute sm:col-span-2 lg:col-span-3">Charts & tooltips</div>
+              {colorRow("chart1", "Chart 1", "#e10600")}{colorRow("chart2", "Chart 2", "#7c4dff")}{colorRow("chart3", "Chart 3", "#22c55e")}{colorRow("chart4", "Chart 4", "#f59e0b")}{colorRow("chart5", "Chart 5", "#06b6d4")}{colorRow("chart6", "Chart 6", "#ec4899")}{colorRow("tooltipBg", "Tooltip background", "#38bdf8")}{colorRow("tooltipText", "Tooltip text", "#dc2626")}
+            </div>
+            <div className="mt-3"><button className="btn-ghost" onClick={() => set({ colors: {} })}>Reset all custom colors</button></div>
+          </details>
           <Row label="Share these settings" desc="Colors, theme and every control are stored in this browser. Copy a link to restore them on another device."><button className="btn-ghost" onClick={async () => { const url = `${location.origin}/settings#s=${encode({ ...s, apiBase: "" })}`; try { await navigator.clipboard.writeText(url); flash("Settings link copied."); } catch { flash(url); } }}>Sync now</button></Row>
         </Section>
 
@@ -113,7 +124,7 @@ export default function SettingsPage() {
 
         <Section id="engine" icon={Cpu} title="Prediction Engine Defaults" desc="These seed the Dashboard's race-condition sliders every time you open it. Change them per-race on the Dashboard, or set your usual baseline here.">
           <div className="my-3 rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-[11px] text-sky-200">These parameters are applied by the prediction engine on every request (sent from your browser with each run). They are not admin-gated and need no backend configuration.</div>
-          <Row label="Simulation count" tag="live" desc="Default Monte Carlo simulations per prediction (100–50,000)."><Slider value={sim.sims} min={100} max={50000} step={100} onChange={S("sims")} fmt={(v) => String(v)} /></Row>
+          <Row label="Simulation count" tag="live" desc="Default Monte Carlo simulations per prediction (100–50,000)."><Slider value={sim.sims} min={100} max={maxSims} step={100} onChange={S("sims")} fmt={(v) => String(v)} /></Row>
           <Row label="Chaos level" tag="live" desc="How random races get: higher means more upsets."><Slider value={sim.chaos * 100} min={0} max={100} step={1} onChange={(v) => setSim({ chaos: v / 100 })} fmt={(v) => String(Math.round(v))} /></Row>
           <Row label="Grid weight" tag="live" desc="How strongly the starting grid decides the finishing order."><Slider value={sim.grid_weight} min={0} max={1} step={0.01} onChange={S("grid_weight")} fmt={pctf} /></Row>
           <Row label="Wet influence" tag="live" desc="How much rain rewards wet-weather specialists."><Slider value={sim.wet_influence} min={0} max={1} step={0.01} onChange={S("wet_influence")} fmt={pctf} /></Row>
@@ -169,7 +180,9 @@ export default function SettingsPage() {
         </Section>
 
         <Section id="advanced" icon={Wrench} title="Advanced" desc="API connection, admin access, and developer options.">
+          {import.meta.env.PROD && !import.meta.env.VITE_ALLOW_API_OVERRIDE ? null : (
           <Row label="API base URL override" tag="live" desc="Point this frontend at a different backend host without rebuilding. Leave blank to use the default."><input className="field font-mono" placeholder="https://api.example.com" value={s.apiBase} onChange={(e) => set({ apiBase: e.target.value.trim() })} /></Row>
+          )}
           <Row label="Request timeout" tag="live" desc="Aborts a stalled request after this long."><Slider value={s.timeoutMs} min={2000} max={60000} step={1000} onChange={(timeoutMs) => set({ timeoutMs })} fmt={(v) => `${v}ms`} /></Row>
           <Row label="Debug logging" tag="live" desc="Logs every API request's timing and status to the browser console."><Toggle checked={s.debug} onChange={(v) => set({ debug: v })} label="Debug logging" /></Row>
           <Row label="Keyboard shortcuts" tag="live" desc="Enable the g-then-letter navigation shortcuts (see below)."><Toggle checked={s.shortcuts} onChange={(v) => set({ shortcuts: v })} label="Keyboard shortcuts" /></Row>

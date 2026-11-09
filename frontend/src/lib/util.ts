@@ -1,4 +1,4 @@
-import type { Prediction, Race, SessionKind } from "./api";
+import type { Prediction, Race, SessionKind, SimParams } from "./api";
 
 export const DURATION: Record<string, number> = { FP1: 60, FP2: 60, FP3: 60, SQ: 45, SPR: 45, Q: 60, R: 120 }; // minutes
 
@@ -10,9 +10,20 @@ export function sessionState(r: Race | undefined, now: number) {
   return { list, live, next, done: !live && !next, estimated: list.some((s) => s.estimated) };
 }
 
+export type ResultState = "none" | "hidden" | "stale" | "fresh";
+
+export function resultState(draft: SimParams, applied: SimParams | null, data: Prediction | undefined): ResultState {
+  if (!applied) return "none";
+  if (!data) return "none";
+  const changed = (k: keyof SimParams) => draft[k] !== (applied as SimParams)[k];
+  const core = ["race_id", "session", "sub"] as const;
+  if (core.some((k) => changed(k))) return "hidden";
+  return "fresh";
+}
+
 export const overtakingLabel = (v: number) => (v >= 0.65 ? "Easy" : v >= 0.4 ? "Medium" : "Hard");
-export const sessionWord = (s: SessionKind) => ({ practice: "Practice", qualifying: "Qualifying", race: "Race", sprint: "Sprint" })[s];
-export const headlineWord = (s: SessionKind) => ({ practice: "Fastest in session", qualifying: "Pole position", race: "Race win", sprint: "Sprint win" })[s];
+export const sessionWord = (s: SessionKind) => ({ practice: "Practice", qualifying: "Qualifying", sprint_qualifying: "Sprint Qualifying", race: "Race", sprint: "Sprint" })[s];
+export const headlineWord = (s: SessionKind) => ({ practice: "Fastest in session", qualifying: "Pole position", sprint_qualifying: "Sprint Qualifying", race: "Race win", sprint: "Sprint win" })[s];
 export const pad = (n: number) => String(n).padStart(2, "0");
 export const short = (n: number) => (n >= 1000 ? `${n % 1000 === 0 ? n / 1000 : (n / 1000).toFixed(1)}k` : String(n));
 

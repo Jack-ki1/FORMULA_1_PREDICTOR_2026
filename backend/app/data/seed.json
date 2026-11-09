@@ -224,14 +224,14 @@
    "number": 87
   },
   {
-   "code": "OCO",
-   "name": "Esteban Ocon",
+   "code": "CAM",
+   "name": "Rafael Câmara",
    "team": "haas",
-   "cc": "FR",
-   "skill": 75,
-   "wet": 76,
+   "cc": "BR",
+   "skill": 70,
+   "wet": 68,
    "points": null,
-   "number": 31
+   "number": 20
   },
   {
    "code": "ALB",

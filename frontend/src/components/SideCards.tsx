@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import type { Prediction } from "../lib/api";
 import { useH2H, useRaces, useRecent } from "../lib/hooks";
 import { useApp } from "../lib/store";
-import { Avatar, Card, CardTitle, Flag, Skeleton, Toggle, cx, pct, surname } from "./ui";
+import { Avatar, AwaitRun, Card, CardTitle, Flag, Skeleton, Toggle, cx, pct, surname } from "./ui";
 
 export function WeatherIcon({ kind, size = 18 }: { kind: string; size?: number }) {
   const m: Record<string, [typeof Sun, string]> = { sun: [Sun, "text-amber-300"], partly: [CloudSun, "text-amber-200"], cloud: [Cloud, "text-slate-300"], rain: [CloudRain, "text-sky-300"], storm: [CloudLightning, "text-violet"], fog: [CloudFog, "text-slate-400"], snow: [Snowflake, "text-cyan-200"] };
@@ -12,13 +12,13 @@ export function WeatherIcon({ kind, size = 18 }: { kind: string; size?: number }
   return <I size={size} className={c} />;
 }
 
-export function TrackWeather({ p }: { p?: Prediction }) {
+export function TrackWeather({ p, loading }: { p?: Prediction; loading?: boolean }) {
   const [bad, setBad] = useState<string | null>(null);
   const c = p?.race.circuit, fc = p?.forecast;
   return (
     <Card className="p-4">
       <CardTitle icon={<Map size={13} />} title="Track & Weather" />
-      {!p || !c ? <Skeleton className="h-[330px]" /> : (<>
+      {!p || !c ? (loading ? <Skeleton className="h-[330px]" /> : <AwaitRun />) : (<>
         <div className="relative h-[84px] overflow-hidden rounded-lg border border-edge bg-gradient-to-br from-[#10204a] to-[#050a17]">
           {bad !== c.id && <img src={`/img/tracks/${c.id}.jpg`} alt={c.name} onError={() => setBad(c.id)} className="heavy-img h-full w-full object-cover" />}
           {bad === c.id && <div className="grid h-full place-items-center text-[10px] text-mute"><RouteIcon size={22} className="mb-1" />Add /img/tracks/{c.id}.jpg</div>}
@@ -46,7 +46,7 @@ export function TrackWeather({ p }: { p?: Prediction }) {
   );
 }
 
-export function H2HCard({ p }: { p?: Prediction }) {
+export function H2HCard({ p, loading }: { p?: Prediction; loading?: boolean }) {
   const [a, b] = p ? [...p.drivers].sort((x, y) => y.win - x.win).slice(0, 2).map((d) => d.code) : [undefined, undefined];
   const { data } = useH2H(a, b, p?.race.id);
   const row = (label: string, x: number | null, y: number | null, f: (n: number) => string = (n) => String(n), lowerBetter = false, big = false) => {
@@ -58,16 +58,16 @@ export function H2HCard({ p }: { p?: Prediction }) {
   return (
     <Card className="p-4">
       <CardTitle icon={<Swords size={13} />} title="Driver Head-to-Head" sub="Compare drivers and see detailed head-to-head stats" />
-      {!data ? <Skeleton className="h-[270px]" /> : (<>
+      {!data ? (loading ? <Skeleton className="h-[270px]" /> : <AwaitRun />) : (<>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           {[data.a, data.b].map((s, i) => (<div key={s.code} className={cx("flex items-center gap-2 rounded-lg border border-edge bg-black/20 p-2", i === 1 && "order-3")}>
             <Avatar code={s.code} team={s.team} size={36} /><div className="min-w-0"><div className="truncate text-[11px] font-bold">{s.name}</div><div className="truncate text-[9px] text-mute">{s.team.name}</div><Flag cc={s.cc} className="mt-0.5 h-2.5 w-4" /></div></div>))}
           <span className="order-2 text-[13px] font-black text-slate-300">VS</span>
         </div>
         <div className="mt-3 rounded-lg border border-edge px-2">
-          {row("Points", data.a.points, data.b.points, String, false, true)}
+          {row("Season points", data.a.season_points ?? data.a.points ?? null, data.b.season_points ?? data.b.points ?? null, String, false, true)}
           {row("Wins", data.a.wins, data.b.wins)}{row("Podiums", data.a.podiums, data.b.podiums)}
-          {row("Avg. Quali", data.a.avg_quali, data.b.avg_quali, (n) => n.toFixed(1), true)}
+          {row("Avg. Quali", data.a.avg_quali_season ?? data.a.avg_quali ?? null, data.b.avg_quali_season ?? data.b.avg_quali ?? null, (n) => n.toFixed(1), true)}
           <div className="grid grid-cols-[1fr_1.2fr_1fr] items-center border-t border-edge py-2 text-center"><b className="text-[12px]">{data.record ? data.record[0] : "—"}</b><span className="text-[10px] text-mute">Head-to-Head</span><b className="text-[12px]">{data.record ? data.record[1] : "—"}</b></div>
         </div>
         <Link to={`/head2head?a=${data.a.code}&b=${data.b.code}`} className="btn-ghost mt-3 w-full">View Full Comparison <ArrowRight size={13} /></Link>
@@ -105,7 +105,7 @@ export function RecentRaces() {
   return (
     <Card className="p-4">
       <CardTitle icon={<FlagIcon size={12} />} title="Recent Races" right={<Link to="/predictions" className="text-[10px] text-mute hover:text-white">View All</Link>} />
-      <div className="space-y-2">{!data ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-10" />) : data.map((r) => (
+      <div className="space-y-2">{!data ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-10" />) : data.map((r: any) => (
         <div key={r.id} className="flex items-center gap-3 rounded-lg border border-edge bg-black/20 px-3 py-2 text-[11px]">
           <Flag cc={r.cc} className="h-4 w-6" /><span className="min-w-0 flex-1 truncate font-medium">{r.name.replace(" Grand Prix", " GP")}{r.next && <span className="text-mute"> (Next)</span>}</span>
           <span className="text-slate-300">{r.winner_name ? `1. ${surname(r.winner_name)}` : "1. ?"}</span><span className="w-10 text-right text-mute">{r.points ? `${r.points} pts` : "-"}</span></div>))}

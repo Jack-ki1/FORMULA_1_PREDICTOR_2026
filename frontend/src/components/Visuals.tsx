@@ -2,14 +2,14 @@ import { BarChart3, Download, FileJson, Grid3x3, Printer, Route, Users } from "l
 import { motion } from "framer-motion";
 import type { DriverPred, Prediction } from "../lib/api";
 import { download, overtakingLabel, predictionCsv } from "../lib/util";
-import { Card, CardTitle, Skeleton, TeamLogo, cx, pct, surname } from "./ui";
+import { AwaitRun, Card, CardTitle, Skeleton, TeamLogo, cx, pct, surname } from "./ui";
 
-export function PositionHeatmap({ p }: { p?: Prediction }) {
+export function PositionHeatmap({ p, loading }: { p?: Prediction; loading?: boolean }) {
   const rows = p ? [...p.drivers].sort((a, b) => a.exp_pos - b.exp_pos).slice(0, 14) : [];
   return (
     <Card className="p-4">
       <CardTitle icon={<Grid3x3 size={13} />} title="Finishing Position Probability" sub="Chance of each classified position (darker = more likely)" />
-      {!p ? <Skeleton className="h-72" /> : (
+      {!p ? (loading ? <Skeleton className="h-72" /> : <AwaitRun />) : (
         <div className="overflow-x-auto"><table className="w-full min-w-[520px] border-separate border-spacing-[3px] text-[10px]">
           <thead><tr><th className="w-24" />{Array.from({ length: 10 }, (_, i) => <th key={i} className="label !text-[9px]">P{i + 1}</th>)}<th className="label !text-[9px]">DNF</th></tr></thead>
           <tbody>{rows.map((d) => (
@@ -21,26 +21,29 @@ export function PositionHeatmap({ p }: { p?: Prediction }) {
   );
 }
 
-export function TeamBattle({ p }: { p?: Prediction }) {
+export function TeamBattle({ p, loading }: { p?: Prediction; loading?: boolean }) {
   const max = Math.max(...(p?.team_points.map((t) => t.points) ?? [1]), 1);
   return (
     <Card className="p-4">
       <CardTitle icon={<Users size={13} />} title="Constructor Battle" sub="Expected team points this session" />
-      <div className="space-y-2">{!p ? <Skeleton className="h-64" /> : p.team_points.map((t, i) => (
-        <div key={t.team.id} className="flex items-center gap-2 text-[11px]"><TeamLogo team={t.team} size={13} /><span className="w-24 truncate">{t.team.name}</span>
-          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/[0.07]"><motion.div initial={{ width: 0 }} animate={{ width: `${(t.points / max) * 100}%` }} transition={{ duration: 0.7, delay: i * 0.04 }} className="h-full rounded-full" style={{ background: t.team.color }} /></div>
-          <b className="w-9 text-right tabular-nums">{t.points.toFixed(1)}</b></div>))}</div>
+      {!p ? (loading ? <Skeleton className="h-64" /> : <AwaitRun />) : (
+        <div className="space-y-2">{p.team_points.map((t, i) => (
+          <div key={t.team.id} className="flex items-center gap-2 text-[11px]"><TeamLogo team={t.team} size={13} /><span className="w-24 truncate">{t.team.name}</span>
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/[0.07]"><motion.div initial={{ width: 0 }} animate={{ width: `${(t.points / max) * 100}%` }} transition={{ duration: 0.7, delay: i * 0.04 }} className="h-full rounded-full" style={{ background: t.team.color }} /></div>
+            <b className="w-9 text-right tabular-nums">{t.points.toFixed(1)}</b></div>
+        ))}</div>
+      )}
     </Card>
   );
 }
 
-export function GridVsFinish({ p }: { p?: Prediction }) {
+export function GridVsFinish({ p, loading }: { p?: Prediction; loading?: boolean }) {
   const rows = p ? [...p.drivers].sort((a, b) => a.avg_grid - b.avg_grid) : [];
   const n = rows.length || 22, W = 520, X = (v: number) => 92 + ((v - 1) / Math.max(n - 1, 1)) * (W - 112), H = 24 + n * 17;
   return (
     <Card className="p-4">
       <CardTitle icon={<Route size={13} />} title="Grid → Predicted Finish" sub="Average starting slot (hollow) to average finishing position (solid)" />
-      {!p ? <Skeleton className="h-80" /> : (
+      {!p ? (loading ? <Skeleton className="h-80" /> : <AwaitRun />) : (
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Grid versus predicted finish by driver">
           {[1, 5, 10, 15, n].map((t) => <g key={t}><line x1={X(t)} x2={X(t)} y1={14} y2={H - 4} stroke="currentColor" strokeOpacity=".12" /><text x={X(t)} y={10} fontSize="8" textAnchor="middle" fill="currentColor" opacity=".5">P{t}</text></g>)}
           {rows.map((d: DriverPred, i) => {
@@ -56,8 +59,8 @@ export function GridVsFinish({ p }: { p?: Prediction }) {
   );
 }
 
-export function SessionVisual({ p }: { p?: Prediction }) {
-  if (!p) return <Card className="p-4"><Skeleton className="h-72" /></Card>;
+export function SessionVisual({ p, loading }: { p?: Prediction; loading?: boolean }) {
+  if (!p) return <Card className="p-4">{loading ? <Skeleton className="h-72" /> : <AwaitRun />}</Card>;
   const s = p.params.session;
   if (s === "practice") {
     const rows = p.drivers, max = Math.max(...rows.map((d) => d.pace_hi ?? 0), 0.1);
@@ -84,11 +87,11 @@ function Meter({ label, value, hint }: { label: string; value: number; hint: str
   return <div><div className="mb-1 flex justify-between text-[11px]"><span>{label}</span><b>{hint}</b></div><div className="h-2 overflow-hidden rounded-full bg-white/[0.07]"><motion.div initial={{ width: 0 }} animate={{ width: `${Math.round(value * 100)}%` }} className="h-full rounded-full bg-gradient-to-r from-f1red to-glow" /></div></div>;
 }
 
-export function TrackTraits({ p }: { p?: Prediction }) {
+export function TrackTraits({ p, loading }: { p?: Prediction; loading?: boolean }) {
   const c = p?.race.circuit;
   return (
     <Card className="p-4"><CardTitle icon={<Route size={13} />} title="Race-Day Profile" sub={c ? `${c.name} — what shapes this result` : undefined} />
-      {!p || !c ? <Skeleton className="h-32" /> : (<div className="space-y-3">
+      {!p || !c ? (loading ? <Skeleton className="h-32" /> : <AwaitRun />) : (<div className="space-y-3">
         <Meter label="Overtaking ease" value={c.overtaking} hint={overtakingLabel(c.overtaking)} />
         <Meter label="Tyre wear" value={c.tyre_wear} hint={c.tyre_wear >= 0.65 ? "High" : c.tyre_wear >= 0.4 ? "Medium" : "Low"} />
         <Meter label="Safety-car likelihood" value={p.safety_car_prob} hint={`${Math.round(p.safety_car_prob * 100)}%`} />

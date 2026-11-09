@@ -1,10 +1,11 @@
 import { ArrowLeftRight, Check, ChevronDown, Cloud, CloudRain, CloudSun, Cpu, Eraser, Flag as FlagIcon, Loader2, Radio, Rocket, Sparkles, Sun, Timer, Trophy, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Prediction, Race, SessionKind } from "../lib/api";
-import { useDrivers, useGridOptions, useRaces } from "../lib/hooks";
+import { useDrivers, useGridOptions, useRaces, useMeta } from "../lib/hooks";
 import { useApp } from "../lib/store";
 import { overtakingLabel, pad, sessionState, short } from "../lib/util";
-import { Card, Flag, Skeleton, cx, pct } from "./ui";
+import { Card, Flag, Skeleton, Toggle, cx, pct } from "./ui";
+import { Strategy } from "./Panels";
 
 export function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
@@ -153,15 +154,36 @@ export function GridEditor({ race }: { race?: Race }) {
   );
 }
 
-export function ControlCenter({ p, loading }: { p?: Prediction; loading: boolean }) {
+export function ControlCenter({ p, loading }: { p?: Prediction; loading?: boolean }) {
   const { draft, applied, setDraft, run, s } = useApp();
   const { data: races } = useRaces();
+  const { data: meta } = useMeta();
+  const maxSims = meta?.max_sims ?? 20000;
   const nextId = races?.find((r) => r.status !== "completed")?.id ?? races?.[races.length - 1]?.id;
   const selId = draft.race_id ?? nextId ?? "";
   const race = races?.find((r) => r.id === selId);
   const showGrid = s.showGrid && (draft.session === "race" || draft.session === "sprint");
   const dirty = JSON.stringify(draft) !== JSON.stringify(applied);
-  const pick = (patch: Partial<typeof draft>) => run(patch); // race, session and weather apply instantly
+  useEffect(() => {
+    if (!race) return;
+    if (!race.sprint && (draft.session === "sprint" || draft.session === "sprint_qualifying")) setDraft({ session: "race", sub: "" });
+    if (race.sprint && draft.session === "practice" && draft.sub !== "FP1") setDraft({ sub: "FP1" });
+    if (!race.sprint && draft.session === "practice" && !draft.sub) setDraft({ sub: "FP2" });
+  }, [race?.id, race?.sprint]);
+  const pick = (patch: Partial<typeof draft>) => {
+    const next = { ...draft, ...patch };
+    if (race && !race.sprint && (next.session === "sprint" || next.session === "sprint_qualifying")) next.session = "race";
+    if (next.session !== "practice") next.sub = "";
+    if (next.session === "practice" && !next.sub) next.sub = race?.sprint ? "FP1" : "FP2";
+    setDraft(next);
+  };
+  const doRun = () => {
+    const next = { ...draft };
+    if (race && !race.sprint && (next.session === "sprint" || next.session === "sprint_qualifying")) next.session = "race";
+    if (next.session !== "practice") next.sub = "";
+    if (next.session === "practice" && !next.sub) next.sub = race?.sprint ? "FP1" : "FP2";
+    run(next);
+  };
   return (
     <Card className="space-y-4 p-4 md:p-5">
       <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
@@ -197,20 +219,49 @@ export function ControlCenter({ p, loading }: { p?: Prediction; loading: boolean
       </div>
 
       <div><div className="mb-2 text-[12px] font-bold">Select race weekend session</div>
-        <div className={cx("grid gap-2", SESSION_CARDS(race).length === 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3")}>
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {SESSION_CARDS(race).map((c) => (
-            <button key={c.k} aria-pressed={draft.session === c.k} onClick={() => pick({ session: c.k })} className={cx("flex items-start gap-3 rounded-xl border p-3 text-left transition", draft.session === c.k ? "border-glow bg-f1red/10 shadow-lg" : "border-edge bg-black/20 hover:border-glow/50")}>
+            <button key={c.k} aria-pressed={draft.session === c.k} onClick={() => pick({ session: c.k, sub: (c.k === "practice" ? "FP2" : "") as "" | "FP1" | "FP2" | "FP3" })} className={cx("flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition", draft.session === c.k ? "border-glow bg-f1red/10 shadow-lg" : "border-edge bg-black/20 hover:border-glow/50")}>
               <span className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-lg", draft.session === c.k ? "bg-gradient-to-br from-f1red to-glow text-white on-accent" : "bg-white/5 text-glow")}>{c.icon}</span>
-              <span><span className="block text-[13px] font-bold">{c.title}</span><span className="block text-[10px] leading-snug text-mute">{c.sub}</span></span>
+              <div>
+                <span className="block text-[13px] font-bold">{c.title}</span>
+                <span className="block text-[10px] leading-snug text-mute">{c.sub}</span>
+              </div>
+              {c.k === "practice" && (
+                <div className="mt-2 flex gap-1" role="group" aria-label="Practice session">
+                  {(["FP1", "FP2", "FP3"] as const).map((sub) => {
+                    const enabled = (race?.sessions ?? []).some((s) => s.key === sub);
+                    const active = draft.sub === sub;
+                    return (<button key={sub} disabled={!enabled} onClick={(e) => { e.stopPropagation(); pick({ session: "practice", sub }); }} aria-pressed={active} title={!enabled ? "No FP2/FP3 on sprint weekends" : undefined} className={cx("px-2 py-1 rounded-md text-[10px]", active ? "bg-f1red text-white" : !enabled ? "border-edge text-slate-500 opacity-50" : "border border-white/10 text-slate-300 hover:border-white/40")}>{sub}</button>);
+                  })}
+                </div>
+              )}
+              {c.k === "qualifying" && (
+                <div className="mt-2 flex gap-1" role="group" aria-label="Qualifying view">
+                  {["Q1", "Q2", "Q3", "Full"].map((view) => {
+                    const active = draft.qualiView === view;
+                    return (<button key={view} onClick={(e) => { e.stopPropagation(); setDraft({ qualiView: view as "Q1" | "Q2" | "Q3" | "Full" }); }} aria-pressed={active} className={cx("px-2 py-1 rounded-md text-[10px]", active ? "bg-f1red text-white" : "border border-white/10 text-slate-300 hover:border-white/40")}>{view}</button>);
+                  })}
+                </div>
+              )}
+              {c.k === "sprint" && (
+                <div className="mt-2 flex gap-1" role="group" aria-label="Sprint session">
+                  <span className="px-2 py-1 rounded-md border border-white/10 text-[10px] text-slate-300">Sprint Race</span>
+                </div>
+              )}
             </button>))}
         </div></div>
+
+      {(draft.session === "race" || draft.session === "sprint") && <Strategy p={p} loading={loading} />}
 
       {showGrid && <GridEditor race={race} />}
       {!showGrid && s.showGrid && <p className="rounded-lg border border-dashed border-edge p-2.5 text-[11px] text-mute">The starting grid applies to Race and Sprint sessions. {draft.session === "qualifying" ? "Qualifying is simulated as Q1 → Q2 → Q3 elimination." : "Practice shows each driver's projected pace spread."}</p>}
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-[11px]"><span className="mb-1 block text-mute">Simulations</span><input type="number" min={100} max={50000} step={500} className="field w-32" value={draft.sims} onChange={(e) => setDraft({ sims: Math.min(50000, Math.max(100, Number(e.target.value) || 100)) })} /></label>
-        <button className="btn-red !px-6 !py-2.5 !text-[13px]" disabled={loading || !race} onClick={() => run()}>{loading ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}{loading ? "Simulating…" : "Run Prediction"}</button>
+        <label className="text-[11px] flex items-center gap-2"><span className="mb-1 block text-mute">Simulations</span>
+          <input type="range" min="1000" max={maxSims} step="500" className="w-40" value={draft.sims} onChange={(e) => setDraft({ sims: Math.min(maxSims, Math.max(1000, Number(e.target.value) || 1000)) })} />
+          <span className="font-mono text-[10px] tabular-nums">{draft.sims.toLocaleString()}</span></label>
+        <button className="btn-red !px-6 !py-2.5 !text-[13px]" disabled={loading || !race} onClick={doRun}>{loading ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}{loading ? "Simulating…" : "Run Prediction"}</button>
         {dirty && !loading && <span className="text-[11px] text-amber-300">Unapplied changes — press Run Prediction</span>}
         {p && !dirty && <span className="text-[11px] text-mute">Grid: {p.grid_source === "manual" ? `manual (${p.grid_locked} pinned)` : p.grid_source === "live" ? "live qualifying" : "simulated qualifying"} · P(top-3) leader {pct(Math.max(...p.drivers.map((d) => d.podium)), 0)}</span>}
       </div>

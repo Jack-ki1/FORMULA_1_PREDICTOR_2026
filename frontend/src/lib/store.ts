@@ -4,7 +4,7 @@ import type { SimParams } from "./api";
 
 export interface Settings {
   mode: "light" | "dark" | "system"; accent: string; fontScale: number; radius: number; density: "comfortable" | "compact";
-  colors: { bg?: string; surface?: string; border?: string; text?: string };
+  colors: { bg?: string; surface?: string; border?: string; text?: string; mute?: string; accent2?: string; chart1?: string; chart2?: string; chart3?: string; chart4?: string; chart5?: string; chart6?: string; success?: string; warning?: string; danger?: string; info?: string; tooltipBg?: string; tooltipText?: string };
   reduceMotion: boolean; highContrast: boolean; dyslexia: boolean; underlineLinks: boolean;
   sim: SimParams;
   showGrid: boolean; showExport: boolean; compactTables: boolean; landing: "dashboard" | "predictions" | "standings" | "head2head" | "fantasy";
@@ -14,7 +14,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SIM: SimParams = {
-  race_id: null, sims: 3000, session: "race", weather: "auto", mechanical_failures: true, safety_car: true, enhanced: true, chaos: 0.5,
+  race_id: null, sims: 3000, session: "race", sub: "", qualiView: "Full", weather: "auto", mechanical_failures: true, safety_car: true, enhanced: true, chaos: 0.5,
   grid_mode: "auto", grid: [], grid_weight: 0.55, wet_influence: 0.6, reliability: 0.4, strategy_aggr: 0.5, sc_weight: 0.3,
   team_w: 0.6, driver_w: 0.4, track_w: 1, weather_w: 1, deg_w: 1, form_k: 32, ci: 0.95,
 };
@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 interface State {
-  s: Settings; draft: SimParams; applied: SimParams; fantasy: string[];
+  s: Settings; draft: SimParams; applied: SimParams | null; fantasy: string[];
   set: (p: Partial<Settings>) => void; setSim: (p: Partial<SimParams>) => void;
   setDraft: (p: Partial<SimParams>) => void; run: (p?: Partial<SimParams>) => void;
   setFantasy: (c: string[]) => void; replaceSettings: (s: Partial<Settings>) => void; resetAll: () => void;
@@ -40,24 +40,35 @@ const merge = (x?: Partial<Settings>): Settings => ({ ...DEFAULT_SETTINGS, ...(x
 // Re-seed the dashboard controls from the saved defaults but keep the race and grid the user is working on.
 const reseed = (s: Settings, cur: SimParams): SimParams => ({ ...s.sim, race_id: cur.race_id, grid_mode: cur.grid_mode, grid: cur.grid });
 
+function sanitize(d: SimParams, sprint: boolean): SimParams {
+  let session = d.session;
+  let sub = d.sub;
+  if (!sprint && (session === "sprint" || session === "sprint_qualifying")) session = "race";
+  if (session === "sprint") sub = "";
+  if (session !== "practice") sub = "";
+  if (session === "practice" && !sub) sub = sprint ? "FP1" : "FP2";
+  if (sprint && session === "practice" && sub !== "FP1") sub = "FP1";
+  return { ...d, session, sub };
+}
+
 export const useApp = create<State>()(
   persist(
     (set, get) => ({
-      s: DEFAULT_SETTINGS, draft: DEFAULT_SIM, applied: DEFAULT_SIM, fantasy: [],
-      set: (p) => { const s = { ...get().s, ...p }; set({ s, draft: reseed(s, get().draft), applied: reseed(s, get().applied) }); },
+      s: DEFAULT_SETTINGS, draft: DEFAULT_SIM, applied: null, fantasy: [],
+      set: (p) => { const s = { ...get().s, ...p }; set({ s, draft: reseed(s, get().draft) }); },
       setSim: (p) => get().set({ sim: { ...get().s.sim, ...p } }),
       setDraft: (p) => set({ draft: { ...get().draft, ...p } }),
       run: (p) => { const d = { ...get().draft, ...p }; set({ draft: d, applied: d }); },
       setFantasy: (fantasy) => set({ fantasy }),
-      replaceSettings: (x) => { const s = merge({ ...get().s, ...x }); set({ s, draft: s.sim, applied: s.sim }); },
-      resetAll: () => set({ s: DEFAULT_SETTINGS, draft: DEFAULT_SIM, applied: DEFAULT_SIM, fantasy: [] }),
+      replaceSettings: (x) => { const s = merge({ ...get().s, ...x }); set({ s, draft: s.sim, applied: null }); },
+      resetAll: () => set({ s: DEFAULT_SETTINGS, draft: DEFAULT_SIM, applied: null, fantasy: [] }),
     }),
     {
       name: "f1p26", version: 2, partialize: (st) => ({ s: st.s, fantasy: st.fantasy }),
       merge: (p, cur) => {
         const x = (p ?? {}) as Partial<State>;
         const s = merge(x.s);
-        return { ...cur, s, fantasy: x.fantasy ?? [], draft: s.sim, applied: s.sim };
+        return { ...cur, s, fantasy: x.fantasy ?? [], draft: s.sim, applied: null };
       },
     },
   ),

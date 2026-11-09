@@ -5,7 +5,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Response
 from . import service
 from .provider import snapshot
 from .config import settings
-from .routes_models import ConfigPatch, PredictIn
+from .routes_models import ConfigPatch, FantasyEvaluateIn, H2HIn, PredictIn
 
 router = APIRouter(prefix="/api/v1")
 
@@ -18,7 +18,8 @@ def cached(resp: Response, s: int = 300, swr: int = 600):
 async def meta(resp: Response):
     cached(resp, 60)
     s = await snapshot()
-    return dict(season=2026, source=s["source"], as_of_round=s["as_of_round"], rounds_done=s["rounds_done"], note=s.get("note"))
+    return dict(season=2026, source=s["source"], as_of_round=s["as_of_round"], rounds_done=s["rounds_done"], note=s.get("note"),
+                max_sims=settings.max_sims)
 
 
 @router.get("/races")
@@ -79,6 +80,17 @@ async def h2h(a: str, b: str, resp: Response, race_id: str | None = None):
         raise HTTPException(404, "Unknown driver or race")
 
 
+@router.post("/h2h")
+async def h2h_post(body: H2HIn):
+    """Head-to-head with user params (POST). GET /h2h remains as a deprecated thin wrapper."""
+    if body.a == body.b:
+        raise HTTPException(422, "Pick two different drivers")
+    try:
+        return await service.h2h(body.a.upper(), body.b.upper(), body.race_id, body)
+    except KeyError:
+        raise HTTPException(404, "Unknown driver or race")
+
+
 @router.get("/recent")
 async def recent(resp: Response):
     cached(resp, 300)
@@ -90,6 +102,15 @@ async def fantasy(resp: Response, race_id: str | None = None):
     cached(resp, 300)
     try:
         return await service.fantasy_pool(race_id)
+    except KeyError:
+        raise HTTPException(404, "Unknown race")
+
+
+@router.post("/fantasy/evaluate")
+async def fantasy_evaluate(body: FantasyEvaluateIn):
+    """Full fantasy evaluation with user params (POST). GET /fantasy/pool remains as a deprecated wrapper."""
+    try:
+        return await service.fantasy_evaluate(body)
     except KeyError:
         raise HTTPException(404, "Unknown race")
 

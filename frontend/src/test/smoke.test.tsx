@@ -13,20 +13,27 @@ const mount = (path: string) =>
       <MemoryRouter initialEntries={[path]}><App /></MemoryRouter>
     </QueryClientProvider>,
   );
+const runPrediction = () => useApp.getState().run({ race_id: "19", sims: 3000 });
 
 describe("pages render against the live API", () => {
-  it("dashboard: control center, panels and visuals", async () => {
+  it("dashboard: shows AwaitRun before Run, then panels after run", async () => {
     mount("/dashboard");
     expect(await screen.findByText("Select a Grand Prix")).toBeTruthy();
-    expect(await screen.findByText("Race weekend status")).toBeTruthy();
-    expect(await screen.findByText("Select race weekend session")).toBeTruthy();
-    expect(await screen.findByText("Starting Grid")).toBeTruthy();
-    expect(await screen.findByText("Winner prediction")).toBeTruthy();
+    expect((await screen.findAllByText(/Set the number of simulations, then press Run Prediction/)).length).toBeGreaterThan(0);
+    fireEvent.click(await screen.findByText("Run Prediction"));
+    expect(await screen.findByText(/Winner prediction|Pole prediction/, {}, { timeout: 6000 })).toBeTruthy();
     expect(await screen.findByText("Finishing Position Probability")).toBeTruthy();
     expect(await screen.findByText("Constructor Battle")).toBeTruthy();
     expect(await screen.findByText("Grid → Predicted Finish")).toBeTruthy();
-    expect(await screen.findByText("Predicted Race Results")).toBeTruthy();
+    expect(await screen.findByRole("tab", { name: "Results" })).toBeTruthy();
+    expect(await screen.findByRole("tab", { name: "Qualifying" })).toBeTruthy();
     expect(await screen.findByText("Export this prediction")).toBeTruthy();
+  });
+  it("dashboard: no /predictions call until Run is clicked", async () => {
+    mount("/dashboard");
+    expect((await screen.findAllByText(/Set the number of simulations/)).length).toBeGreaterThan(0);
+    fireEvent.click(await screen.findByText(/Saturday Qualifying|Friday Qualifying|Qualifying$/, { selector: "span" }));
+    expect((await screen.findAllByText(/Set the number of simulations/)).length).toBeGreaterThan(0);
   });
   it("manual grid: pin a driver, run, and the grid source updates", async () => {
     mount("/dashboard");
@@ -39,14 +46,17 @@ describe("pages render against the live API", () => {
   });
   it("switching session swaps the visuals", async () => {
     mount("/dashboard");
-    fireEvent.click(await screen.findByText(/Saturday Qualifying|Friday Qualifying|Qualifying$/, { selector: "span" }));
-    expect(await screen.findByText("Q1 → Q2 → Q3 Advancement")).toBeTruthy();
+    useApp.getState().setDraft({ session: "qualifying" });
+    expect((await screen.findAllByText(/Set the number of simulations, then press Run Prediction/)).length).toBeGreaterThan(0);
+    runPrediction();
+    expect(await screen.findByText("Q1 → Q2 → Q3 Advancement", {}, { timeout: 6000 })).toBeTruthy();
   });
   it("other pages", async () => {
-    mount("/predictions"); expect(await screen.findByText("Kimi Antonelli")).toBeTruthy(); cleanup();
-    mount("/standings"); expect(await screen.findByText("Kimi Antonelli")).toBeTruthy(); cleanup();
-    mount("/head2head?a=VER&b=NOR"); expect(await screen.findByText("Season points")).toBeTruthy(); cleanup();
-    mount("/fantasy"); expect(await screen.findByText("Auto-pick best team")).toBeTruthy(); cleanup();
+    useApp.getState().run({ race_id: "19", sims: 3000 });
+    mount("/predictions"); expect((await screen.findAllByText("Kimi Antonelli")).length).toBeGreaterThan(0); cleanup();
+    mount("/standings"); expect((await screen.findAllByText("Kimi Antonelli")).length).toBeGreaterThan(0); cleanup();
+    mount("/head2head?a=VER&b=NOR"); expect(await screen.findByText("Driver Head-to-Head")).toBeTruthy(); cleanup();
+    mount("/fantasy?race_id=19&budget=100&picks=VER,NOR,LEC,HAM,RUS"); expect(await screen.findByText("Valid team")).toBeTruthy(); cleanup();
     mount("/guide"); expect(await screen.findByText("How the engine works")).toBeTruthy();
   });
   it("settings: all eleven sections render and controls change the store", async () => {

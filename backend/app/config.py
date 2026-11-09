@@ -8,7 +8,7 @@ class Settings:
     # Same-origin requests (the Vite dev proxy and the deployed Vercel app) need no CORS entry. Cross-origin callers
     # must be allow-listed explicitly; set CORS_ORIGINS="*" to allow any website to call the API.
     cors = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
-    max_sims = int(os.getenv("MAX_SIMS", "50000"))
+    max_sims = int(os.getenv("MAX_SIMS", "20000"))
     admin_token = os.getenv("SETTINGS_ADMIN_TOKEN", "")
 
 

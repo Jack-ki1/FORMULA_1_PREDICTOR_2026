@@ -130,14 +130,14 @@
     "cc": "GB"
   },
   {
-    "code": "OCO",
-    "name": "Esteban Ocon",
+    "code": "CAM",
+    "name": "Rafael Câmara",
     "team": {
       "id": "haas",
       "name": "Haas",
       "color": "#B6BABD"
     },
-    "cc": "FR"
+    "cc": "BR"
   },
   {
     "code": "ALB",

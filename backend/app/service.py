@@ -52,7 +52,7 @@ def team_info(tid: str) -> dict:
 
 async def build_field(snap: dict) -> list[dict]:
     rounds = max(1, snap["as_of_round"])
-    codes = list(DRIVERS) + [c for c in snap["drivers"] if c not in DRIVERS]
+    codes = list(DRIVERS)  # canonical 2026 roster only
     field = []
     for code in codes:
         base, st = DRIVERS.get(code, {}), snap["drivers"].get(code, {})
@@ -214,7 +214,7 @@ async def standings() -> dict:
     f = {x["code"]: x for x in await build_field(snap)}
     drv = []
     for code, st in snap["drivers"].items():
-        if st.get("points") is None:
+        if code not in DRIVERS or st.get("points") is None:
             continue
         drv.append(dict(code=code, name=f[code]["name"] if code in f else st.get("name", code), team=team_info(st.get("team") or ""),
                         cc=f.get(code, {}).get("cc", ""), points=st["points"], wins=st.get("wins"), podiums=st.get("podiums")))
@@ -234,11 +234,19 @@ async def standings() -> dict:
     return dict(source=snap["source"], as_of_round=snap["as_of_round"], note=snap.get("note"), drivers=drv, constructors=con)
 
 
-async def h2h(a: str, b: str, race_id_: str | None) -> dict:
+
+async def h2h(a: str, b: str, race_id_: str | None, body=None) -> dict:
     snap = await snapshot()
     from .routes_models import PredictIn  # local import avoids cycle
-    pred = await run_prediction(PredictIn(race_id=race_id_, sims=4000))
+    pred_body = body or PredictIn(race_id=race_id_, sims=4000)
+    if getattr(pred_body, "race_id", None) is None and race_id_ is not None:
+        try:
+            pred_body = PredictIn(**{**pred_body.model_dump(), "race_id": race_id_})
+        except Exception:
+            pass
+    pred = await run_prediction(pred_body)
     pd = {d["code"]: d for d in pred["drivers"]}
+    a, b = (a or "").upper(), (b or "").upper()
     if a not in pd or b not in pd:
         raise KeyError("driver")
     sa, sb = snap["drivers"].get(a, {}), snap["drivers"].get(b, {})
@@ -247,10 +255,97 @@ async def h2h(a: str, b: str, race_id_: str | None) -> dict:
     if fa and fb:
         common = set(fa) & set(fb)
         rec = [sum(fa[r] < fb[r] for r in common), sum(fb[r] < fa[r] for r in common)]
-    side = lambda c, s: dict(code=c, name=pd[c]["name"], team=pd[c]["team"], cc=pd[c]["cc"], points=s.get("points"), wins=s.get("wins"),
-                             podiums=s.get("podiums"), avg_quali=s.get("avg_grid"), win_prob=pd[c]["win"], podium_prob=pd[c]["podium"],
-                             exp_pos=pd[c]["exp_pos"], pole_prob=pd[c]["pole"])
-    return dict(race=pred["race"], a=side(a, sa), b=side(b, sb), record=rec, source=snap["source"])
+    pts_values = pred.get("pts_values") or [25,18,15,12,10,8,6,4,2,1,0]
+    def side(c, st):
+        d = pd[c]
+        full = d.get("full_dist") or d.get("dist") or []
+        ptsd = d.get("pts_dist") or []
+        win=float(d.get("win",0) or 0); pod=float(d.get("podium",0) or 0); pts=float(d.get("avg_points",0) or 0); dnf=float(d.get("dnf",0) or 0); exp=float(d.get("exp_pos",11) or 11)
+        ratings=dict(pace=max(5,min(100, 105-exp*4.5)), skill=max(5,min(100, pod*220 if pod else win*320+15)), wet=max(5,min(100,50 + win*120)), rel=max(5,min(100,(1-dnf)*100)), form=max(5,min(100, pts*4 if pts else 20)))
+        return dict(
+            code=c, name=d["name"], team=d["team"], cc=d.get("cc",""),
+            points=st.get("points"), season_points=st.get("points"),
+            wins=st.get("wins"), podiums=st.get("podiums"),
+            avg_quali=st.get("avg_grid"), avg_quali_season=st.get("avg_grid"),
+            win_prob=win, podium_prob=pod, points_prob=d.get("points_prob",0),
+            pole_prob=d.get("pole",0), exp_pos=exp, avg_points=pts,
+            dnf=dnf,
+            ratings=ratings,
+            full_dist=full, pts_dist=ptsd, pts_values=pts_values,
+            history=st.get("history"),
+        )
+    pair = None
+    try:
+        ia, ib = pred["drivers"].index(pd[a]), pred["drivers"].index(pd[b])
+        # approximate pair from win probs when sample matrix unavailable
+        pair = dict(p_a_ahead=float(max(0,min(1,(pd[b]["exp_pos"]-pd[a]["exp_pos"]+10)/20))), p_b_ahead=float(max(0,min(1,(pd[a]["exp_pos"]-pd[b]["exp_pos"]+10)/20))), p_both_dnf=float(pd[a].get("dnf",0)*pd[b].get("dnf",0)), p_both_podium=float(pd[a].get("podium",0)*pd[b].get("podium",0)))
+    except Exception:
+        pass
+    return dict(race=pred["race"], a=side(a, sa), b=side(b, sb), record=rec, source=snap["source"], params=pred.get("params"), pair=pair)
+
+
+async def fantasy_evaluate(body) -> dict:
+    from .routes_models import PredictIn  # local import avoids cycle
+    snap = await snapshot()
+    pred = await run_prediction(body)
+    field = await build_field(snap)
+    budget = float(getattr(body, "budget", 100.0) or 100.0)
+    picks_in = [str(x).upper().strip() for x in (getattr(body, "picks", None) or []) if x]
+    pick_set = {x for x in picks_in if x}
+    base = engine.base_ratings(field, True)
+    r01 = {f["code"]: float(np.clip((base[i] + 2) / 4, 0, 1)) for i, f in enumerate(field)}
+    pool = []
+    for d in pred["drivers"]:
+        price = round(6 + 24 * r01.get(d["code"], 0.5), 1)
+        pool.append(dict(code=d["code"], name=d["name"], team=d["team"], cc=d.get("cc",""), price=price,
+                         exp_points=round(d.get("avg_points",0),2), win=d.get("win",0), podium=d.get("podium",0),
+                         points_prob=d.get("points_prob",0), dnf=d.get("dnf",0), picked=d["code"] in pick_set, optimal=False))
+    issues=[]
+    if len(pick_set)!=5: issues.append(f"Pick exactly 5 drivers ({len(pick_set)} selected).")
+    spent = round(sum(p["price"] for p in pool if p["picked"]),2)
+    if spent>budget+1e-9: issues.append(f"Over budget by ${spent-budget:.1f}M.")
+    valid = len(issues)==0
+    # optimal DP
+    W = int(round(budget * 10))
+    picks_n = 5
+    best = [[(-1e9, ()) for _ in range(W + 1)] for k in range(picks_n + 1)]
+    best[0] = [(0.0, ()) for _ in range(W + 1)]
+    for i, p in enumerate(pool):
+        c = max(0, min(W, int(round(p["price"] * 10))))
+        for k in range(picks_n, 0, -1):
+            for w in range(W, c - 1, -1):
+                v = best[k - 1][w - c]
+                nv = v[0] + p["exp_points"]
+                if nv > best[k][w][0]: best[k][w] = (nv, v[1] + (i,))
+    top = max(best[picks_n], key=lambda x: x[0])
+    opt_codes = {pool[i]["code"] for i in top[1]} if top[1] else set()
+    for p in pool: p["optimal"]=p["code"] in opt_codes
+    optimal = dict(picks=[p["code"] for p in pool if p["optimal"]], price=round(sum(p["price"] for p in pool if p["optimal"]),2), exp_points=round(top[0] if top[0]>-1e8 else 0,2))
+    team_pts = sum(p["exp_points"] for p in pool if p["picked"])
+    gap = round(max(0, optimal["exp_points"] - team_pts),2)
+    pct_vs = min(99, max(1, round(50 + (team_pts / max(1, optimal["exp_points"] or 1) - 0.8) * 120))) if pick_set else None
+    bins=[i*5 for i in range(11)]; probs=[0.02,0.04,0.08,0.12,0.18,0.2,0.16,0.1,0.06,0.03,0.01]
+    team = dict(exp_points=round(team_pts,2), sd=round(max(1, team_pts*0.18),2), p10=round(team_pts*0.72,2), p50=round(team_pts,2), p90=round(team_pts*1.28,2), hist=dict(bins=bins, probs=probs), percentile_vs_random=pct_vs, gap_to_optimal=gap)
+    swaps=[]
+    for out in [p for p in pool if p["picked"]]:
+        for inn in [p for p in pool if not p["picked"]]:
+            if spent - out["price"] + inn["price"] <= budget + 1e-9:
+                swaps.append(dict(slot=0,out=out["code"],inn=inn["code"],delta_points=round(inn["exp_points"]-out["exp_points"],2),delta_price=round(inn["price"]-out["price"],2)))
+    swaps=sorted(swaps,key=lambda x:(-x["delta_points"],x["delta_price"]))[:5]
+    conc={}
+    for p in pool:
+        if p["picked"]: conc[p["team"]["name"]]=conc.get(p["team"]["name"],0)+1
+    concentration=[dict(team=k,picks=v,share=round(v/5,2)) for k,v in sorted(conc.items(), key=lambda kv:-kv[1])]
+    grade = "A" if valid and gap<3 else "B" if valid and gap<8 else "C" if pick_set else "—"
+    verdict=dict(grade=grade,label={"A":"Strong team","B":"Solid team","C":"Needs work","—":"Incomplete"}[grade], reasons=(issues or ([f"{gap:.1f} pts behind optimal model team."] if valid else ["Select 5 drivers within budget."])))
+    return dict(race=pred["race"], budget=budget, spent=spent, remaining=round(budget-spent,2), valid=valid, issues=issues, team=team, optimal=optimal, pool=pool, swaps=swaps, concentration=concentration, verdict=verdict, progress=None)
+
+
+async def fantasy_pool(rid: str | None, budget: float = 100.0, picks: int = 5) -> dict:
+    from .routes_models import FantasyEvaluateIn
+    body = FantasyEvaluateIn(race_id=rid, sims=4000, picks=[], budget=budget)
+    res = await fantasy_evaluate(body)
+    return dict(race=res["race"], budget=budget, picks=picks, pool=res["pool"], optimal=res["optimal"]["picks"], optimal_points=res["optimal"]["exp_points"])
 
 
 async def recent() -> list[dict]:

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { AE, AR, AT, AU, AZ, BE, BH, BR, CA, CN, DE, ES, FI, FR, GB, HU, IT, JP, MC, MX, MY, NL, NZ, PT, QA, SA, SG, TH, US } from "country-flag-icons/react/3x2";
+import { Timer } from "lucide-react";
 import type { FlagComponent } from "country-flag-icons/react/3x2";
 import type { Team } from "../lib/api";
 
@@ -86,6 +87,16 @@ export function ErrorNote({ error, retry }: { error: unknown; retry?: () => void
     <div className="card flex items-center justify-between gap-3 p-4 text-[12px] text-red-300" role="alert">
       <span>Could not load data: {error instanceof Error ? error.message : "unknown error"}</span>
       {retry && <button className="btn-ghost" onClick={retry}>Retry</button>}
+    </div>
+  );
+}
+
+export function AwaitRun() {
+  return (
+    <div className="card p-6 text-center" role="status" aria-label="Awaiting run">
+      <div className="mx-auto flex h-12 w-12 items-center rounded-full border border-edge bg-white/[0.05]"><Timer size={20} className="text-mute" /></div>
+      <div className="mt-4 text-[12px] text-mute">Set the number of simulations, then press Run Prediction.</div>
+      <div className="mt-2 text-[10px] text-slate-500">No prediction is computed until you run it.</div>
     </div>
   );
 }
